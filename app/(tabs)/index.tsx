@@ -21,6 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import { useTheme } from 'react-native-paper';
 import * as Pedometer from 'expo-sensors/build/Pedometer';
+import { Subscription } from 'expo-sensors/build/Pedometer';
 import { Circle, Svg } from 'react-native-svg';
 
 type Exercise = {
@@ -60,14 +61,11 @@ export default function HomeScreen() {
   const [currentStepCount, setCurrentStepCount] = useState(0);
   const STEP_TARGET = 10000;
   const [progress, setProgress] = useState(0);
-  const [subscription, setSubscription] = useState<any>(null);
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
   // Keep the first step value seen by watchStepCount to compute deltas (Android)
   const initialWatchStepsRef = useRef<number | null>(null);
+  const [lastResetDate, setLastResetDate] = useState<string>('');
   
-  // Load saved steps on mount
-  useEffect(() => {
-    loadStepCount();
-  }, []);
   
   // Update progress when step count changes
   useEffect(() => {
@@ -75,17 +73,28 @@ export default function HomeScreen() {
     setProgress(newProgress);
     saveStepCount(currentStepCount);
   }, [currentStepCount, STEP_TARGET]);
+
+  // Load saved steps and check for day reset on mount
+  useEffect(() => {
+    const initSteps = async () => {
+      const steps = await checkAndResetSteps();
+      setCurrentStepCount(steps);
+    };
+    initSteps();
+  }, []);
   
   // Handle pedometer subscription
   useEffect(() => {
     let isMounted = true;
     let baseAtStart = currentStepCount; // baseline to add deltas on Android
+    let sub: Subscription | null = null;
 
     const subscribe = async () => {
       try {
         const isAvailable = await Pedometer.isAvailableAsync();
         if (!isMounted) return;
 
+        console.log('Pedometer available:', isAvailable);
         setIsPedometerAvailable(String(isAvailable));
 
         if (isAvailable) {
@@ -98,6 +107,7 @@ export default function HomeScreen() {
           if (Platform.OS === 'ios') {
             try {
               const pastStepCount = await Pedometer.getStepCountAsync(start, end);
+              console.log('Past step count:', pastStepCount);
               if (isMounted && pastStepCount) {
                 baseAtStart = pastStepCount.steps;
                 setCurrentStepCount(prev => Math.max(prev, baseAtStart));
@@ -108,32 +118,65 @@ export default function HomeScreen() {
           }
 
           // Subscribe to step counter updates (works on both iOS and Android)
-          const sub = Pedometer.watchStepCount(result => {
+          sub = Pedometer.watchStepCount(result => {
             if (!isMounted) return;
+            
+            console.log('Step count update:', result);
+            
             if (initialWatchStepsRef.current === null) {
               initialWatchStepsRef.current = result.steps;
+              console.log('Initial step count set to:', initialWatchStepsRef.current);
             }
+            
             const delta = Math.max(0, result.steps - (initialWatchStepsRef.current ?? 0));
             const total = baseAtStart + delta;
-            setCurrentStepCount(prev => (total > prev ? total : prev));
+            
+            console.log('Delta:', delta, 'Total steps:', total);
+            
+            setCurrentStepCount(prev => {
+              const newCount = total > prev ? total : prev;
+              // Save to storage when steps increase
+              if (newCount > prev) {
+                saveStepCount(newCount);
+              }
+              return newCount;
+            });
           });
 
           setSubscription(sub);
+        } else {
+          console.log('Pedometer not available on this device');
         }
       } catch (error) {
         console.error('Error initializing pedometer:', error);
       }
     };
 
-    subscribe();
+      // Adiciona um atraso para garantir que o componente esteja montado
+    const timer = setTimeout(() => {
+      subscribe();
+    }, 1000);
+
+    // Configura um intervalo para verificar a mudança de dia a cada hora
+    const dayCheckInterval = setInterval(() => {
+      const now = new Date();
+      if (now.getHours() === 0 && now.getMinutes() === 0) {
+        checkAndResetSteps();
+      }
+    }, 60 * 60 * 1000); // Verifica a cada hora
 
     return () => {
       isMounted = false;
-      if (subscription && subscription.remove) {
+      clearTimeout(timer);
+      clearInterval(dayCheckInterval);
+      if (sub && sub.remove) {
+        console.log('Removendo assinatura do pedômetro');
+        sub.remove();
+      } else if (subscription && subscription.remove) {
+        console.log('Removendo assinatura existente');
         subscription.remove();
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Load saved step count from storage
@@ -151,19 +194,41 @@ export default function HomeScreen() {
   // Save step count to storage
   const saveStepCount = async (steps: number) => {
     try {
+      console.log('Saving step count:', steps);
       await AsyncStorage.setItem('@step_count', steps.toString());
+      
+      // Also save the current date to check for day changes
+      const today = new Date().toDateString();
+      await AsyncStorage.setItem('@last_reset_date', today);
+      
     } catch (error) {
       console.error('Error saving step count:', error);
     }
   };
   
-  // Reset step counter
-  const resetSteps = async () => {
+  // Função para verificar e resetar os passos se for um novo dia
+  const checkAndResetSteps = async () => {
     try {
-      await AsyncStorage.removeItem('@step_count');
-      setCurrentStepCount(0);
+      const today = new Date().toDateString();
+      const lastReset = await AsyncStorage.getItem('@last_reset_date');
+      
+      if (lastReset !== today) {
+        // É um novo dia, reseta os passos
+        console.log('Novo dia, reiniciando contador de passos');
+        await AsyncStorage.setItem('@step_count', '0');
+        await AsyncStorage.setItem('@last_reset_date', today);
+        setCurrentStepCount(0);
+        setProgress(0);
+        initialWatchStepsRef.current = null;
+        return 0;
+      } else {
+        // Carrega os passos salvos
+        const savedSteps = await AsyncStorage.getItem('@step_count');
+        return savedSteps ? parseInt(savedSteps, 10) : 0;
+      }
     } catch (error) {
-      console.error('Error resetting steps:', error);
+      console.error('Erro ao verificar/reiniciar passos:', error);
+      return 0;
     }
   };
   
@@ -327,15 +392,15 @@ export default function HomeScreen() {
       </View>
   
       {/* Progress Circle */}
-      <View style={[styles.progressContainer, ]}>
+      <View style={[styles.progressContainer]}>
         <View style={styles.progressWrap}>
           <View style={[styles.progressCircle, { backgroundColor: theme.dark ? '#000' : '#f1f5f9' }]}>
             <View
               style={[
                 styles.progressFill,
                 {
-                  backgroundColor: '#000',
-                  height: `${progress * 100}%`,
+                  backgroundColor: theme.colors.primary,
+                  height: `${Math.min(100, progress * 100)}%`,
                 },
               ]}
             />
@@ -344,7 +409,9 @@ export default function HomeScreen() {
             <Text style={[styles.progressNumber, { color: theme.colors.onBackground }]}>
               {currentStepCount.toLocaleString()}
             </Text>
-            <Text style={[styles.progressLabel, { color: theme.colors.onBackground }]}>steps today</Text>
+            <Text style={[styles.progressLabel, { color: theme.colors.onBackground }]}>
+              passos hoje
+            </Text>
           </View>
         </View>
         <View style={[styles.progressStats, ]}>
@@ -643,5 +710,12 @@ const styles = StyleSheet.create({
   settingsIcon: {
     width: 24,
     height: 24,
+    tintColor: '#fff',
+  },
+  progressSubtitle: {
+    fontSize: 14,
+    color: '#64748b',
+    marginTop: 4,
+    textTransform: 'capitalize',
   },
 });
