@@ -29,7 +29,7 @@ const STORAGE_KEY = 'workouts';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
 
-  const sounds =require('../../../assets/hold-up-tiktok.mp3')
+  
 
 
   const raresound = require('../../../assets/Trumpsinging.mp3')
@@ -49,6 +49,10 @@ export default function StartWorkoutScreen() {
   try {
     const isEasterEgg =
       DEBUG_FORCE_EASTER_EGG || Math.floor(Math.random() * 7000) === 0;
+
+      console.log('🔊 DEBUG_FORCE_EASTER_EGG:', DEBUG_FORCE_EASTER_EGG);
+      console.log('🎲 Random result:', Math.floor(Math.random() * 10));
+      console.log('🔥 Easter egg activated:', isEasterEgg);
 
     const soundFile = isEasterEgg
       ? raresound // 🔥 toca o raro
