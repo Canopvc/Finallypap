@@ -1,20 +1,20 @@
-import React, { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  Platform,
-  Alert,
-  Switch,
-  ActivityIndicator,
-  KeyboardAvoidingView,
+  View,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from 'react-native-paper';
 
 type Exercise = {
@@ -197,14 +197,14 @@ export default function AddWorkout() {
               </View>
             </View>
 
-            <View style={[styles.segment, { backgroundColor: theme.colors.surface }]}>
-              {(['weightlifting', 'calisthenics', 'cardio '] as const).map(t => (
+            <View style={[styles.segment, { backgroundColor: theme.colors.surface}]}>
+              {(['weightlifting', 'calisthenics ', 'cardio '] as const).map(t => (
                 <TouchableOpacity
                   key={t}
                   style={[styles.segmentBtn, ex.type === t && { backgroundColor: theme.colors.primary }]}
                   onPress={() => updateExercise(ex.id, 'type', t)}
                 >
-                  <Text style={[styles.segmentTxt, { color: theme.colors.onSurface }, ex.type === t && styles.segmentTxtActive]}>
+                  <Text style={[ styles.segmentTxt, { color: '#FFFFFF' }, ex.type === t && { color: theme.colors.onPrimary, }]}>
                     {t.charAt(0).toUpperCase() + t.slice(1)}
                   </Text>
                 </TouchableOpacity>
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', gap: 12 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   half: { flex: 1, marginRight: 8 },
-  removeBtn: { color: '#ef4444', fontWeight: '700' },
+  removeBtn: { color: '#f71202', fontWeight: '700' },
   segment: { flexDirection: 'row', borderRadius: 10, marginTop: 12, overflow: 'hidden' },
   segmentBtn: { flex: 1, paddingVertical: 8, alignItems: 'center', paddingLeft: 6, paddingRight: 6 },
   segmentActive: { backgroundColor: '#2563eb' },

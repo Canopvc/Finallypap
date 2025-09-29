@@ -26,6 +26,7 @@ export type Workout = {
 
 const STORAGE_KEY = 'workouts';
 
+
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
 function uid(prefix = '') {
@@ -165,7 +166,7 @@ export default function WorkoutDetailScreen() {
         </View>
 
         <TouchableOpacity style={[styles.addExercise, { backgroundColor: theme.colors.primary }]} onPress={addExercise}>
-          <Text style={[styles.addExerciseText]}>+ Add Exercise</Text>
+          <Text style={[{ color: theme.colors.onPrimary, fontWeight: '700', fontSize: 16 }]}>+ Add Exercise</Text>
         </TouchableOpacity>
 
         {/* Exercises */}
@@ -301,7 +302,6 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
   metaText: { color: '#64748b', fontSize: 12 },
   addExercise: { marginTop: 6, marginBottom: 4, alignSelf: 'flex-start', backgroundColor: '#06b6d4', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
-  addExerciseText: { color: '#fff', fontWeight: '700' },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,

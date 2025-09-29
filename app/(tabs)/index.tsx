@@ -461,7 +461,7 @@ export default function HomeScreen() {
                   {new Date(item.createdAt).toLocaleDateString()}
                 </Text>
               </View>
-              <Text style={[styles.countText, { color: theme.colors.primary }] }>
+              <Text style={[styles.countText, { color: theme.colors.onPrimary, backgroundColor: theme.colors.primary } ] }>
                 {item.exercises.length} exercises
               </Text>
             </TouchableOpacity>
