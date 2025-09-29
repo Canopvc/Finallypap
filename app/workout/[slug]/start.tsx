@@ -59,10 +59,14 @@ export default function StartWorkoutScreen() {
 
     Vibration.vibrate(1000);
 
+    
+      const duration = isEasterEgg ? 15000 : 5000;
+
+
     setTimeout(() => {
       sound.stopAsync();
       sound.unloadAsync();
-    }, 5000);
+    }, duration);
   } catch (e) {
     console.error('Failed to play alarm', e);
   }
