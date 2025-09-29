@@ -1,10 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert } from 'react-native';
-import { useTheme } from 'react-native-paper';
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
-import { Vibration } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
+import { useTheme } from 'react-native-paper';
 
 // Types mirrored from detail screen
  type Exercise = {
@@ -29,9 +28,12 @@ import { Vibration } from 'react-native';
 const STORAGE_KEY = 'workouts';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
-const sounds = [
-  require('../../../assets/hold-up-tiktok.mp3')
-]
+
+  const sounds =require('../../../assets/hold-up-tiktok.mp3')
+
+
+  const raresound = require('../../../assets/Trumpsinging.mp3')
+
 
 function formatTime(secs: number) {
   const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -41,25 +43,31 @@ function formatTime(secs: number) {
 
 export default function StartWorkoutScreen() {
 
+  const DEBUG_FORCE_EASTER_EGG = false;
+
   const playAlarm = useCallback(async () => {
-    try {
-      // Escolhe som aleatório (podes ter vários)
-      const soundFile = sounds[Math.floor(Math.random() * sounds.length)];
-      const { sound } = await Audio.Sound.createAsync(soundFile);
-      await sound.playAsync();
-  
-      // Vibrar telemóvel 1 segundo
-      Vibration.vibrate(1000);
-  
-      // Opcional: parar o som após X segundos
-      setTimeout(() => {
-        sound.stopAsync();
-        sound.unloadAsync();
-      }, 5000);
-    } catch (e) {
-      console.error('Failed to play alarm', e);
-    }
-  }, []);
+  try {
+    const isEasterEgg =
+      DEBUG_FORCE_EASTER_EGG || Math.floor(Math.random() * 7000) === 0;
+
+    const soundFile = isEasterEgg
+      ? raresound // 🔥 toca o raro
+      : require('../../../assets/hold-up-tiktok.mp3'); // som normal
+
+    const { sound } = await Audio.Sound.createAsync(soundFile);
+    await sound.playAsync();
+
+    Vibration.vibrate(1000);
+
+    setTimeout(() => {
+      sound.stopAsync();
+      sound.unloadAsync();
+    }, 5000);
+  } catch (e) {
+    console.error('Failed to play alarm', e);
+  }
+}, []);
+
 
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
