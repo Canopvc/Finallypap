@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "FitnessHUB",
+    "slug": "FitnessHUB",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yourname.fitnesshub"
+    },
+    "android": {
+      "package": "com.yourname.fitnesshub",
+      "softwareKeyboardLayoutMode": "resize",
+      "enableDangerousExperimentalWebImplementation": true,
+      "minSdkVersion": 26,
+      "navigationBar": {
+        "backgroundColor": "#00000000",
+        "barStyle": "light-content",
+        "visible": "leanBack"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      "expo-font",
+      "expo-splash-screen",
+      "expo-notifications",
+      "expo-secure-store"
+     
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "62b24fab-8df9-4280-8d41-293d118fec81"
+      }
+    }
+  }
+}
