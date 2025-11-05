@@ -381,7 +381,10 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView style={styles.scrollView}>
+      <ScrollView 
+  contentContainerStyle={styles.scrollViewContent}
+  showsVerticalScrollIndicator={false}
+>
         {/* Header corrigido */}
         <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
           <TouchableOpacity 
@@ -597,7 +600,6 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollView: {
-    flex: 1,
     padding: 20,
   },
   header: {
@@ -819,6 +821,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  scrollViewContent: {
+  padding: 20,
+  paddingBottom: 50,
+},
 });
 
 export default CalorieCounter;
