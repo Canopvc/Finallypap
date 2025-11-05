@@ -23,6 +23,7 @@ import { useTheme } from 'react-native-paper';
 import { Pedometer } from 'expo-sensors';
 
 LogBox.ignoreLogs(['expo-notifications']);
+LogBox.ignoreLogs(['VirtualizedLists should never be nested inside plain ScrollViews with tje same orientation']);
 
 // Types (mantidos iguais)
 type Exercise = {

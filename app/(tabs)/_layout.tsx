@@ -4,21 +4,22 @@ import { Platform, useColorScheme } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
-import type { TextStyle } from 'react-native';
 
 export default function TabLayout() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
 
-  // Memoize theme to avoid recreating object every render (previene loops)
   const theme = useMemo(() => (isDark ? {
     ...MD3DarkTheme,
     colors: {
       ...MD3DarkTheme.colors,
-      primary: '#4AA8FF',
+      primary: '#64aef3ff',
       background: '#0f172a',
       surface: '#1e293b',
       onSurface: '#f9fafb',
+      onPrimary: '#000000',
+      primaryContainer: '#2C8EC9',
+      onPrimaryContainer: '#72c6faff',
     },
   } : {
     ...MD3LightTheme,
@@ -31,11 +32,11 @@ export default function TabLayout() {
     },
   }), [isDark]);
 
-  // Memoize screenOptions to avoid passing a new object each render
   const screenOptions = useMemo<BottomTabNavigationOptions>(() => ({
     headerShown: false,
-    tabBarActiveTintColor: isDark ? '#2C8EC9' : '#2C8EC9',
+    tabBarActiveTintColor: '#2C8EC9',
     tabBarInactiveTintColor: isDark ? '#9ca3af' : '#6b7280',
+    tabBarHideOnKeyboard: true, // Força esconder o teclado em ambas plataformas
     tabBarStyle: {
       height: Platform.OS === 'ios' ? 85 : 60,
       paddingBottom: Platform.OS === 'ios' ? 30 : 8,
@@ -43,17 +44,19 @@ export default function TabLayout() {
       backgroundColor: isDark ? '#111827' : '#fff',
       borderTopWidth: 1,
       borderTopColor: isDark ? '#374151' : '#e5e7eb',
-      position: 'relative',
+      // Remove qualquer position que possa causar problemas
       elevation: 8,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -2 },
       shadowOpacity: 0.1,
       shadowRadius: 3,
     },
-    tabBarItemStyle: { paddingVertical: 4 },
+    tabBarItemStyle: { 
+      paddingVertical: 4,
+    },
     tabBarLabelStyle: {
       fontSize: 12,
-      fontWeight: '500' as const, // Correção aqui
+      fontWeight: '500' as const,
       marginBottom: Platform.OS === 'ios' ? 0 : 4,
     },
   }), [isDark]);

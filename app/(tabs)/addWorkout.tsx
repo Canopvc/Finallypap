@@ -294,7 +294,7 @@ export default function AddWorkout() {
                     styles.segmentBtn,
                     ex.type === t 
                       ? { 
-                          backgroundColor: theme.colors.primary,
+                          backgroundColor: theme.colors.onPrimaryContainer,
                           shadowColor: theme.colors.primary,
                           shadowOffset: { width: 0, height: 2 },
                           shadowOpacity: 0.3,

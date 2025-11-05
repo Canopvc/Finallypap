@@ -544,7 +544,7 @@ export default function ProfileScreen() {
               style={[styles.tab, activeTab === 'goals' && [styles.activeTab, { backgroundColor: theme.colors.primary }]]}
               onPress={() => setActiveTab('goals')}
             >
-              <Text style={[styles.tabText, {color: "#FFFFFF" }, activeTab === 'goals' && styles.activeTabText]}>
+              <Text style={[styles.tabText, {color: theme.colors.primary }, activeTab === 'goals' && styles.activeTabText]}>
                 Goals
               </Text>
             </Pressable>
@@ -552,7 +552,7 @@ export default function ProfileScreen() {
               style={[styles.tab, activeTab === 'progress' && [styles.activeTab, { backgroundColor: theme.colors.primary }]]}
               onPress={() => setActiveTab('progress')}
             >
-              <Text style={[styles.tabText, {color: "#FFFFFF"}, activeTab === 'progress' && styles.activeTabText]}>
+              <Text style={[styles.tabText, {color: theme.colors.primary}, activeTab === 'progress' && styles.activeTabText]}>
                 Progress
               </Text>
             </Pressable>
@@ -560,7 +560,7 @@ export default function ProfileScreen() {
               style={[styles.tab, activeTab === 'profile' && [styles.activeTab, { backgroundColor: theme.colors.primary }]]}
               onPress={() => setActiveTab('profile')}
             >
-              <Text style={[styles.tabText, {color: "#FFFFFF"}, activeTab === 'profile' && styles.activeTabText]}>
+              <Text style={[styles.tabText, {color: theme.colors.primary}, activeTab === 'profile' && styles.activeTabText]}>
                 Profile
               </Text>
             </Pressable>
@@ -971,7 +971,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   activeTabText: {
-    color: '#000000',
+    color: '#d7eaecff',
   },
 
   tabContent: {
