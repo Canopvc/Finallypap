@@ -13,6 +13,7 @@ import {
   Vibration,
   LogBox,
   PermissionsAndroid,
+  ScrollView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -367,6 +368,10 @@ export default function HomeScreen() {
   const activeMinutes = Math.round(currentStepCount / 175);
 
   return (
+    
+    <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ flex: 1 }}>
+
+    
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
@@ -503,6 +508,9 @@ export default function HomeScreen() {
         />
       </View>
     </View>
+
+    
+    </ScrollView>
   );
 }
 
@@ -544,6 +552,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 3,
+    marginTop: 12,
   },
   progressHeader: {
     marginBottom: 16,
@@ -551,7 +560,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   sectionSubtitle: {
     fontSize: 14,
@@ -649,7 +658,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   nutritionButton: {
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
     alignItems: 'center',
@@ -666,22 +675,24 @@ const styles = StyleSheet.create({
   workoutsSection: {
     flex: 1,
     paddingHorizontal: 20,
+    paddingTop: 16,
   },
   list: { 
     paddingBottom: 20,
   },
   itemWrap: { 
-    marginBottom: 12,
+    marginBottom: 20,
   },
   workoutItem: {
-    padding: 16,
-    borderRadius: 12,
+    padding: 24,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 4,
     borderWidth: 1,
+    borderColor: '#ddd',
   },
   workoutContent: {
     flexDirection: 'row',
@@ -692,21 +703,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   workoutText: { 
-    fontSize: 16, 
-    fontWeight: '600',
-    marginBottom: 4,
+    fontSize: 18, 
+    fontWeight: '700',
+    marginBottom: 6,
   },
   dateText: { 
-    fontSize: 12,
+    fontSize: 14,
     opacity: 0.7,
   },
   exerciseCount: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   countText: { 
-    fontSize: 12,
+    fontSize: 14,
     fontWeight: '600',
   },
   emptyContainer: {

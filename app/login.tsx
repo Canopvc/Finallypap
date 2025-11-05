@@ -4,7 +4,6 @@ import { View, Text, TextInput, StyleSheet, Pressable, TouchableOpacity, Activit
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useTheme } from 'react-native-paper';
-import { useEffect } from 'react';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -88,14 +87,7 @@ export default function LoginScreen() {
       <Pressable onPress={handleRegister} style={{ marginTop: 16 }}>
         <Text style={[styles.registerText, { color: theme.colors.primary }]}>Não tem uma conta? Cadastre-se</Text>
       </Pressable>
-
-      {/* Separator */}
       
-
-      {/* Google Sign In Button */}
-      
-        
-
       {!!error && <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>}
     </View>
   );
