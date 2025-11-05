@@ -639,7 +639,7 @@ Respond in the same language as the user's query.`;
         </Text>
       </View>
       
-      {/* ÁREA DE MENSAGENS - CRESCÍVEL */}
+      {/* ÁREA DE MENSAGENS - COM PADDING BOTTOM PARA O INPUT */}
       <View style={styles.messagesWrapper}>
         <ScrollView 
           ref={scrollViewRef}
@@ -647,6 +647,8 @@ Respond in the same language as the user's query.`;
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          nestedScrollEnabled={true}
         >
           {messages.length === 0 ? (
             <View style={styles.emptyState}>
@@ -683,19 +685,18 @@ Respond in the same language as the user's query.`;
         </ScrollView>
       </View>
 
-      {/* INPUT - COM KEYBOARD AVOIDING APENAS AQUI */}
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.inputWrapper}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-      >
-        <View style={[
-          styles.inputContainer, 
-          { 
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.outline,
-          }
-        ]}>
+      {/* INPUT - POSICIONAMENTO ABSOLUTO PARA GARANTIR ACESSIBILIDADE */}
+      <View style={styles.inputWrapper} pointerEvents="box-none">
+        <View 
+          style={[
+            styles.inputContainer, 
+            { 
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outline,
+            }
+          ]}
+          pointerEvents="auto"
+        >
           <TextInput
             style={[
               styles.input,
@@ -710,6 +711,14 @@ Respond in the same language as the user's query.`;
             onChangeText={setPrompt}
             multiline
             maxLength={500}
+            returnKeyType="send"
+            blurOnSubmit={false}
+            editable={true}
+            onFocus={() => {
+              setTimeout(() => {
+                scrollViewRef.current?.scrollToEnd({ animated: true });
+              }, 300);
+            }}
           />
           <TouchableOpacity 
             onPress={handleGenerateResponse} 
@@ -721,14 +730,16 @@ Respond in the same language as the user's query.`;
               }
             ]}
             disabled={loading || !prompt.trim()}
+            activeOpacity={0.7}
           >
             <MaterialCommunityIcons 
               name="send" 
               size={20} 
+              color="#fff"
             />
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </View>
 
       {/* Save Workout Modal */}
       <Modal visible={!!selectedWorkout} animationType="slide" transparent={true}>
@@ -871,6 +882,8 @@ const styles = StyleSheet.create({
   },
   messagesWrapper: {
     flex: 1,
+    minHeight: 0,
+    paddingBottom: Platform.OS === 'android' ? 140 : 0, // Espaço para tab bar (60) + input (80)
   },
   messagesContainer: {
     flex: 1,
@@ -878,6 +891,7 @@ const styles = StyleSheet.create({
   messagesContent: {
     paddingHorizontal: 20,
     paddingVertical: 16,
+    paddingBottom: Platform.OS === 'android' ? 20 : 80,
     flexGrow: 1,
   },
   emptyState: {
@@ -928,6 +942,15 @@ const styles = StyleSheet.create({
   },
   inputWrapper: {
     width: '100%',
+    backgroundColor: 'transparent',
+    ...(Platform.OS === 'android' ? {
+      position: 'absolute',
+      bottom: 60, // Altura da tab bar (60px) para ficar acima dela
+      left: 0,
+      right: 0,
+      zIndex: 1000,
+      elevation: 10,
+    } : {}),
   },
   inputContainer: { 
     flexDirection: 'row', 
@@ -938,7 +961,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderWidth: StyleSheet.hairlineWidth,
     minHeight: 56,
-    marginBottom: 16,
+    marginBottom: Platform.OS === 'android' ? 16 : 16,
+    marginTop: Platform.OS === 'android' ? 0 : 0,
   },
   input: {
     flex: 1,
