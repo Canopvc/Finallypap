@@ -4,10 +4,12 @@ import { View, Text, TextInput, StyleSheet, Pressable, TouchableOpacity, Activit
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function LoginScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -23,7 +25,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError('Por favor, preencha todos os campos');
+      setError(t('pleaseFill', { ns: 'common' }));
       return;
     }
 
@@ -40,7 +42,7 @@ export default function LoginScreen() {
       
     } catch (error: any) {
       console.error('Erro no login:', error);
-      setError(error.message || 'Erro ao fazer login. Verifique suas credenciais.');
+      setError(error.message || t('couldNotSave', { ns: 'common' }));
       setIsLoading(false);
     }
   };
@@ -51,10 +53,10 @@ export default function LoginScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text style={[styles.title, { color: theme.colors.onBackground }]}>Login</Text>
+      <Text style={[styles.title, { color: theme.colors.onBackground }]}>{t('login', { ns: 'common' })}</Text>
       
       <TextInput
-        placeholder="Email"
+        placeholder={t('email', { ns: 'common' })}
         placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
         style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
         value={email}
@@ -64,7 +66,7 @@ export default function LoginScreen() {
       />
       
       <TextInput
-        placeholder="Password"
+        placeholder={t('password', { ns: 'common' })}
         placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
         style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
         value={password}
@@ -80,12 +82,12 @@ export default function LoginScreen() {
         {isLoading ? (
           <ActivityIndicator color={theme.colors.onPrimary} />
         ) : (
-          <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>Entrar</Text>
+          <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>{t('enter', { ns: 'common' })}</Text>
         )}
       </TouchableOpacity>
       
       <Pressable onPress={handleRegister} style={{ marginTop: 16 }}>
-        <Text style={[styles.registerText, { color: theme.colors.primary }]}>Não tem uma conta? Cadastre-se</Text>
+        <Text style={[styles.registerText, { color: theme.colors.primary }]}>{t('noAccount', { ns: 'common' })}</Text>
       </Pressable>
       
       {!!error && <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>}

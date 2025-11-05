@@ -16,6 +16,7 @@ import {
   View,
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from '../../hooks/useTranslation';
 
 type Exercise = {
   id: string;
@@ -60,6 +61,7 @@ function defaultExercise(): Exercise {
 export default function AddWorkout() {
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const [workoutName, setWorkoutName] = useState('');
   const [exercises, setExercises] = useState<Exercise[]>([defaultExercise()]);
@@ -106,7 +108,7 @@ export default function AddWorkout() {
       router.back();
     } catch (err) {
       console.error('Save workout error', err);
-      Alert.alert('Error', 'Could not save workout.');
+      Alert.alert(t('error'), t('couldNotSave', { ns: 'common' }));
     } finally {
       setLoading(false);
     }
@@ -125,18 +127,18 @@ export default function AddWorkout() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.header, { color: theme.colors.onBackground }]}>
-          Create Workout
+          {t('createWorkout', { ns: 'workouts' })}
         </Text>
 
         {/* Workout Name Card */}
         <View style={[styles.card, { backgroundColor: theme.colors.surface }]}>
           <Text style={[styles.label, { color: theme.colors.onSurface }]}>
-            Workout name
+            {t('workoutName', { ns: 'workouts' })}
           </Text>
           <TextInput 
             value={workoutName} 
             onChangeText={setWorkoutName} 
-            placeholder="e.g. Push Day" 
+            placeholder={t('exampleWorkoutName', { ns: 'workouts' })} 
             style={[
               styles.input, 
               { 
@@ -155,7 +157,7 @@ export default function AddWorkout() {
             {/* Exercise Header */}
             <View style={styles.rowBetween}>
               <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
-                Exercise {idx + 1}
+                {t('exerciseNumber', { ns: 'workouts', number: idx + 1 })}
               </Text>
               <TouchableOpacity 
                 onPress={() => removeExercise(ex.id)} 
@@ -166,14 +168,14 @@ export default function AddWorkout() {
                   { color: theme.colors.error },
                   exercises.length === 1 && { opacity: 0.4 }
                 ]}>
-                  Remove
+                  {t('remove', { ns: 'common' })}
                 </Text>
               </TouchableOpacity>
             </View>
 
             {/* Exercise Name */}
             <Text style={[styles.label, { color: theme.colors.onSurface }]}>
-              Name
+              {t('name', { ns: 'common' })}
             </Text>
             <TextInput
               placeholder="Bench Press"
@@ -194,7 +196,7 @@ export default function AddWorkout() {
             <View style={styles.row}>
               <View style={styles.half}>
                 <Text style={[styles.label, { color: theme.colors.onSurface }]}>
-                  Sets
+                  {t('sets', { ns: 'workouts' })}
                 </Text>
                 <TextInput
                   style={[
@@ -212,7 +214,7 @@ export default function AddWorkout() {
               </View>
               <View style={styles.half}>
                 <Text style={[styles.label, { color: theme.colors.onSurface }]}>
-                  Reps
+                  {t('reps', { ns: 'workouts' })}
                 </Text>
                 <TextInput
                   style={[
@@ -224,7 +226,7 @@ export default function AddWorkout() {
                     }
                   ]}
                   keyboardType="number-pad"
-                  placeholder="Optional"
+                  placeholder={t('optional', { ns: 'common' })}
                   placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
                   value={ex.reps != null ? String(ex.reps) : ''}
                   onChangeText={t => updateExercise(ex.id, 'reps', t ? Number(t) : undefined)}
@@ -236,7 +238,7 @@ export default function AddWorkout() {
             <View style={styles.row}>
               <View style={styles.half}>
                 <Text style={[styles.label, { color: theme.colors.onSurface }]}>
-                  Weight (kg)
+                  {t('weightKg', { ns: 'workouts' })}
                 </Text>
                 <TextInput
                   style={[
@@ -248,7 +250,7 @@ export default function AddWorkout() {
                     }
                   ]}
                   keyboardType="numeric"
-                  placeholder="Optional"
+                  placeholder={t('optional', { ns: 'common' })}
                   placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
                   value={ex.weight != null ? String(ex.weight) : ''}
                   onChangeText={t => updateExercise(ex.id, 'weight', t ? Number(t) : undefined)}
@@ -256,7 +258,7 @@ export default function AddWorkout() {
               </View>
               <View style={styles.half}>
                 <Text style={[styles.label, { color: theme.colors.onSurface }]}>
-                  Duration (min)
+                  {t('durationMinutes', { ns: 'workouts' })}
                 </Text>
                 <TextInput
                   style={[
@@ -268,7 +270,7 @@ export default function AddWorkout() {
                     }
                   ]}
                   keyboardType="numeric"
-                  placeholder="Optional"
+                  placeholder={t('optional', { ns: 'common' })}
                   placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
                   value={ex.minutes != null ? String(ex.minutes) : ''}
                   onChangeText={t => updateExercise(ex.id, 'minutes', t ? Number(t) : undefined)}
@@ -278,7 +280,7 @@ export default function AddWorkout() {
 
             {/* Exercise Type Segment */}
             <Text style={[styles.label, { color: theme.colors.onSurface, marginTop: 12 }]}>
-              Exercise Type
+              {t('type', { ns: 'workouts' })}
             </Text>
             <View style={[
               styles.segmentContainer, 
@@ -287,12 +289,12 @@ export default function AddWorkout() {
                 borderColor: theme.colors.outline 
               }
             ]}>
-              {(['weightlifting', 'calisthenics', 'cardio'] as const).map((t) => (
+              {(['weightlifting', 'calisthenics', 'cardio'] as const).map((type) => (
                 <TouchableOpacity
-                  key={t}
+                  key={type}
                   style={[
                     styles.segmentBtn,
-                    ex.type === t 
+                    ex.type === type 
                       ? { 
                           backgroundColor: theme.colors.onPrimaryContainer,
                           shadowColor: theme.colors.primary,
@@ -305,12 +307,12 @@ export default function AddWorkout() {
                           backgroundColor: 'transparent' 
                         }
                   ]}
-                  onPress={() => updateExercise(ex.id, 'type', t)}
+                  onPress={() => updateExercise(ex.id, 'type', type)}
                 >
                   <Text 
                     style={[
                       styles.segmentTxt,
-                      ex.type === t 
+                      ex.type === type 
                         ? { 
                             color: theme.colors.onPrimary,
                             fontWeight: '700'
@@ -320,7 +322,7 @@ export default function AddWorkout() {
                           }
                     ]}
                   >
-                    {t.charAt(0).toUpperCase() + t.slice(1)}
+                    {t(type, { ns: 'workouts' })}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -330,7 +332,7 @@ export default function AddWorkout() {
             <View style={styles.switchRow}>
               <View style={styles.switchItem}>
                 <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
-                  Warm-up
+                  {t('warmup', { ns: 'workouts' })}
                 </Text>
                 <Switch 
                   value={ex.warmup} 
@@ -344,7 +346,7 @@ export default function AddWorkout() {
               </View>
               <View style={styles.switchItem}>
                 <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
-                  Dropset
+                  {t('dropset', { ns: 'workouts' })}
                 </Text>
                 <Switch 
                   value={ex.dropset} 
@@ -358,7 +360,7 @@ export default function AddWorkout() {
               </View>
               <View style={styles.switchItem}>
                 <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
-                  To failure
+                  {t('failure', { ns: 'workouts' })}
                 </Text>
                 <Switch 
                   value={ex.failure} 
@@ -387,7 +389,7 @@ export default function AddWorkout() {
             onPress={addExercise}
           >
             <Text style={[styles.secondaryBtnTxt, { color: theme.colors.onSurface }]}>
-              + Add Exercise
+              + {t('addExercise', { ns: 'workouts' })}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity 
@@ -405,7 +407,7 @@ export default function AddWorkout() {
               <ActivityIndicator color={theme.colors.onPrimary} size="small" />
             ) : (
               <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>
-                Save Workout
+                {t('saveWorkout', { ns: 'workouts' })}
               </Text>
             )}
           </TouchableOpacity>

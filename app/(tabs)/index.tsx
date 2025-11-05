@@ -21,6 +21,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import { useTheme } from 'react-native-paper';
 import { Pedometer } from 'expo-sensors';
+import { useTranslation } from '../../hooks/useTranslation';
 
 LogBox.ignoreLogs(['expo-notifications']);
 LogBox.ignoreLogs(['VirtualizedLists should never be nested inside plain ScrollViews with tje same orientation']);
@@ -59,6 +60,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const theme = useTheme();
   const scheme = useColorScheme();
+  const { t } = useTranslation();
 
   // State (mantido igual)
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -312,10 +314,10 @@ export default function HomeScreen() {
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Text style={[styles.emptyText, { color: theme.colors.onSurface }]}>
-        No workouts saved yet
+        {t('noWorkoutsFound', { ns: 'common' })}
       </Text>
       <Text style={[styles.emptySubtext, { color: theme.colors.onSurfaceVariant }]}>
-        Start by adding your first workout!
+        {t('startByAdding', { ns: 'common' })}
       </Text>
     </View>
   );
@@ -399,10 +401,10 @@ export default function HomeScreen() {
       <View style={[styles.progressContainer, { backgroundColor: theme.colors.surface }]}>
         <View style={styles.progressHeader}>
           <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            Steps Today
+            {t('steps', { ns: 'common' })} {t('today', { ns: 'common' })}
           </Text>
           <Text style={[styles.sectionSubtitle, { color: theme.colors.onSurfaceVariant }]}>
-            Keep moving to reach your goal
+            {t('keepMoving', { ns: 'common' })}
           </Text>
         </View>
         
@@ -419,7 +421,7 @@ export default function HomeScreen() {
             </Text>
           </View>
           <Text style={[styles.stepsRemaining, { color: theme.colors.onSurface }]}>
-            {remainingSteps.toLocaleString()} steps to go
+            {remainingSteps.toLocaleString()} {t('steps', { ns: 'common' })} {t('toGo', { ns: 'common' })}
           </Text>
         </View>
 
@@ -497,7 +499,7 @@ export default function HomeScreen() {
       {/* Workouts Section */}
       <View style={styles.workoutsSection}>
         <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-          My Workouts
+          {t('workouts', { ns: 'common' })}
         </Text>
         <FlatList
           data={workouts}

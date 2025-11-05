@@ -3,6 +3,7 @@ import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Platform, useColorScheme, Keyboard, View } from 'react-native';
 import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
+import { useTranslation } from '../../hooks/useTranslation';
 import Svg, { Path } from 'react-native-svg';
 
 // Componentes Home
@@ -126,6 +127,7 @@ const ProfileFilledIcon = ({ color, size }: { color: string; size: number }) => 
 export default function TabLayout() {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
+  const { t } = useTranslation();
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const keyboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -253,7 +255,7 @@ export default function TabLayout() {
       },
       tabBarHideOnKeyboard: true,
     };
-  }, [isDark, isKeyboardVisible]);
+  }, [isDark, isKeyboardVisible, t]);
 
   return (
     <PaperProvider theme={theme}>
@@ -261,7 +263,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="index"
           options={{
-            title: 'Home',
+            title: t('home'),
             tabBarIcon: ({ color, size, focused }) =>
               focused ? (
                 <HomeFilledIcon color={color} size={size} />
@@ -273,7 +275,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="addWorkout"
           options={{
-            title: 'Add Workout',
+            title: t('addWorkout'),
             tabBarIcon: ({ color, size, focused }) =>
               focused ? (
                 <AddFilledIcon color={color} size={size} />
@@ -285,7 +287,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="AIchat"
           options={{
-            title: 'AI Chat',
+            title: t('aiChat'),
             tabBarIcon: ({ color, size, focused }) =>
               focused ? (
                 <ChatFilledIcon color={color} size={size} />
@@ -297,7 +299,7 @@ export default function TabLayout() {
         <Tabs.Screen
           name="profile"
           options={{
-            title: 'Profile',
+            title: t('profile'),
             tabBarIcon: ({ color, size, focused }) =>
               focused ? (
                 <ProfileFilledIcon color={color} size={size} />

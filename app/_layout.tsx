@@ -7,6 +7,7 @@ import * as SystemUI from 'expo-system-ui';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { getAppTheme } from "../lib/theme";
+import "../lib/i18n"; // Inicializar i18n
 
 export default function RootLayout() {
   const [isLoading, setIsLoading] = useState(true);

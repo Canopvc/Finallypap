@@ -3,9 +3,11 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function RegisterScreen() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -21,7 +23,7 @@ export default function RegisterScreen() {
       console.log('Attempting to register...')
       if (password !== confirmpassword) {
         console.log('Passwords do not match:', { password, confirmpassword });
-        Alert.alert('Error', 'Passwords do not match.');
+        Alert.alert(t('error', { ns: 'common' }), 'Passwords do not match.');
         setLoading(false);
         return;
       }
@@ -80,11 +82,11 @@ export default function RegisterScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <Text style={[styles.title, { color: theme.colors.onBackground }]}>Create Account</Text>
+      <Text style={[styles.title, { color: theme.colors.onBackground }]}>{t('register', { ns: 'common' })}</Text>
 
       <TextInput
         style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, color: theme.colors.onSurface }]}
-        placeholder="Username"
+        placeholder={t('name', { ns: 'common' })}
         placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
         value={username}
         onChangeText={setUsername}
@@ -92,7 +94,7 @@ export default function RegisterScreen() {
       />
       <TextInput
         style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, color: theme.colors.onSurface }]}
-        placeholder="Email"
+        placeholder={t('email', { ns: 'common' })}
         placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
         value={email}
         onChangeText={setEmail}
@@ -108,7 +110,7 @@ export default function RegisterScreen() {
       />
       <TextInput
         style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, color: theme.colors.onSurface }]}
-        placeholder="Password"
+        placeholder={t('password', { ns: 'common' })}
         placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
         value={password}
         onChangeText={setPassword}
@@ -116,7 +118,7 @@ export default function RegisterScreen() {
       />
       <TextInput
         style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, color: theme.colors.onSurface }]}
-        placeholder="Confirm Password"
+        placeholder={`${t('confirm', { ns: 'common' })} ${t('password', { ns: 'common' })}`}
         placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
         value={confirmpassword}
         onChangeText={setConfirmPassword}
@@ -127,7 +129,7 @@ export default function RegisterScreen() {
         <ActivityIndicator size="large" style={{ marginTop: 20 }} />
       ) : (
         <TouchableOpacity onPress={handleRegister} style={[styles.primaryBtn, { backgroundColor: theme.colors.primary }] }>
-          <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>Register</Text>
+          <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>{t('register', { ns: 'common' })}</Text>
         </TouchableOpacity>
       )}
     </View>

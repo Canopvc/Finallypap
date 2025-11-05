@@ -25,6 +25,7 @@ import { supabase } from '../../lib/supabase';
 import { getAppTheme } from '../../lib/theme';
 import * as Notifications from 'expo-notifications';
 import { LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Line } from 'recharts';
+import { useTranslation } from '../../hooks/useTranslation';
 
 const { width } = Dimensions.get('window');
 const WEIGHT_GOALS_KEY = 'weightGoals';
@@ -45,6 +46,7 @@ Notifications.setNotificationHandler({
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const theme = getAppTheme(colorScheme);
+  const { t } = useTranslation();
   const [userId, setUserId] = useState('');
   const [email, setEmail] = useState('');
   const [newEmail, setNewEmail] = useState('');
@@ -172,7 +174,7 @@ export default function ProfileScreen() {
       console.log('💾 Salvando goals...');
       
       if (!weight || !weightGoal) {
-        Alert.alert('Error', 'Please fill in both current weight and target weight.');
+        Alert.alert(t('error', { ns: 'common' }), t('pleaseFill', { ns: 'common' }));
         return;
       }
 
@@ -211,11 +213,11 @@ export default function ProfileScreen() {
       await sendUserDataToSupabase(goals, updatedHistory, bmiNum);
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      Alert.alert('Success', 'Goals saved successfully!');
+      Alert.alert(t('success', { ns: 'common' }), t('goalsSaved', { ns: 'common' }));
       
     } catch (error) {
       console.error('❌ Error saving weight goals:', error);
-      Alert.alert('Error', 'Could not save goals.');
+      Alert.alert(t('error', { ns: 'common' }), t('couldNotSaveGoals', { ns: 'common' }));
     }
   };
 
@@ -415,12 +417,12 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
+      t('logout', { ns: 'common' }),
+      t('logoutConfirm', { ns: 'common' }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel', { ns: 'common' }), style: 'cancel' },
         { 
-          text: 'Logout', 
+          text: t('logout', { ns: 'common' }), 
           style: 'destructive',
           onPress: async () => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -435,18 +437,18 @@ export default function ProfileScreen() {
 
   const clearWeightHistory = async () => {
     Alert.alert(
-      'Clear History',
-      'Are you sure you want to clear all weight history?',
+      t('delete', { ns: 'common' }),
+      t('clearHistoryConfirm', { ns: 'common' }),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('cancel', { ns: 'common' }), style: 'cancel' },
         { 
-          text: 'Clear', 
+          text: t('delete', { ns: 'common' }),
           style: 'destructive',
           onPress: async () => {
             setWeightHistory([]);
             await AsyncStorage.removeItem(WEIGHT_HISTORY_KEY);
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            Alert.alert('Success', 'Weight history cleared.');
+            Alert.alert(t('success', { ns: 'common' }), t('historyCleared', { ns: 'common' }));
           }
         }
       ]
@@ -466,7 +468,7 @@ export default function ProfileScreen() {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
           <Text style={[styles.loadingText, { color: theme.colors.onSurface }]}>
-            Loading profile...
+            {t('loadingProfile', { ns: 'common' })}
           </Text>
         </View>
       </View>
@@ -495,7 +497,7 @@ export default function ProfileScreen() {
           {/* Header */}
           <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
             <View style={styles.headerContent}>
-              <Text style={styles.title}>Profile</Text>
+              <Text style={styles.title}>{t('profile', { ns: 'common' })}</Text>
               <Pressable onPress={handleLogout} hitSlop={20} style={styles.settingsButton}>
                 <Ionicons name="settings-outline" size={24} color="#fff" />
               </Pressable>
@@ -525,11 +527,11 @@ export default function ProfileScreen() {
             <View style={styles.statsContainer}>
               <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
                 <Text style={[styles.statValue, { color: theme.colors.primary }]}>{weight || '--'}</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Current Weight</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>{t('currentWeight', { ns: 'common' })}</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
                 <Text style={[styles.statValue, { color: theme.colors.primary }]}>{weightGoal || '--'}</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Target Weight</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>{t('targetWeight', { ns: 'common' })}</Text>
               </View>
               <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
                 <Text style={[styles.statValue, { color: bmiCategory.color }]}>{bmi || '--'}</Text>
@@ -545,7 +547,7 @@ export default function ProfileScreen() {
               onPress={() => setActiveTab('goals')}
             >
               <Text style={[styles.tabText, {color: theme.colors.primary }, activeTab === 'goals' && styles.activeTabText]}>
-                Goals
+                {t('goals', { ns: 'common' })}
               </Text>
             </Pressable>
             <Pressable 
@@ -561,7 +563,7 @@ export default function ProfileScreen() {
               onPress={() => setActiveTab('profile')}
             >
               <Text style={[styles.tabText, {color: theme.colors.primary}, activeTab === 'profile' && styles.activeTabText]}>
-                Profile
+                {t('profile', { ns: 'common' })}
               </Text>
             </Pressable>
           </View>
@@ -569,11 +571,11 @@ export default function ProfileScreen() {
           {/* Goals Tab */}
           {activeTab === 'goals' && (
             <View style={styles.tabContent}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Weight Goals</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('weightGoals', { ns: 'common' })}</Text>
 
               <View style={styles.inputRow}>
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.label, { color: theme.colors.onSurface }]}>Current Weight (kg)</Text>
+                  <Text style={[styles.label, { color: theme.colors.onSurface }]}>{t('currentWeightKg', { ns: 'common' })}</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                     value={weight}
@@ -585,7 +587,7 @@ export default function ProfileScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.label, { color: theme.colors.onSurface }]}>Target Weight (kg)</Text>
+                  <Text style={[styles.label, { color: theme.colors.onSurface }]}>{t('targetWeightKg', { ns: 'common' })}</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                     value={weightGoal}
@@ -639,7 +641,7 @@ export default function ProfileScreen() {
                     />
                   </View>
                   <Text style={[styles.progressText, { color: theme.colors.onSurfaceVariant }]}>
-                    {weightDifference.toFixed(1)}kg {parseFloat(weight) > parseFloat(weightGoal) ? 'to lose' : 'to gain'} to reach your goal
+                    {weightDifference.toFixed(1)}kg {parseFloat(weight) > parseFloat(weightGoal) ? t('toLose', { ns: 'common' }) : t('toGain', { ns: 'common' })} {t('toReach', { ns: 'common' })}
                   </Text>
                   {parseFloat(bmi.toString()) > 0 && (
                     <View style={styles.bmiSection}>
@@ -656,7 +658,7 @@ export default function ProfileScreen() {
                 onPress={saveWeightGoals}
                 disabled={!weight || !weightGoal}
               >
-                <Text style={styles.buttonTxt}>Save Goals</Text>
+                <Text style={styles.buttonTxt}>{t('saveGoals', { ns: 'common' })}</Text>
               </Pressable>
             </View>
           )}
@@ -665,14 +667,14 @@ export default function ProfileScreen() {
           {/* Progress Tab */}
 {activeTab === 'progress' && (
   <View style={styles.tabContent}>
-    <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Weight Progress</Text>
+    <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('weightProgress', { ns: 'common' })}</Text>
 
     {weightHistory.length > 0 ? (
       <>
         {/* Gráfico Simples de Barras */}
         <View style={[styles.chartContainer, { backgroundColor: theme.colors.surface }]}>
           <Text style={[styles.chartTitle, { color: theme.colors.onSurface }]}>
-            Weight History
+            {t('weightHistory', { ns: 'common' })}
           </Text>
           
           <View style={styles.simpleChart}>
@@ -739,7 +741,7 @@ export default function ProfileScreen() {
       <View style={[styles.emptyState, { backgroundColor: theme.colors.surface }]}>
         <Ionicons name="stats-chart" size={64} color={theme.colors.onSurfaceVariant} />
         <Text style={[styles.emptyStateText, { color: theme.colors.onSurfaceVariant }]}>
-          No weight history yet.{'\n'}Save your goals to start tracking!
+          {t('noWeightHistory', { ns: 'common' })}
         </Text>
       </View>
     )}
@@ -749,11 +751,11 @@ export default function ProfileScreen() {
           {/* Profile Tab */}
           {activeTab === 'profile' && (
             <View style={styles.tabContent}>
-              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>Personal Information</Text>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('personalInfo', { ns: 'common' })}</Text>
 
               <View style={styles.inputRow}>
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.label, { color: theme.colors.onSurface }]}>Height (cm)</Text>
+                  <Text style={[styles.label, { color: theme.colors.onSurface }]}>{t('height', { ns: 'common' })} (cm)</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                     value={height}
@@ -765,7 +767,7 @@ export default function ProfileScreen() {
                 </View>
 
                 <View style={styles.inputGroup}>
-                  <Text style={[styles.label, { color: theme.colors.onSurface }]}>Age</Text>
+                  <Text style={[styles.label, { color: theme.colors.onSurface }]}>{t('age', { ns: 'common' })}</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                     value={age}
@@ -822,7 +824,7 @@ export default function ProfileScreen() {
                   </Pressable>
                 </View>
                 <Text style={[styles.notificationDescription, { color: theme.colors.onSurfaceVariant }]}>
-                  Receive monthly notifications to update your weight and track your progress
+                  {t('monthlyNotifications', { ns: 'common' })}
                 </Text>
               </View>
             </View>

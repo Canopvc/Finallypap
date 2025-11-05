@@ -20,6 +20,7 @@ import {
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import {GROQ_API_KEY} from '@env';
+import { useTranslation } from '../../hooks/useTranslation';
 
 // ⭐️ GROQ API (GRATUITA E RÁPIDA)
 const WORKOUTS_STORAGE_KEY = 'workouts';
@@ -68,6 +69,7 @@ function uid(prefix = '') {
 
 export default function FitnessAIChat() {
   const theme = useTheme();
+  const { t } = useTranslation();
   const [prompt, setPrompt] = useState('');
   const [messages, setMessages] = useState<MessageType[]>([]);
   const [loading, setLoading] = useState(false);
@@ -635,7 +637,7 @@ Respond in the same language as the user's query.`;
           styles.headerTitle,
           { color: theme.colors.onSurface }
         ]}>
-          Fitness AI
+          {t('fitnessAI', { ns: 'common' })}
         </Text>
       </View>
       
@@ -656,13 +658,13 @@ Respond in the same language as the user's query.`;
                 styles.emptyStateTitle,
                 { color: theme.colors.onSurface }
               ]}>
-                Converse com a IA de Fitness!
+                {t('converseAI', { ns: 'common' })}
               </Text>
               <Text style={[
                 styles.emptyStateText,
                 { color: theme.colors.onSurfaceVariant }
               ]}>
-                Peça: treino PPL, ABC iniciante, treino de costas avançado
+                {t('examples', { ns: 'common' })}
               </Text>
             </View>
           ) : (
@@ -678,7 +680,7 @@ Respond in the same language as the user's query.`;
                 styles.loadingText,
                 { color: theme.colors.onSurfaceVariant }
               ]}>
-                IA está pensando...
+                {t('aiThinking', { ns: 'common' })}
               </Text>
             </View>
           )}
@@ -705,7 +707,7 @@ Respond in the same language as the user's query.`;
                 backgroundColor: theme.colors.background
               }
             ]}
-            placeholder="Pergunte à IA sobre treinos..."
+            placeholder={t('askAI', { ns: 'common' })}
             placeholderTextColor={theme.colors.onSurfaceVariant}
             value={prompt}
             onChangeText={setPrompt}

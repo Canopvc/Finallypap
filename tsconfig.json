@@ -2,6 +2,9 @@
   "extends": "./node_modules/expo/tsconfig.base.json",
   "compilerOptions": {
     "strict": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "types": [],
     "paths": {
       "@/*": [
         "./*"
@@ -10,6 +13,11 @@
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "types/**/*.d.ts",
+    "locales/**/*.json"
+  ],
+  "exclude": [
+    "node_modules"
   ]
 }
