@@ -725,7 +725,6 @@ Respond in the same language as the user's query.`;
             <MaterialCommunityIcons 
               name="send" 
               size={20} 
-              color={theme.colors.onPrimary} 
             />
           </TouchableOpacity>
         </View>
@@ -935,8 +934,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 16,
     borderRadius: 25,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: StyleSheet.hairlineWidth,
     minHeight: 56,
     marginBottom: 16,

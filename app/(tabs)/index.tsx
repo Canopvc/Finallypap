@@ -472,7 +472,7 @@ export default function HomeScreen() {
           style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
           onPress={() => router.push('/addWorkout')}
         >
-          <Text style={[styles.addButtonText, { color: theme.colors.onPrimary }]}>
+          <Text style={[styles.addButtonText, { color: theme.colors.surface }]}>
             + Add New Workout
           </Text>
         </TouchableOpacity>
@@ -541,6 +541,7 @@ const styles = StyleSheet.create({
   settingsIcon: {
     width: 24,
     height: 24,
+    marginTop: 16,
   },
   progressContainer: {
     padding: 20,

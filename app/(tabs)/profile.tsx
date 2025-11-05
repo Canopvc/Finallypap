@@ -111,7 +111,7 @@ export default function ProfileScreen() {
       await loadWeightGoals();
       await loadWeightHistory();
       await loadNotificationSettings();
-      await setupNotifications();
+      //
       
     } catch (error) {
       console.error('Unexpected error in getUserData:', error);
@@ -166,59 +166,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const setupNotifications = async () => {
-    try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-      
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-      
-      if (finalStatus !== 'granted') {
-        setNotificationEnabled(false);
-        return;
-      }
-
-      if (notificationEnabled) {
-        // Notificação diária às 9:00
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "📊 Atualize seu Progresso!",
-            body: "É hora de atualizar seu peso e acompanhar seu progresso!",
-            sound: true,
-            data: { type: 'daily_reminder' },
-          },
-          trigger: {
-            hour: 9,
-            minute: 0,
-            repeats: true,
-          } as any,
-        });
-
-        // Notificação mensal
-        const monthlyDate = new Date();
-        monthlyDate.setDate(monthlyDate.getDate() + 30);
-        
-        await Notifications.scheduleNotificationAsync({
-          content: {
-            title: "🎯 Meta Mensal",
-            body: "Não se esqueça de atualizar seu peso para acompanhar seu progresso mensal!",
-            sound: true,
-            data: { type: 'weight_reminder' },
-          },
-          trigger: {
-            date: monthlyDate,
-            repeats: true,
-          } as any,
-        });
-      }
-    } catch (error) {
-      console.error('Error setting up notifications:', error);
-    }
-  };
-
+  
   const saveWeightGoals = async () => {
     try {
       console.log('💾 Salvando goals...');
@@ -332,7 +280,7 @@ export default function ProfileScreen() {
       );
 
       if (newNotificationEnabled) {
-        await setupNotifications();
+        //await setupNotifications();
         Alert.alert('Success', 'Monthly reminders enabled!');
       } else {
         await Notifications.cancelAllScheduledNotificationsAsync();
