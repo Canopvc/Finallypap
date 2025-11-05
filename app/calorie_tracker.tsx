@@ -598,6 +598,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    marginBottom: 10,
   },
   scrollView: {
     padding: 20,
@@ -824,6 +825,7 @@ const styles = StyleSheet.create({
   scrollViewContent: {
   padding: 20,
   paddingBottom: 50,
+  paddingHorizontal: 1,
 },
 });
 
