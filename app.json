@@ -14,7 +14,7 @@
     },
     "android": {
       "package": "com.yourname.fitnesshub",
-      "softwareKeyboardLayoutMode": "resize",
+      "softwareKeyboardLayoutMode": "pan",
       "enableDangerousExperimentalWebImplementation": true,
       "minSdkVersion": 26,
       "navigationBar": {

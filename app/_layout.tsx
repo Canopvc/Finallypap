@@ -75,8 +75,9 @@ export default function RootLayout() {
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['bottom']}>
           <KeyboardAvoidingView 
             style={{ flex: 1, backgroundColor: theme.colors.background }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            enabled={Platform.OS === 'ios'}
           >
             <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
               <Slot />
