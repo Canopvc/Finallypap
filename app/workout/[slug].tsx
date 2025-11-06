@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ScrollView } from 'react-native';
-import { useTheme } from 'react-native-paper';
+import { useTheme, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ChevronLeft, Plus, Trash2, GripVertical, Clock, Flame, Play } from 'lucide-react-native';
 
 // Types should mirror the list screen
 type Exercise = {
@@ -25,7 +26,6 @@ export type Workout = {
 };
 
 const STORAGE_KEY = 'workouts';
-
 
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
@@ -106,7 +106,6 @@ export default function WorkoutDetailScreen() {
   const saveWorkout = async () => {
     if (!workout) return;
     try {
-      // Replace in list by matching original slug (from URL)
       const updated = workouts.map(w =>
         workoutSlugFromFields(w.name, w.createdAt) === slug ? workout : w
       );
@@ -132,10 +131,20 @@ export default function WorkoutDetailScreen() {
     }
   };
 
+  const estimatedDuration = useMemo(() => {
+    if (!workout) return 0;
+    return Math.ceil(workout.exercises.length * 10);
+  }, [workout]);
+
+  const estimatedCalories = useMemo(() => {
+    if (!workout) return 0;
+    return Math.ceil(workout.exercises.length * 50);
+  }, [workout]);
+
   if (loading || !workout) {
     return (
       <View style={[styles.centered, { backgroundColor: theme.colors.background }]}> 
-        <Text style={{ color: theme.colors.onBackground }}>Loading...</Text>
+        <Text style={{ color: theme.colors.onSurface }}>Loading...</Text>
       </View>
     );
   }
@@ -144,128 +153,202 @@ export default function WorkoutDetailScreen() {
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>← Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>Workout Detail</Text>
+        <View style={styles.headerContent}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <ChevronLeft size={20} color={theme.colors.primary} />
+              <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>Back</Text>
+            </TouchableOpacity>
+            <View style={[styles.exerciseBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
+              <Text style={[styles.exerciseBadgeText, { color: theme.colors.onSurfaceVariant }]}>
+                {workout.exercises.length} exercises
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.headerInfo}>
+            <Text style={[styles.workoutTitle, { color: theme.colors.primary }]}>{workout.name}</Text>
+            
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Clock size={16} color={theme.colors.onSurfaceVariant} />
+                <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+                  ~{estimatedDuration} min
+                </Text>
+              </View>
+              <View style={styles.metaItem}>
+                <Flame size={16} color={theme.colors.onSurfaceVariant} />
+                <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+                  ~{estimatedCalories} cal
+                </Text>
+              </View>
+            </View>
+
+            <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
+              Customize your workout before starting
+            </Text>
+          </View>
+        </View>
       </View>
 
-      <ScrollView contentContainerStyle={[styles.content] }>
-        {/* Title */}
-        <Text style={[styles.label, { color: theme.colors.onBackground }]}>Workout name</Text>
-        <TextInput
-          style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
-          value={workout.name}
-          onChangeText={(t) => updateWorkoutField('name', t)}
-          placeholder="Ex: Chest Day"
-        />
-
-        <View style={styles.metaRow}>
-          <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant ?? theme.colors.onSurface }]}>Created: {new Date(workout.createdAt).toLocaleString()}</Text>
-          <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant ?? theme.colors.onSurface }]}>Exercises: {workout.exercises.length}</Text>
-        </View>
-
-        <TouchableOpacity style={[styles.addExercise, { backgroundColor: theme.colors.primary }]} onPress={addExercise}>
-          <Text style={[{ color: theme.colors.onPrimary, fontWeight: '700', fontSize: 16 }]}>+ Add Exercise</Text>
-        </TouchableOpacity>
-
-        {/* Exercises */}
-        {workout.exercises.map((ex, i) => (
-          <View key={ex.id ?? i} style={[styles.card, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }]}>
+      {/* Exercises List */}
+      <ScrollView contentContainerStyle={styles.content}>
+        {workout.exercises.map((exercise, index) => (
+          <View key={exercise.id} style={[styles.card, { backgroundColor: theme.colors.surface }]}>
             <View style={styles.cardHeader}>
-              <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>Exercise {i + 1}</Text>
-              <TouchableOpacity onPress={() => deleteExercise(i)} style={[styles.deletePill, { backgroundColor: '#ef4444' }]}>
-                <Text style={styles.deletePillText}>Delete</Text>
+              <View style={styles.exerciseHeader}>
+                <GripVertical size={18} color={theme.colors.onSurfaceVariant} />
+                <View style={styles.exerciseTitleContainer}>
+                  <Text style={[styles.exerciseLabel, { color: theme.colors.onSurfaceVariant }]}>
+                    Exercise Name
+                  </Text>
+                  <TextInput
+                    style={[styles.exerciseInput, { color: theme.colors.onSurface }]}
+                    value={exercise.name}
+                    onChangeText={(t) => updateExercise(index, 'name', t)}
+                    placeholder="Enter exercise name"
+                  />
+                </View>
+              </View>
+              
+              <TouchableOpacity 
+                onPress={() => deleteExercise(index)}
+                style={styles.deleteButton}
+              >
+                <Trash2 size={18} color="#ef4444" />
               </TouchableOpacity>
             </View>
 
-            <Text style={[styles.smallLabel, { color: theme.colors.onSurface }]}>Name</Text>
-            <TextInput
-              style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
-              value={ex.name}
-              onChangeText={(t) => updateExercise(i, 'name', t)}
-              placeholder="Bench Press"
-            />
+            <View style={styles.exerciseGrid}>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>Sets</Text>
+                <TextInput
+                  style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
+                  keyboardType="numeric"
+                  value={String(exercise.sets)}
+                  onChangeText={(t) => updateExercise(index, 'sets', parseInt(t) || 0)}
+                />
+              </View>
 
-            <View style={styles.row}> 
-              <View style={styles.col}>
-                <Text style={[styles.smallLabel, { color: theme.colors.onSurface }]}>Sets</Text>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>Reps</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                   keyboardType="numeric"
-                  value={String(ex.sets)}
-                  onChangeText={(t) => updateExercise(i, 'sets', parseInt(t) || 0)}
+                  value={exercise.reps?.toString() ?? ''}
+                  onChangeText={(t) => updateExercise(index, 'reps', parseInt(t) || undefined)}
                 />
               </View>
-              <View style={styles.col}>
-                <Text style={[styles.smallLabel, { color: theme.colors.onSurface }]}>Reps</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
-                  keyboardType="numeric"
-                  value={ex.reps?.toString() ?? ''}
-                  onChangeText={(t) => updateExercise(i, 'reps', parseInt(t) || undefined)}
-                />
-              </View>
-            </View>
 
-            <View style={styles.row}> 
-              <View style={styles.col}>
-                <Text style={[styles.smallLabel, { color: theme.colors.onSurface }]}>Weight (kg)</Text>
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>Weight (kg)</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                   keyboardType="numeric"
-                  value={ex.weight?.toString() ?? ''}
-                  onChangeText={(t) => updateExercise(i, 'weight', parseFloat(t) || undefined)}
+                  value={exercise.weight?.toString() ?? ''}
+                  onChangeText={(t) => updateExercise(index, 'weight', parseFloat(t) || undefined)}
                 />
               </View>
-              <View style={styles.col}>
-                <Text style={[styles.smallLabel, { color: theme.colors.onSurface }]}>Minutes</Text>
+
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>Minutes</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                   keyboardType="numeric"
-                  value={ex.minutes?.toString() ?? ''}
-                  onChangeText={(t) => updateExercise(i, 'minutes', parseInt(t) || undefined)}
+                  value={exercise.minutes?.toString() ?? ''}
+                  onChangeText={(t) => updateExercise(index, 'minutes', parseInt(t) || undefined)}
                 />
               </View>
             </View>
 
             <View style={styles.tagRow}>
               <TouchableOpacity
-                style={[styles.tag, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }, ex.dropset && styles.tagActive]}
-                onPress={() => updateExercise(i, 'dropset', !ex.dropset)}
+                style={[
+                  styles.tag,
+                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline },
+                  exercise.dropset && [styles.tagActive, { backgroundColor: theme.colors.primary }]
+                ]}
+                onPress={() => updateExercise(index, 'dropset', !exercise.dropset)}
               >
-                <Text style={[styles.tagText, { color: theme.colors.onSurface }, ex.dropset && styles.tagTextActive]}>Dropset</Text>
+                <Text style={[
+                  styles.tagText,
+                  { color: theme.colors.onSurface },
+                  exercise.dropset && [styles.tagTextActive, { color: theme.colors.onPrimary }]
+                ]}>
+                  Dropset
+                </Text>
               </TouchableOpacity>
+              
               <TouchableOpacity
-                style={[styles.tag, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }, ex.failure && styles.tagActive]}
-                onPress={() => updateExercise(i, 'failure', !ex.failure)}
+                style={[
+                  styles.tag,
+                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline },
+                  exercise.failure && [styles.tagActive, { backgroundColor: theme.colors.primary }]
+                ]}
+                onPress={() => updateExercise(index, 'failure', !exercise.failure)}
               >
-                <Text style={[styles.tagText, { color: theme.colors.onSurface }, ex.failure && styles.tagTextActive]}>Failure</Text>
+                <Text style={[
+                  styles.tagText,
+                  { color: theme.colors.onSurface },
+                  exercise.failure && [styles.tagTextActive, { color: theme.colors.onPrimary }]
+                ]}>
+                  Failure
+                </Text>
               </TouchableOpacity>
+              
               <TouchableOpacity
-                style={[styles.tag, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }, ex.warmup && styles.tagActive]}
-                onPress={() => updateExercise(i, 'warmup', !ex.warmup)}
+                style={[
+                  styles.tag,
+                  { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline },
+                  exercise.warmup && [styles.tagActive, { backgroundColor: theme.colors.primary }]
+                ]}
+                onPress={() => updateExercise(index, 'warmup', !exercise.warmup)}
               >
-                <Text style={[styles.tagText, { color: theme.colors.onSurface }, ex.warmup && styles.tagTextActive]}>Warmup</Text>
+                <Text style={[
+                  styles.tagText,
+                  { color: theme.colors.onSurface },
+                  exercise.warmup && [styles.tagTextActive, { color: theme.colors.onPrimary }]
+                ]}>
+                  Warmup
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         ))}
+
+        <TouchableOpacity 
+          style={[styles.addExerciseButton, { borderColor: theme.colors.outline }]}
+          onPress={addExercise}
+        >
+          <Plus size={20} color={theme.colors.primary} />
+          <Text style={[styles.addExerciseText, { color: theme.colors.primary }]}>
+            Add Exercise
+          </Text>
+        </TouchableOpacity>
       </ScrollView>
 
-      {/* Footer actions */}
-      <View style={[styles.footer, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outline }] }>
-        <TouchableOpacity style={[styles.button, styles.secondary]} onPress={deleteWorkout}>
-          <Text style={styles.buttonText}>Delete</Text>
+      {/* Footer Actions */}
+      <View style={[styles.footer, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outline }]}>
+        <TouchableOpacity 
+          style={[styles.footerButton, styles.secondaryButton]}
+          onPress={deleteWorkout}
+        >
+          <Text style={styles.secondaryButtonText}>Delete</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.button, { backgroundColor: theme.colors.primary }]} onPress={saveWorkout}>
-          <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>Save</Text>
+        
+        <TouchableOpacity 
+          style={[styles.footerButton, { backgroundColor: theme.colors.primary }]}
+          onPress={saveWorkout}
+        >
+          <Text style={[styles.footerButtonText, { color: theme.colors.onPrimary }]}>Save</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.button, { backgroundColor: theme.colors.primary }]}
+        
+        <TouchableOpacity 
+          style={[styles.footerButton, styles.primaryButton, { backgroundColor: theme.colors.primary }]}
           onPress={() => router.push(`/workout/${slug}/start`)}
         >
-          <Text style={[styles.buttonText, { color: theme.colors.onPrimary }]}>Start Workout</Text>
+          <Play size={20} color={theme.colors.onPrimary} />
+          <Text style={[styles.footerButtonText, { color: theme.colors.onPrimary }]}>Start</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -273,79 +356,202 @@ export default function WorkoutDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' },
-  loadingText: { color: '#475569' },
+  container: {
+    flex: 1,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   header: {
-    paddingTop: 50,
-    paddingBottom: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  headerContent: {
+    paddingHorizontal: 20,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
   },
-  backButton: { paddingVertical: 6, paddingRight: 12, paddingLeft: 2 },
-  backButtonText: { color: '#93c5fd', fontSize: 16 },
-  headerTitle: { color: 'white', fontSize: 18, fontWeight: '700' },
-  content: { padding: 16, paddingBottom: 24 },
-  label: { fontWeight: '700', marginBottom: 6, color: '#0f172a' },
-  smallLabel: { fontWeight: '600', marginBottom: 6, color: '#334155' },
-  input: {
-    backgroundColor: '#fff',
-    borderColor: '#e2e8f0',
-    borderWidth: 1,
-    borderRadius: 10,
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  exerciseBadge: {
     paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  metaText: { color: '#64748b', fontSize: 12 },
-  addExercise: { marginTop: 6, marginBottom: 4, alignSelf: 'flex-start', backgroundColor: '#06b6d4', paddingHorizontal: 12, paddingVertical: 10, borderRadius: 10 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
+  exerciseBadgeText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b' },
-  deletePill: { backgroundColor: '#ef4444', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999 },
-  deletePillText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  row: { flexDirection: 'row', gap: 12 },
-  col: { flex: 1 },
-  tagRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 },
-  tag: {
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#f1f5f9',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    minWidth: '30%',
+  headerInfo: {
+    gap: 8,
+  },
+  workoutTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: 16,
     alignItems: 'center',
   },
-  tagActive: { backgroundColor: '#06b6d4', borderColor: '#06b6d4' },
-  tagText: { color: '#64748b', fontSize: 12, fontWeight: '600' },
-  tagTextActive: { color: '#fff' },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  subtitle: {
+    fontSize: 14,
+    marginTop: 4,
+  },
+  content: {
+    padding: 20,
+    paddingBottom: 100,
+  },
+  card: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  exerciseHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    flex: 1,
+  },
+  exerciseTitleContainer: {
+    flex: 1,
+  },
+  exerciseLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  exerciseInput: {
+    fontSize: 16,
+    fontWeight: '600',
+    padding: 0,
+  },
+  deleteButton: {
+    padding: 4,
+  },
+  exerciseGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginBottom: 16,
+  },
+  inputGroup: {
+    flex: 1,
+    minWidth: '45%',
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  input: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+  },
+  tagRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tag: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  tagActive: {
+    borderWidth: 0,
+  },
+  tagText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tagTextActive: {
+    fontWeight: '700',
+  },
+  addExerciseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderRadius: 12,
+    paddingVertical: 16,
+    marginTop: 8,
+  },
+  addExerciseText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
   footer: {
     flexDirection: 'row',
     gap: 12,
-    padding: 16,
+    padding: 20,
     borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    backgroundColor: '#fff',
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
   },
-  button: { flex: 1, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
-  primary: { backgroundColor: '#06b6d4' },
-  secondary: { backgroundColor: '#ef4444' },
-  start: { backgroundColor: '#22c55e' },
-  buttonText: { color: '#fff', fontWeight: '700' },
+  footerButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryButton: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  secondaryButton: {
+    backgroundColor: '#ef4444',
+  },
+  footerButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  secondaryButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });

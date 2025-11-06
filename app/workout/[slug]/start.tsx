@@ -4,9 +4,10 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
+import { ChevronLeft, Play, Pause, Check, Trophy, Flame, Timer, Target, Settings, Weight, Clock, Plus } from 'lucide-react-native';
 
 // Types mirrored from detail screen
- type Exercise = {
+type Exercise = {
   id: string;
   name: string;
   type: 'calisthenics' | 'cardio' | 'weightlifting';
@@ -19,7 +20,7 @@ import { useTheme } from 'react-native-paper';
   warmup: boolean;
 };
 
- type Workout = {
+type Workout = {
   name: string;
   createdAt: string;
   exercises: Exercise[];
@@ -35,11 +36,7 @@ const STORAGE_KEY = 'workouts';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
 
-  
-
-
 const raresound = require('../../../assets/Trumpsinging.mp3')
-
 
 function formatTime(secs: number) {
   const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -48,75 +45,61 @@ function formatTime(secs: number) {
 }
 
 export default function StartWorkoutScreen() {
-
   const DEBUG_FORCE_EASTER_EGG = false;
 
   const playAlarm = useCallback(async () => {
-  try {
-    const isEasterEgg =
-      DEBUG_FORCE_EASTER_EGG || Math.floor(Math.random() * 7000) === 0;
+    try {
+      const isEasterEgg = DEBUG_FORCE_EASTER_EGG || Math.floor(Math.random() * 7000) === 0;
 
       console.log('🔊 DEBUG_FORCE_EASTER_EGG:', DEBUG_FORCE_EASTER_EGG);
       console.log('🎲 Random result:', Math.floor(Math.random() * 10));
       console.log('🔥 Easter egg activated:', isEasterEgg);
 
-    const soundFile = isEasterEgg
-      ? raresound // 🔥 toca o raro
-      : require('../../../assets/hold-up-tiktok.mp3'); // som normal
+      const soundFile = isEasterEgg
+        ? raresound
+        : require('../../../assets/hold-up-tiktok.mp3');
 
-    const { sound } = await Audio.Sound.createAsync(soundFile);
-    await sound.playAsync();
+      const { sound } = await Audio.Sound.createAsync(soundFile);
+      await sound.playAsync();
 
-    Vibration.vibrate(1000);
+      Vibration.vibrate(1000);
 
-    
       const duration = isEasterEgg ? 15000 : 5000;
 
-
-    setTimeout(() => {
-      sound.stopAsync();
-      sound.unloadAsync();
-    }, duration);
-  } catch (e) {
-    console.error('Failed to play alarm', e);
-  }
-}, []);
-
+      setTimeout(() => {
+        sound.stopAsync();
+        sound.unloadAsync();
+      }, duration);
+    } catch (e) {
+      console.error('Failed to play alarm', e);
+    }
+  }, []);
 
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const theme = useTheme();
 
-  //State to register how the workout feels
-const [texto, setTexto] = useState('');
-const [registos, SetRegistos] = useState<Registro[]>([]);
+  const [texto, setTexto] = useState('');
+  const [registos, SetRegistos] = useState<Registro[]>([]);
 
-useEffect(() => {
-  carregarRegistos();
-})
-
+  useEffect(() => {
+    carregarRegistos();
+  }, []);
 
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
   
-
-  // Overall timer
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(true);
 
-  // Rest timer
-  const [defaultRest, setDefaultRest] = useState(90); // seconds
+  const [defaultRest, setDefaultRest] = useState(90);
   const [restRemaining, setRestRemaining] = useState(0);
   const [resting, setResting] = useState(false);
 
-  // Per-set state
-  // completed[exerciseIndex][setIndex] => boolean
   const [completed, setCompleted] = useState<Record<number, Record<number, boolean>>>({});
-  // sessionWeights[exerciseIndex][setIndex] and sessionReps[exerciseIndex][setIndex]
   const [sessionWeights, setSessionWeights] = useState<Record<number, Record<number, string>>>({});
   const [sessionReps, setSessionReps] = useState<Record<number, Record<number, string>>>({});
 
-  // Load workout
   const loadWorkout = useCallback(async () => {
     try {
       setLoading(true);
@@ -130,7 +113,6 @@ useEffect(() => {
       }
       setWorkout(found);
 
-      // Prime session weights/reps with defaults from workout
       const w: Record<number, Record<number, string>> = {};
       const r: Record<number, Record<number, string>> = {};
       found.exercises.forEach((ex, ei) => {
@@ -154,19 +136,17 @@ useEffect(() => {
 
   useEffect(() => { loadWorkout(); }, [loadWorkout]);
 
-  // Overall timer interval
   useEffect(() => {
     if (!running) return;
     const id = setInterval(() => setElapsed((t) => t + 1), 1000);
     return () => clearInterval(id);
   }, [running]);
 
-  // Rest timer interval
   useEffect(() => {
     if (!resting) return;
     if (restRemaining <= 0) {
       setResting(false);
-      playAlarm();  // 🔔 tocar alarme
+      playAlarm();
       return;
     }
     const id = setInterval(() => setRestRemaining((t) => t - 1), 1000);
@@ -184,7 +164,6 @@ useEffect(() => {
       ...prev,
       [ei]: { ...(prev[ei] || {}), [si]: !prev?.[ei]?.[si] },
     }));
-    // Start rest only when marking as complete
     const afterToggleIsDone = !(completed?.[ei]?.[si]);
     if (afterToggleIsDone) startRest();
   };
@@ -196,358 +175,752 @@ useEffect(() => {
     ]);
   };
 
-  if (loading || !workout) {
-    return (
-      <View style={[styles.centered, { backgroundColor: theme.colors.background }]}>
-        <Text style={{ color: theme.colors.onBackground }}>Loading...</Text>
-      </View>
-    );
-  }
-
+  const totalSets = workout?.exercises.reduce((acc, ex) => acc + ex.sets, 0) || 0;
+  const completedSets = Object.values(completed).reduce((acc, exercise) => 
+    acc + Object.values(exercise).filter(Boolean).length, 0
+  );
+  const progressPercentage = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+  const allSetsCompleted = completedSets === totalSets && totalSets > 0;
 
   async function carregarRegistos() {
-    try{
-      const dados  = await AsyncStorage.getItem('registos');
-      if(dados) SetRegistos(JSON.parse(dados));
-    } catch (error){
+    try {
+      const dados = await AsyncStorage.getItem('registos');
+      if (dados) SetRegistos(JSON.parse(dados));
+    } catch (error) {
       console.log('Erro ao carregar registos:', error);
     }
   }
 
-  async function guardarRegisto(){
-    if(!texto.trim()){
+  async function guardarRegisto() {
+    if (!texto.trim()) {
       Alert.alert('Erro', 'O registo não pode estar vazio.');
+      return;
     }
-  
 
-  const novo = {
-    id: Date.now(),
-    data: new Date().toISOString().split('T')[0],
-    texto: texto.trim(),
-  };
+    const novo = {
+      id: Date.now(),
+      data: new Date().toISOString().split('T')[0],
+      texto: texto.trim(),
+    };
 
-  const atualizados = [novo, ...registos];
-  SetRegistos(atualizados);
+    const atualizados = [novo, ...registos];
+    SetRegistos(atualizados);
 
-
-  try {
-    await AsyncStorage.setItem('registos', JSON.stringify(atualizados));
-    setTexto('');
-  }catch (error){
-    console.log('Erro ao guardar registo:', error);
+    try {
+      await AsyncStorage.setItem('registos', JSON.stringify(atualizados));
+      setTexto('');
+      Alert.alert('Sucesso', 'Registo guardado com sucesso!');
+    } catch (error) {
+      console.log('Erro ao guardar registo:', error);
+    }
   }
-}
+
+  if (loading || !workout) {
+    return (
+      <View style={[styles.centered, { backgroundColor: theme.colors.background }]}>
+        <Text style={{ color: theme.colors.onSurface }}>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
-  <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
 
-    {/* 🔹 Cabeçalho com cronômetro geral */}
-    <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Text style={[styles.backText, { color: theme.colors.primary }]}>← Voltar</Text>
-      </TouchableOpacity>
-
-      <View style={styles.headerCenter}>
-        <Text style={[styles.headerTitle, { color: theme.colors.onSurface }]}>{workout.name}</Text>
-        <Text style={[styles.timerText, { color: theme.colors.onSurface }]}>{formatTime(elapsed)}</Text>
-      </View>
-
-      <TouchableOpacity
-        onPress={togglePause}
-        style={[styles.pauseButton, { backgroundColor: theme.colors.primary }]}
-      >
-        <Text style={[styles.pauseText, { color: theme.colors.onPrimary }]}>
-          {running ? 'Pausar' : 'Retomar'}
-        </Text>
-      </TouchableOpacity>
-    </View>
-
-    {/* 🔹 Painel do descanso */}
-    <View
-      style={[
-        styles.restPanel,
-        { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline },
-      ]}
-    >
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.restLabel, { color: theme.colors.onSurface }]}>Descanso</Text>
-        <Text style={[styles.restTime, { color: theme.colors.primary }]}>
-          {resting ? formatTime(restRemaining) : '--:--'}
-        </Text>
-      </View>
-
-      <View style={styles.restControls}>
-        <TouchableOpacity
-          style={[styles.restBtn, { backgroundColor: theme.colors.primary }]}
-          onPress={() => startRest()}
-        >
-          <Text style={[styles.restBtnText, { color: theme.colors.onPrimary }]}>Iniciar</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[
-            styles.restBtn,
-            { backgroundColor: theme.colors.secondary ?? theme.colors.primary },
-          ]}
-          onPress={() => {
-            setResting(false);
-            setRestRemaining(0);
-          }}
-        >
-          <Text style={[styles.restBtnText, { color: theme.colors.onPrimary }]}>Parar</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.restAdjust}>
-        <Text style={[styles.smallLabel, { color: theme.colors.onSurface }]}>
-          Descanso padrão (s)
-        </Text>
-        <TextInput
-          style={[
-            styles.restInput,
-            { backgroundColor: theme.colors.surface, color: theme.colors.onSurface },
-          ]}
-          keyboardType="numeric"
-          value={String(defaultRest)}
-          onChangeText={(t) => setDefaultRest(Math.max(0, parseInt(t || '0')))}
-        />
-      </View>
-    </View>
-
-    {/* 🔹 Exercícios */}
-    <ScrollView contentContainerStyle={styles.content}>
-      {workout.exercises.map((ex, ei) => (
-        <View
-          key={ex.id ?? ei}
-          style={[
-            styles.card,
-            { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline },
-          ]}
-        >
-          <Text style={[styles.exerciseTitle, { color: theme.colors.onSurface }]}>
-            {ex.name}
-          </Text>
-          <Text
-            style={[
-              styles.exerciseMeta,
-              { color: theme.colors.onSurfaceVariant ?? theme.colors.onSurface },
-            ]}
-          >
-            {ex.type} • {ex.sets} séries
-            {ex.reps ? ` • ${ex.reps} reps` : ''}
-            {ex.weight ? ` • ${ex.weight} kg` : ''}
-          </Text>
-
-          {/* Flags (warmup, dropset, failure) */}
-          <View style={styles.flagRow}>
-            {ex.warmup && (
-              <View style={[styles.flag, { backgroundColor: theme.colors.primary }]}>
-                <Text style={styles.flagText}>Aquecimento</Text>
-              </View>
-            )}
-            {ex.failure && (
-              <View style={[styles.flag, { backgroundColor: '#ef4444' }]}>
-                <Text style={styles.flagText}>Falha</Text>
-              </View>
-            )}
-            {ex.dropset && (
-              <View style={[styles.flag, { backgroundColor: '#9333ea' }]}>
-                <Text style={styles.flagText}>Dropset</Text>
-              </View>
-            )}
+      {/* Header */}
+      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+        <View style={styles.headerContent}>
+          <View style={styles.headerTop}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+              <ChevronLeft size={20} color={theme.colors.primary} />
+              <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>Back</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              onPress={togglePause}
+              style={[styles.pauseButton, { backgroundColor: theme.colors.surfaceVariant }]}
+            >
+              {running ? (
+                <>
+                  <Pause size={16} color={theme.colors.primary} />
+                  <Text style={[styles.pauseText, { color: theme.colors.primary }]}>Pause</Text>
+                </>
+              ) : (
+                <>
+                  <Play size={16} color={theme.colors.primary} />
+                  <Text style={[styles.pauseText, { color: theme.colors.primary }]}>Resume</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </View>
 
-          {/* Sets */}
-          {Array.from({ length: ex.sets }).map((_, si) => (
-            <View key={si} style={styles.setRow}>
-              <Text style={styles.setLabel}>Set {si + 1}</Text>
+          <View style={styles.headerInfo}>
+            <View style={styles.workoutTitleRow}>
+              <Text style={[styles.workoutTitle, { color: theme.colors.primary }]}>{workout.name}</Text>
+              <View style={[styles.timerBadge, { backgroundColor: theme.colors.primaryContainer }]}>
+                <Timer size={16} color={theme.colors.onPrimaryContainer} />
+                <Text style={[styles.timerText, { color: theme.colors.onPrimaryContainer }]}>
+                  {formatTime(elapsed)}
+                </Text>
+              </View>
+            </View>
 
-              <View style={styles.setInputs}>
-                <TextInput
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Target size={16} color={theme.colors.onSurfaceVariant} />
+                <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+                  {completedSets} / {totalSets} sets
+                </Text>
+              </View>
+              <View style={styles.metaItem}>
+                <Flame size={16} color={theme.colors.onSurfaceVariant} />
+                <Text style={[styles.metaText, { color: theme.colors.onSurfaceVariant }]}>
+                  ~{Math.round((elapsed / 60) * 8)} cal
+                </Text>
+              </View>
+            </View>
+
+            {/* Progress Bar */}
+            <View style={styles.progressContainer}>
+              <View style={[styles.progressBackground, { backgroundColor: theme.colors.surfaceVariant }]}>
+                <View 
                   style={[
-                    styles.input,
-                    styles.setInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.onSurface,
-                      borderColor: theme.colors.outline,
-                    },
-                  ]}
-                  placeholder="kg"
-                  keyboardType="numeric"
-                  value={sessionWeights?.[ei]?.[si] ?? ''}
-                  onChangeText={(t) =>
-                    setSessionWeights((prev) => ({
-                      ...prev,
-                      [ei]: { ...(prev[ei] || {}), [si]: t },
-                    }))
-                  }
-                />
-                <TextInput
-                  style={[
-                    styles.input,
-                    styles.setInput,
-                    {
-                      backgroundColor: theme.colors.surface,
-                      color: theme.colors.onSurface,
-                      borderColor: theme.colors.outline,
-                    },
-                  ]}
-                  placeholder="reps"
-                  keyboardType="numeric"
-                  value={sessionReps?.[ei]?.[si] ?? ''}
-                  onChangeText={(t) =>
-                    setSessionReps((prev) => ({
-                      ...prev,
-                      [ei]: { ...(prev[ei] || {}), [si]: t },
-                    }))
-                  }
+                    styles.progressFill, 
+                    { 
+                      width: `${progressPercentage}%`,
+                      backgroundColor: theme.colors.primary 
+                    }
+                  ]} 
                 />
               </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.doneBtn,
-                  { borderColor: theme.colors.outline, backgroundColor: theme.colors.surface },
-                  completed?.[ei]?.[si] && styles.doneBtnActive,
-                ]}
-                onPress={() => markSetDone(ei, si)}
-              >
-                <Text
-                  style={[
-                    styles.doneBtnText,
-                    { color: theme.colors.onSurface },
-                    completed?.[ei]?.[si] && styles.doneBtnTextActive,
-                  ]}
-                >
-                  {completed?.[ei]?.[si] ? '✔ Feito' : 'Marcar'}
-                </Text>
-              </TouchableOpacity>
+              <Text style={[styles.progressText, { color: theme.colors.onSurfaceVariant }]}>
+                {Math.round(progressPercentage)}% complete
+              </Text>
             </View>
-          ))}
+          </View>
         </View>
-      ))}
+      </View>
 
-      <View style={{ height: 30 }} />
-    </ScrollView>
+      {/* Rest Timer Panel */}
+      <View style={[styles.restPanel, { backgroundColor: theme.colors.surface }]}>
+        <View style={styles.restInfo}>
+          <Text style={[styles.restLabel, { color: theme.colors.onSurface }]}>Rest Timer</Text>
+          <Text style={[styles.restTime, { color: theme.colors.primary }]}>
+            {resting ? formatTime(restRemaining) : '--:--'}
+          </Text>
+        </View>
 
-    {/* 🔹 Registo de como o treino correu */}
-    <View style={[styles.footer, { backgroundColor: theme.colors.surface }]}>
-      <Text style={[styles.smallLabel, { color: theme.colors.onSurface }]}>
-        Como te sentiste neste treino?
-      </Text>
+        <View style={styles.restControls}>
+          <TouchableOpacity
+            style={[styles.restButton, { backgroundColor: theme.colors.primary }]}
+            onPress={() => startRest()}
+          >
+            <Play size={16} color={theme.colors.onPrimary} />
+            <Text style={[styles.restButtonText, { color: theme.colors.onPrimary }]}>Start</Text>
+          </TouchableOpacity>
 
-      <TextInput
-        style={[
-          styles.input,
-          {
-            backgroundColor: theme.colors.background,
-            color: theme.colors.onSurface,
-            minHeight: 80,
-            textAlignVertical: 'top',
-          },
-        ]}
-        placeholder="Escreve aqui o teu registo..."
-        value={texto}
-        onChangeText={setTexto}
-        multiline
-      />
+          <TouchableOpacity
+            style={[styles.restButton, styles.secondaryButton, { borderColor: theme.colors.outline }]}
+            onPress={() => {
+              setResting(false);
+              setRestRemaining(0);
+            }}
+          >
+            <Text style={[styles.restButtonText, { color: theme.colors.onSurface }]}>Stop</Text>
+          </TouchableOpacity>
+        </View>
 
-      <TouchableOpacity
-        style={[styles.actionBtn, { backgroundColor: theme.colors.primary, marginTop: 10 }]}
-        onPress={guardarRegisto}
-      >
-        <Text style={[styles.actionText, { color: theme.colors.onPrimary }]}>Guardar Registo</Text>
-      </TouchableOpacity>
+        <View style={styles.restAdjust}>
+          <Text style={[styles.smallLabel, { color: theme.colors.onSurfaceVariant }]}>
+            Default Rest (s)
+          </Text>
+          <TextInput
+            style={[
+              styles.restInput,
+              { 
+                backgroundColor: theme.colors.surface,
+                color: theme.colors.onSurface,
+                borderColor: theme.colors.outline
+              }
+            ]}
+            keyboardType="numeric"
+            value={String(defaultRest)}
+            onChangeText={(t) => setDefaultRest(Math.max(0, parseInt(t || '0')))}
+          />
+        </View>
+      </View>
 
-      <TouchableOpacity
-        style={[
-          styles.actionBtn,
-          { backgroundColor: theme.colors.secondary ?? theme.colors.primary, marginTop: 8 },
-        ]}
-        onPress={finishWorkout}
-      >
-        <Text style={[styles.actionText, { color: theme.colors.onPrimary }]}>Terminar Treino</Text>
-      </TouchableOpacity>
+      {/* Exercises List */}
+      <ScrollView contentContainerStyle={styles.content}>
+        {workout.exercises.map((ex, ei) => {
+          const exerciseCompleted = Object.values(completed[ei] || {}).filter(Boolean).length === ex.sets;
+          
+          return (
+            <View
+              key={ex.id ?? ei}
+              style={[
+                styles.card,
+                { 
+                  backgroundColor: theme.colors.surface,
+                  borderColor: exerciseCompleted ? '#22c55e' : theme.colors.outline
+                }
+              ]}
+            >
+              <View style={styles.cardHeader}>
+                <View style={styles.exerciseHeader}>
+                  <View style={[
+                    styles.exerciseNumber,
+                    { backgroundColor: exerciseCompleted ? '#22c55e' : theme.colors.primary }
+                  ]}>
+                    {exerciseCompleted ? (
+                      <Check size={16} color="#ffffff" />
+                    ) : (
+                      <Text style={styles.exerciseNumberText}>{ei + 1}</Text>
+                    )}
+                  </View>
+                  <View style={styles.exerciseInfo}>
+                    <Text style={[styles.exerciseTitle, { color: theme.colors.onSurface }]}>
+                      {ex.name}
+                    </Text>
+                    <View style={styles.exerciseMeta}>
+                      <Text style={[styles.exerciseMetaText, { color: theme.colors.onSurfaceVariant }]}>
+                        {ex.sets} × {ex.reps || '--'}
+                      </Text>
+                      {ex.weight && (
+                        <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
+                          <Weight size={12} color={theme.colors.onSurfaceVariant} />
+                          <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>
+                            {ex.weight}kg
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+
+                {exerciseCompleted && (
+                  <View style={[styles.completedBadge, { backgroundColor: '#22c55e' }]}>
+                    <Check size={12} color="#ffffff" />
+                    <Text style={styles.completedBadgeText}>Done</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Flags */}
+              <View style={styles.flagRow}>
+                {ex.warmup && (
+                  <View style={[styles.flag, { backgroundColor: theme.colors.primary }]}>
+                    <Text style={styles.flagText}>Warmup</Text>
+                  </View>
+                )}
+                {ex.failure && (
+                  <View style={[styles.flag, { backgroundColor: '#ef4444' }]}>
+                    <Text style={styles.flagText}>Failure</Text>
+                  </View>
+                )}
+                {ex.dropset && (
+                  <View style={[styles.flag, { backgroundColor: '#9333ea' }]}>
+                    <Text style={styles.flagText}>Dropset</Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Sets Grid */}
+              <View style={styles.setsGrid}>
+                {Array.from({ length: ex.sets }).map((_, si) => {
+                  const isCompleted = completed?.[ei]?.[si];
+                  
+                  return (
+                    <TouchableOpacity
+                      key={si}
+                      style={[
+                        styles.setButton,
+                        { borderColor: theme.colors.outline },
+                        isCompleted && [styles.setButtonCompleted, { backgroundColor: theme.colors.primary }]
+                      ]}
+                      onPress={() => markSetDone(ei, si)}
+                    >
+                      <View style={styles.setContent}>
+                        {isCompleted ? (
+                          <Check size={20} color="#ffffff" />
+                        ) : (
+                          <View style={[styles.setCircle, { borderColor: theme.colors.outline }]} />
+                        )}
+                        <Text style={[
+                          styles.setLabel,
+                          { color: theme.colors.onSurfaceVariant },
+                          isCompleted && styles.setLabelCompleted
+                        ]}>
+                          Set {si + 1}
+                        </Text>
+                      </View>
+                      
+                      <View style={styles.setInputs}>
+                        <TextInput
+                          style={[
+                            styles.setInput,
+                            { 
+                              backgroundColor: theme.colors.surface,
+                              color: theme.colors.onSurface,
+                              borderColor: theme.colors.outline
+                            }
+                          ]}
+                          placeholder="kg"
+                          keyboardType="numeric"
+                          value={sessionWeights?.[ei]?.[si] ?? ''}
+                          onChangeText={(t) =>
+                            setSessionWeights((prev) => ({
+                              ...prev,
+                              [ei]: { ...(prev[ei] || {}), [si]: t },
+                            }))
+                          }
+                        />
+                        <TextInput
+                          style={[
+                            styles.setInput,
+                            { 
+                              backgroundColor: theme.colors.surface,
+                              color: theme.colors.onSurface,
+                              borderColor: theme.colors.outline
+                            }
+                          ]}
+                          placeholder="reps"
+                          keyboardType="numeric"
+                          value={sessionReps?.[ei]?.[si] ?? ''}
+                          onChangeText={(t) =>
+                            setSessionReps((prev) => ({
+                              ...prev,
+                              [ei]: { ...(prev[ei] || {}), [si]: t },
+                            }))
+                          }
+                        />
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+          );
+        })}
+      </ScrollView>
+
+      {/* Completion Banner */}
+      {allSetsCompleted && (
+        <View style={[styles.completionBanner, { backgroundColor: '#22c55e' }]}>
+          <Trophy size={20} color="#ffffff" />
+          <Text style={styles.completionText}>Amazing Work! You've completed all exercises! 🎉</Text>
+        </View>
+      )}
+
+      {/* Footer */}
+      <View style={[styles.footer, { backgroundColor: theme.colors.surface }]}>
+        <Text style={[styles.footerLabel, { color: theme.colors.onSurface }]}>
+          How did you feel about this workout?
+        </Text>
+
+        <TextInput
+          style={[
+            styles.textInput,
+            { 
+              backgroundColor: theme.colors.background,
+              color: theme.colors.onSurface,
+              borderColor: theme.colors.outline
+            }
+          ]}
+          placeholder="Write your thoughts here..."
+          value={texto}
+          onChangeText={setTexto}
+          multiline
+          numberOfLines={3}
+        />
+
+        <TouchableOpacity
+          style={[styles.footerButton, { backgroundColor: theme.colors.primary }]}
+          onPress={guardarRegisto}
+        >
+          <Text style={[styles.footerButtonText, { color: theme.colors.onPrimary }]}>
+            Save Note
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.footerButton,
+            styles.finishButton,
+            { 
+              backgroundColor: allSetsCompleted ? '#22c55e' : theme.colors.primary
+            }
+          ]}
+          onPress={finishWorkout}
+        >
+          {allSetsCompleted ? (
+            <>
+              <Trophy size={20} color="#ffffff" />
+              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>
+                Finish Workout
+              </Text>
+            </>
+          ) : (
+            <>
+              <Check size={20} color="#ffffff" />
+              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>
+                Complete Workout
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
     </View>
-  </View>
-);
+  );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' },
-  loadingText: { color: '#475569' },
+  container: { flex: 1 },
+  centered: { 
+    flex: 1, 
+    alignItems: 'center', 
+    justifyContent: 'center' 
+  },
+  
+  // Header
   header: {
-    paddingTop: 50,
-    paddingBottom: 10,
-    paddingHorizontal: 16,
-    backgroundColor: '#1a1a1a',
+    paddingTop: 60,
+    paddingBottom: 20,
+  },
+  headerContent: {
+    paddingHorizontal: 20,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  backButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 4,
   },
-  backButton: { paddingVertical: 6, paddingRight: 12, paddingLeft: 2 },
-  backText: { color: '#93c5fd', fontSize: 16 },
-  headerCenter: { alignItems: 'center', flex: 1 },
-  headerTitle: { color: 'white', fontSize: 16, fontWeight: '700' },
-  timerText: { color: 'white', fontSize: 20, fontWeight: '800', marginTop: 4 },
-  pauseButton: { padding: 8, borderRadius: 8 },
-  pauseText: { fontWeight: '700' },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  pauseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  pauseText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  headerInfo: {
+    gap: 12,
+  },
+  workoutTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  workoutTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    flex: 1,
+  },
+  timerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  timerText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: 16,
+    alignItems: 'center',
+  },
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  progressContainer: {
+    gap: 8,
+  },
+  progressBackground: {
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 12,
+    textAlign: 'right',
+  },
 
+  // Rest Panel
   restPanel: {
     margin: 16,
-    padding: 12,
-    backgroundColor: '#fff',
+    padding: 16,
     borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  restInfo: {
+    flex: 1,
+  },
+  restLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  restTime: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  restControls: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  restButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  secondaryButton: {
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+  },
+  restButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  restAdjust: {
+    alignItems: 'center',
+  },
+  smallLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  restInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    minWidth: 60,
+    textAlign: 'center',
+    fontSize: 14,
+  },
+
+  // Content
+  content: {
+    padding: 16,
+    paddingBottom: 20,
+  },
+  card: {
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  exerciseHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    flex: 1,
+  },
+  exerciseNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  exerciseNumberText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  exerciseInfo: {
+    flex: 1,
+  },
+  exerciseTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  exerciseMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  exerciseMetaText: {
+    fontSize: 14,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  completedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  completedBadgeText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // Flags
+  flagRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  flag: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  flagText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // Sets
+  setsGrid: {
+    gap: 8,
+  },
+  setButton: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+  },
+  setButtonCompleted: {
+    borderWidth: 0,
+  },
+  setContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    marginBottom: 8,
   },
-  restLabel: { color: '#0f172a', fontWeight: '700' },
-  restTime: { color: '#06b6d4', fontWeight: '800', fontSize: 20, marginTop: 2 },
-  restControls: { flexDirection: 'row', gap: 8 },
-  restBtn: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 8 },
-  restBtnText: { fontWeight: '700' },
-  restAdjust: { marginLeft: 'auto' },
-  restInput: { backgroundColor: '#f1f5f9', paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, minWidth: 70, textAlign: 'center' },
-
-  content: { paddingHorizontal: 16, paddingBottom: 16 },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 12,
+  setCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+  },
+  setLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  setLabelCompleted: {
+    color: '#ffffff',
+  },
+  setInputs: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  setInput: {
+    flex: 1,
     borderWidth: 1,
-    borderColor: '#e2e8f0',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    fontSize: 14,
+    textAlign: 'center',
   },
-  exerciseTitle: { fontWeight: '800', color: '#1e293b', fontSize: 16 },
-  exerciseMeta: { color: '#64748b', marginTop: 2, marginBottom: 8, fontSize: 12 },
-  smallLabel: { fontWeight: '600', marginBottom: 6, color: '#334155' },
-  flagRow: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  flag: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 999 },
-  flagText: { color: 'white', fontWeight: '700', fontSize: 12 },
-  flagWarmup: { backgroundColor: '#06b6d4' },
-  flagFailure: { backgroundColor: '#ef4444' },
-  flagDropset: { backgroundColor: '#9333ea' },
-  setRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  setLabel: { width: 48, color: '#334155', fontWeight: '700' },
-  setInputs: { flexDirection: 'row', gap: 8, flex: 1 },
-  input: { backgroundColor: '#f8fafc', borderColor: '#e2e8f0', borderWidth: 1, borderRadius: 8, paddingVertical: 8, paddingHorizontal: 10 },
-  setInput: { flex: 1, textAlign: 'center' },
-  doneBtn: { paddingVertical: 8, paddingHorizontal: 10, backgroundColor: '#f1f5f9', borderRadius: 8, borderWidth: 1, borderColor: '#e2e8f0' },
-  doneBtnActive: { backgroundColor: '#22c55e', borderColor: '#22c55e' },
-  doneBtnText: { color: '#64748b', fontWeight: '700' },
-  doneBtnTextActive: { color: '#fff' },
 
-  footer: { padding: 16, borderTopWidth: 1, borderTopColor: '#e2e8f0', backgroundColor: '#fff' },
-  actionBtn: { paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
-  finish: { },
-  actionText: { fontWeight: '700' },
+  // Completion Banner
+  completionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 16,
+    margin: 16,
+    borderRadius: 12,
+  },
+  completionText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    flex: 1,
+  },
+
+  // Footer
+  footer: {
+    padding: 16,
+    gap: 12,
+  },
+  footerLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  textInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 14,
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  footerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  finishButton: {
+    marginTop: 8,
+  },
+  footerButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
 });
