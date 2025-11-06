@@ -26,12 +26,6 @@ type Workout = {
   exercises: Exercise[];
 };
 
-type Registro = {
-  id: number;
-  data: string;
-  texto: string;
-}
-
 const STORAGE_KEY = 'workouts';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
@@ -78,13 +72,6 @@ export default function StartWorkoutScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const theme = useTheme();
-
-  const [texto, setTexto] = useState('');
-  const [registos, SetRegistos] = useState<Registro[]>([]);
-
-  useEffect(() => {
-    carregarRegistos();
-  }, []);
 
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,39 +168,6 @@ export default function StartWorkoutScreen() {
   );
   const progressPercentage = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
   const allSetsCompleted = completedSets === totalSets && totalSets > 0;
-
-  async function carregarRegistos() {
-    try {
-      const dados = await AsyncStorage.getItem('registos');
-      if (dados) SetRegistos(JSON.parse(dados));
-    } catch (error) {
-      console.log('Erro ao carregar registos:', error);
-    }
-  }
-
-  async function guardarRegisto() {
-    if (!texto.trim()) {
-      Alert.alert('Erro', 'O registo não pode estar vazio.');
-      return;
-    }
-
-    const novo = {
-      id: Date.now(),
-      data: new Date().toISOString().split('T')[0],
-      texto: texto.trim(),
-    };
-
-    const atualizados = [novo, ...registos];
-    SetRegistos(atualizados);
-
-    try {
-      await AsyncStorage.setItem('registos', JSON.stringify(atualizados));
-      setTexto('');
-      Alert.alert('Sucesso', 'Registo guardado com sucesso!');
-    } catch (error) {
-      console.log('Erro ao guardar registo:', error);
-    }
-  }
 
   if (loading || !workout) {
     return (
@@ -511,40 +465,10 @@ export default function StartWorkoutScreen() {
         </View>
       )}
 
-      {/* Footer */}
+      {/* Footer - Simplified without notes section */}
       <View style={[styles.footer, { backgroundColor: theme.colors.surface }]}>
-        <Text style={[styles.footerLabel, { color: theme.colors.onSurface }]}>
-          How did you feel about this workout?
-        </Text>
-
-        <TextInput
-          style={[
-            styles.textInput,
-            { 
-              backgroundColor: theme.colors.background,
-              color: theme.colors.onSurface,
-              borderColor: theme.colors.outline
-            }
-          ]}
-          placeholder="Write your thoughts here..."
-          value={texto}
-          onChangeText={setTexto}
-          multiline
-          numberOfLines={3}
-        />
-
-        <TouchableOpacity
-          style={[styles.footerButton, { backgroundColor: theme.colors.primary }]}
-          onPress={guardarRegisto}
-        >
-          <Text style={[styles.footerButtonText, { color: theme.colors.onPrimary }]}>
-            Save Note
-          </Text>
-        </TouchableOpacity>
-
         <TouchableOpacity
           style={[
-            styles.footerButton,
             styles.finishButton,
             { 
               backgroundColor: allSetsCompleted ? '#22c55e' : theme.colors.primary
@@ -890,34 +814,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Footer
+  // Footer - Simplified
   footer: {
     padding: 16,
-    gap: 12,
   },
-  footerLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  textInput: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    fontSize: 14,
-    minHeight: 80,
-    textAlignVertical: 'top',
-  },
-  footerButton: {
+  finishButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 12,
-  },
-  finishButton: {
-    marginTop: 8,
   },
   footerButtonText: {
     fontSize: 16,
