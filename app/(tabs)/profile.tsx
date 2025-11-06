@@ -979,6 +979,7 @@ const styles = StyleSheet.create({
   tabContent: {
     paddingHorizontal: 24,
     marginTop: 24,
+    marginBottom: 53,
   },
   sectionTitle: {
     fontSize: 22,

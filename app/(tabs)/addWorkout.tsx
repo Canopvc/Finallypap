@@ -501,26 +501,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between', 
     alignItems: 'center',
     marginTop: 16,
-    paddingHorizontal: 4 
+    paddingHorizontal: 0,
+    gap: 4,
   },
   switchItem: { 
-    flexDirection: 'row', 
+    flexDirection: 'column', 
     alignItems: 'center', 
     gap: 8,
     flex: 1,
-    justifyContent: 'center'
+    justifyContent: 'center',
+    minWidth: 70,
   },
   switchLabel: { 
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '500',
     flex: 1,
-    textAlign: 'center'
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   footerRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     gap: 12, 
-    marginTop: 24 
+    marginTop: 24, 
+    marginBottom: 40,
   },
   primaryBtn: { 
     paddingVertical: Platform.OS === 'ios' ? 16 : 14, 

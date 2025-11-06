@@ -680,6 +680,7 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 20,
     paddingTop: 16,
+    marginBottom: 25,
   },
   list: { 
     paddingBottom: 20,
