@@ -521,7 +521,13 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
             <Text style={[styles.username, { color: theme.colors.onBackground }]}>{username}</Text>
-            <Text style={[styles.email, { color: theme.colors.onSurfaceVariant }]}>{email}</Text>
+            <Text style={[styles.email, { color: theme.colors.onSurfaceVariant }]} 
+      numberOfLines={1}
+      adjustsFontSizeToFit
+      minimumFontScale={0.8}
+      ellipsizeMode="tail">
+  {email}
+</Text>
             
             {/* Stats Cards */}
             <View style={styles.statsContainer}>
@@ -555,7 +561,7 @@ export default function ProfileScreen() {
               onPress={() => setActiveTab('progress')}
             >
               <Text style={[styles.tabText, {color: theme.colors.primary}, activeTab === 'progress' && styles.activeTabText]}>
-                Progress
+                {t('Progress', { ns: 'common' })}
               </Text>
             </Pressable>
             <Pressable 
@@ -600,7 +606,7 @@ export default function ProfileScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.label, { color: theme.colors.onSurface }]}>Target Date</Text>
+                <Text style={[styles.label, { color: theme.colors.onSurface }]}>{t('Target Date', { ns: 'common' })}</Text>
                 <Pressable 
                   style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, justifyContent: 'center' }]}
                   onPress={handleShowDatePicker}
@@ -624,7 +630,7 @@ export default function ProfileScreen() {
               {(weight && weightGoal) && (
                 <View style={[styles.progressCard, { backgroundColor: theme.colors.surface }]}>
                   <View style={styles.progressHeader}>
-                    <Text style={[styles.progressTitle, { color: theme.colors.onSurface }]}>Progress</Text>
+                    <Text style={[styles.progressTitle, { color: theme.colors.onSurface }]}>{t('Progress', { ns: 'common' })}</Text>
                     <Text style={[styles.progressPercentage, { color: theme.colors.primary }]}>
                       {progressPercentage.toFixed(1)}%
                     </Text>
@@ -919,6 +925,10 @@ const styles = StyleSheet.create({
   email: { 
     fontSize: 16, 
     marginTop: 4,
+    textAlign: 'center',
+    maxWidth: '95%',
+    paddingHorizontal: 20,
+    includeFontPadding: false,
   },
   statsContainer: {
     flexDirection: 'row',

@@ -178,7 +178,7 @@ export default function AddWorkout() {
               {t('name', { ns: 'common' })}
             </Text>
             <TextInput
-              placeholder="Bench Press"
+              placeholder={t('Bench Press', { ns: 'workouts' })}
               style={[
                 styles.input, 
                 { 

@@ -386,7 +386,7 @@ export default function HomeScreen() {
             styles.subtitle, 
             { color: theme.colors.onSurfaceVariant }
           ]}>
-            Track your daily activity and progress
+            {t('Track your daily activity and progress', { ns: 'common' })}
           </Text>
         </View>
         <Pressable onPress={handleLogout} hitSlop={20}>
@@ -452,10 +452,10 @@ export default function HomeScreen() {
             {caloriesBurned}
           </Text>
           <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>
-            Calories Burned
+            {t('Calories Burned', { ns: 'common' })}
           </Text>
           <Text style={[styles.statSubtext, { color: theme.colors.onSurfaceVariant }]}>
-            from {currentStepCount.toLocaleString()} steps
+            {t('from', { ns: 'common' })} {currentStepCount.toLocaleString()} {t('steps', { ns: 'common' })}
           </Text>
         </View>
 
@@ -464,7 +464,7 @@ export default function HomeScreen() {
             {activeMinutes}
           </Text>
           <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>
-            Active Minutes
+            {t('Active Minutes', { ns: 'common' })}
           </Text>
         </View>
       </View>
@@ -476,7 +476,7 @@ export default function HomeScreen() {
           onPress={() => router.push('/addWorkout')}
         >
           <Text style={[styles.addButtonText, { color: theme.colors.surface }]}>
-            + Add New Workout
+            {t('+ Add New Workout', { ns: 'common' })}
           </Text>
         </TouchableOpacity>
         
@@ -491,7 +491,7 @@ export default function HomeScreen() {
             styles.nutritionButtonText, 
             { color: theme.colors.onSecondary }
           ]}>
-            📊 Nutrition Tracker
+            {t('📊 Nutrition Tracker', { ns: 'common' })}
           </Text>
         </TouchableOpacity>
       </View>

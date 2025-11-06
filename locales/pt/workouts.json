@@ -15,7 +15,7 @@
   "type": "Tipo",
   "calisthenics": "Calistenia",
   "cardio": "Cardio",
-  "weightlifting": "Levantamento de Peso",
+  "weightlifting":"Musculação",
   "startWorkout": "Iniciar Treino",
   "finishWorkout": "Finalizar Treino",
   "saveWorkout": "Guardar Treino",
@@ -27,6 +27,8 @@
   "dropset": "Dropset",
   "failure": "Falha",
   "warmup": "Aquecimento",
-  "exampleWorkoutName": "ex: Dia de Peito"
+  "exampleWorkoutName": "ex: Dia de Peito",
+  "Bench Press" : "Supino"
 }
+  
 

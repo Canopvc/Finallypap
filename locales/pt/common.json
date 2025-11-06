@@ -70,6 +70,14 @@
   "goalsSaved": "Objetivos guardados com sucesso!",
   "couldNotSaveGoals": "Não foi possível guardar os objetivos.",
   "pleaseFill": "Por favor, preencha o peso atual e o peso alvo.",
-  "monthlyNotifications": "Receber notificações mensais para atualizar o seu peso e rastrear o progresso"
+  "monthlyNotifications": "Receber notificações mensais para atualizar o seu peso e rastrear o progresso",
+  "+ Add New Workout": "+ Adicionar Novo Treino",
+  "📊 Nutrition Tracker": "📊 Rastreador de Nutrição",
+  "Calories Burned": "Calorias Gastas",
+  "from": "de",
+  "Active Minutes": "Minutos Ativos",
+  "Track your daily activity and progress": "Rastreie sua atividade diária e progresso",
+  "Progress": "Progresso",
+  "Target Date": "Data Alvo"
 }
 
