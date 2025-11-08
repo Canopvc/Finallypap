@@ -1,6 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import axios from 'axios';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
