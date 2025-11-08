@@ -21,10 +21,12 @@ import {
 import { useTheme } from 'react-native-paper';
 import {GROQ_API_KEY} from '@env';
 import { useTranslation } from '../../hooks/useTranslation';
+import { CohereClientV2 } from 'cohere-ai';
 
-// ⭐️ GROQ API (GRATUITA E RÁPIDA)
+// ⭐️ COHERE API
 const WORKOUTS_STORAGE_KEY = 'workouts';
-const API_KEY = GROQ_API_KEY;
+
+const cohere = new CohereClientV2({ token: GROQ_API_KEY });
 
 type ExerciseType = 'calisthenics' | 'cardio' | 'weightlifting';
 
@@ -231,24 +233,29 @@ export default function FitnessAIChat() {
   };
 
   const handleGenerateResponse = async () => {
-    if (!prompt.trim()) {
-      Alert.alert('Erro', 'Por favor, insira um texto.');
-      return;
-    }
-  
-    const userMessage: MessageType = {
-      text: prompt,
-      isUser: true,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
-    setPrompt('');
-    setLoading(true);
-  
-    try {
-      const apiUrl = 'https://api.groq.com/openai/v1/chat/completions';
-      
-      const systemInstruction = `You are an expert fitness coach. Follow these rules STRICTLY:
+  if (!prompt.trim()) {
+    Alert.alert('Erro', 'Por favor, insira um texto.');
+    return;
+  }
+
+  const userMessage: MessageType = {
+    text: prompt,
+    isUser: true,
+    timestamp: new Date()
+  };
+  setMessages(prev => [...prev, userMessage]);
+  setPrompt('');
+  setLoading(true);
+
+  try {
+    console.log('🚀 Enviando para Cohere AI...');
+    
+    const response = await cohere.chat({
+      model: 'command-a-03-2025',
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert fitness coach. Follow these rules STRICTLY:
 
 🎯 **MANDATORY STRUCTURE:**
 
@@ -324,104 +331,93 @@ ALWAYS PUT THE WORKOUT NAMES AS THEY ARE, THE LEG WORKOUT IS LEG DAY, THE UPPER 
 ALWAYS USE THE MOST SIMPLE NAMES OF THE EXERCISES, USE SIMPLE AND USEFULL LANGUAGE
 → Always use short, clear and standard exercise names. Avoid complex or fancy terms.
 
-Respond in the same language as the user's query.`;
-
-      const requestBody = {
-        messages: [
-          {
-            role: "system",
-            content: systemInstruction
-          },
-          {
-            role: "user", 
-            content: prompt
-          }
-        ],
-        model: "llama-3.1-8b-instant",
-        temperature: 0.7,
-        max_tokens: 1024,
-        top_p: 0.9,
-        stream: false
-      };
-
-      console.log('🚀 Enviando para Groq IA...');
-      
-      const res = await axios.post(apiUrl, requestBody, {
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${API_KEY}`
+Respond in the same language as the user's query.`
         },
-        timeout: 30000
-      });
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+    });
 
-      console.log('✅ Resposta recebida:', res.status);
+    console.log('✅ Resposta recebida da Cohere:', response);
 
-      if (!res.data.choices || !res.data.choices[0].message.content) {
-        throw new Error('Resposta da API inválida');
+    let generatedText = '';
+    
+    // CORREÇÃO: Lidar com o formato correto da resposta da Cohere
+    if (response.message?.content) {
+      if (typeof response.message.content === 'string') {
+        generatedText = response.message.content;
+      } else if (Array.isArray(response.message.content)) {
+        // A Cohere retorna um array de objetos, precisamos extrair o texto
+        generatedText = response.message.content
+          .map(part => {
+            // Verificar se é um objeto com propriedade 'text'
+            if (part && typeof part === 'object' && 'text' in part) {
+              return part.text;
+            }
+            return '';
+          })
+          .filter(text => text !== '')
+          .join('\n');
       }
-
-      const generatedText = res.data.choices[0].message.content;
-      console.log('📝 Resposta IA:', generatedText);
-      
-      const workoutData = extractWorkoutFromText(generatedText);
-      
-      console.log('💪 Dados extraídos:', workoutData);
-      
-      let isWorkoutPlan = false;
-      let isSingleWorkout = false;
-      
-      if (workoutData) {
-        if ('workouts' in workoutData) {
-          isWorkoutPlan = true;
-          console.log('📋 Múltiplos treinos detectados:', workoutData.workouts.length);
-        } else {
-          isSingleWorkout = true;
-          console.log('🎯 Treino único detectado');
-        }
-      }
-      
-      const botMessage: MessageType = {
-        text: generatedText,
-        isUser: false,
-        timestamp: new Date(),
-        isWorkout: isSingleWorkout,
-        isWorkoutPlan: isWorkoutPlan,
-        workoutData: isSingleWorkout ? workoutData as Workout : undefined,
-        workoutPlanData: isWorkoutPlan ? workoutData as WorkoutPlan : undefined
-      };
-      
-      setMessages(prev => [...prev, botMessage]);
-
-    } catch (error: any) {
-      console.error('❌ Erro na IA:', error);
-      
-      if (error.response) {
-        console.error('Status:', error.response.status);
-        console.error('Data:', error.response.data);
-        
-        if (error.response.status === 401) {
-          Alert.alert('Chave API Inválida', 'Verifique sua chave da API Groq.');
-        } else if (error.response.status === 429) {
-          Alert.alert('Limite Atingido', 'Muitas requisições. Tente novamente em alguns segundos.');
-        } else {
-          Alert.alert('Erro da API', `Status: ${error.response.status}`);
-        }
-      } else if (error.request) {
-        Alert.alert('Erro de Rede', 'Não foi possível conectar ao servidor da IA.');
-      } else {
-        Alert.alert('Erro', error.message || 'Falha ao obter resposta da IA.');
-      }
-      
-      const errorMessage: MessageType = {
-        text: '❌ Erro ao conectar com a IA. Verifique sua conexão e chave API.',
-        isUser: false,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setLoading(false);
     }
-  };
+
+    // Se ainda estiver vazio, tentar extrair do conteúdo direto
+    if (!generatedText && response.message?.content) {
+      generatedText = JSON.stringify(response.message.content);
+    }
+
+    if (!generatedText) {
+      throw new Error('Resposta da API vazia');
+    }
+
+    console.log('📝 Resposta IA:', generatedText);
+    
+    const workoutData = extractWorkoutFromText(generatedText);
+    
+    console.log('💪 Dados extraídos:', workoutData);
+    
+    let isWorkoutPlan = false;
+    let isSingleWorkout = false;
+    
+    if (workoutData) {
+      if ('workouts' in workoutData) {
+        isWorkoutPlan = true;
+        console.log('📋 Múltiplos treinos detectados:', workoutData.workouts.length);
+      } else {
+        isSingleWorkout = true;
+        console.log('🎯 Treino único detectado');
+      }
+    }
+    
+    const botMessage: MessageType = {
+      text: generatedText,
+      isUser: false,
+      timestamp: new Date(),
+      isWorkout: isSingleWorkout,
+      isWorkoutPlan: isWorkoutPlan,
+      workoutData: isSingleWorkout ? workoutData as Workout : undefined,
+      workoutPlanData: isWorkoutPlan ? workoutData as WorkoutPlan : undefined
+    };
+    
+    setMessages(prev => [...prev, botMessage]);
+
+  } catch (error: any) {
+    console.error('❌ Erro na Cohere AI:', error);
+    
+    Alert.alert('Erro', 'Falha ao obter resposta da IA. Verifique sua conexão e chave API.');
+    
+    const errorMessage: MessageType = {
+      text: '❌ Erro ao conectar com a IA. Verifique sua conexão e chave API.',
+      isUser: false,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, errorMessage]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSaveWorkout = async () => {
     if (!selectedWorkout || !workoutName.trim()) {
@@ -885,7 +881,7 @@ const styles = StyleSheet.create({
   messagesWrapper: {
     flex: 1,
     minHeight: 0,
-    paddingBottom: Platform.OS === 'android' ? 140 : 0, // Espaço para tab bar (60) + input (80)
+    paddingBottom: Platform.OS === 'android' ? 140 : 0,
   },
   messagesContainer: {
     flex: 1,
@@ -947,7 +943,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     ...(Platform.OS === 'android' ? {
       position: 'absolute',
-      bottom: 60, // Altura da tab bar (60px) para ficar acima dela
+      bottom: 60,
       left: 0,
       right: 0,
       zIndex: 1000,
