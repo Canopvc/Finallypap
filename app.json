@@ -12,6 +12,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yourname.fitnesshub"
     },
+    "icon": "./assets/icon.png",
     "android": {
       "package": "com.yourname.fitnesshub",
       "softwareKeyboardLayoutMode": "pan",
@@ -50,5 +51,6 @@
         "projectId": "62b24fab-8df9-4280-8d41-293d118fec81"
       }
     }
+    
   }
 }
