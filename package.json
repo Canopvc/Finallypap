@@ -21,7 +21,7 @@
     "@supabase/supabase-js": "^2.53.0",
     "axios": "^1.11.0",
     "cohere-ai": "^7.19.0",
-    "dotenv": "^17.2.2",
+    "dotenv": "^17.2.3",
     "expo": "~54.0.10",
     "expo-av": "~16.0.7",
     "expo-blur": "~15.0.7",

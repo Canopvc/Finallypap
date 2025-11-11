@@ -178,6 +178,7 @@ export default function TabLayout() {
       primaryContainer: '#2C8EC9',
       onPrimaryContainer: '#72c6faff',
       secondary: '#eff0b0ff',
+      onSurfaceVariant: '#d1d5db',
     },
   } : {
     ...MD3LightTheme,
