@@ -13,7 +13,7 @@ import {
   Vibration,
   LogBox,
   PermissionsAndroid,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -470,32 +470,7 @@ export default function HomeScreen() {
       </View>
 
       {/* Action Buttons */}
-      <View style={styles.actionsRow}>
-        <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: theme.colors.primary }]}
-          onPress={() => router.push('/addWorkout')}
-        >
-          <Text style={[styles.addButtonText, { color: theme.colors.surface }]}>
-            {t('+ Add New Workout', { ns: 'common' })}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={[
-            styles.nutritionButton, 
-            { backgroundColor: theme.colors.secondary }
-          ]}
-          onPress={() => router.push('/calorie_tracker')}
-        >
-          <Text style={[
-            styles.nutritionButtonText, 
-            { color: theme.colors.onSecondary }
-          ]}>
-            {t('📊 Nutrition Tracker', { ns: 'common' })}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
+      
       {/* Workouts Section */}
       <View style={styles.workoutsSection}>
         <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
@@ -512,9 +487,21 @@ export default function HomeScreen() {
       </View>
     </View>
 
-    
+        <TouchableOpacity
+  style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+  onPress={() => router.push('/addWorkout')}
+>
+  <Text style={[styles.fabText, { color: theme.colors.surface }]}>+</Text>
+</TouchableOpacity>
+
+
     </ScrollView>
+
+      
+    
   );
+
+  
 }
 
 const styles = StyleSheet.create({
@@ -740,4 +727,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.7,
   },
-});
+  fab: {
+  position: 'absolute',
+  bottom: 83,
+  right: 30,
+  width: 64,
+  height: 64,
+  borderRadius: 32,
+  alignItems: 'center',
+  justifyContent: 'center',
+  elevation: 8,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.3,
+  shadowRadius: 5,
+  zIndex: 999, // garante que fica por cima do conteúdo
+},
+fabText: {
+  fontSize: 36,
+  fontWeight: 'bold',
+  lineHeight: 38,
+},
+
+},
+);
+
+

@@ -1,6 +1,14 @@
 import 'react-native-url-polyfill/auto';
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Pressable, TouchableOpacity, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  StyleSheet,
+  Pressable,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useTheme } from 'react-native-paper';
@@ -14,15 +22,10 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
 
   
-
   
-
-  // ALTERNATIVA: Se a abordagem acima ainda não funcionar, use esta:
- 
-
   const handleLogin = async () => {
     if (!email || !password) {
       setError(t('pleaseFill', { ns: 'common' }));

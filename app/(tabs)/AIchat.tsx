@@ -15,10 +15,10 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
-import {GROQ_API_KEY} from '@env';
+import { GROQ_API_KEY } from '@env';
 import { useTranslation } from '../../hooks/useTranslation';
 import { CohereClientV2 } from 'cohere-ai';
 
