@@ -175,7 +175,37 @@ export default function TabLayout() {
     };
   }, []);
 
-  const theme = useMemo(() => (isDark ? { ...MD3DarkTheme, colors: { ...MD3DarkTheme.colors, primary: '#64aef3ff', background: '#0f172a', surface: '#1e293b', onSurface: '#f9fafb', onPrimary: '#000000', primaryContainer: '#2C8EC9', onPrimaryContainer: '#72c6faff', secondary: '#eff0b0ff', onSurfaceVariant: '#d1d5db', }, } : { ...MD3LightTheme, colors: { ...MD3LightTheme.colors, primary: '#2C8EC9', background: '#f8fafc', surface: '#fff', onSurface: '#1e293b', }, }), [isDark]);
+  const theme = useMemo(
+  () =>
+    isDark
+      ? {
+          ...MD3DarkTheme,
+          colors: {
+            ...MD3DarkTheme.colors,
+            primary: '#64aef3ff',
+            background: '#0f172a',
+            surface: '#1e293b',
+            onSurface: '#f9fafb',
+            onPrimary: '#000000',
+            primaryContainer: '#2C8EC9',
+            onPrimaryContainer: '#72c6faff',
+            secondary: '#eff0b0ff',
+            onSurfaceVariant: '#d1d5db',
+          },
+        }
+      : {
+          ...MD3LightTheme,
+          colors: {
+            ...MD3LightTheme.colors,
+            primary: '#2C8EC9',
+            background: '#f8fafc',
+            surface: '#fff',
+            onSurface: '#1e293b',
+          },
+        },
+  [isDark]
+);
+
 
   const screenOptions = useMemo<BottomTabNavigationOptions>(() => {
     const androidBaseStyle = {
