@@ -343,7 +343,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
               cx="50"
               cy="50"
               r={radius}
-              stroke={theme.colors.outline}
+              stroke={theme.colors.outline + '40'}
               strokeWidth={strokeWidth}
               fill="none"
             />
@@ -382,123 +382,201 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView 
-  contentContainerStyle={styles.scrollViewContent}
-  showsVerticalScrollIndicator={false}
->
-        {/* Header corrigido */}
-        <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+        contentContainerStyle={styles.scrollViewContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header Container */}
+        <View style={[styles.headerContainer, { backgroundColor: theme.colors.surface }]}>
           <TouchableOpacity 
-            style={styles.backButton}
+            style={styles.backButtonContainer}
             onPress={handleBackToHome}
           >
             <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>←</Text>
           </TouchableOpacity>
-          
-          <View style={styles.headerTitle}>
-            <Text style={[styles.title, { color: theme.colors.onSurface }]}>Nutric</Text>
-            <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>Calorie Counter </Text>
+
+          <View style={styles.titleContainer}>
+            <Text style={[styles.mainTitle, { color: theme.colors.onSurface }]}>
+              Nutric
+            </Text>
+            <Text style={[styles.subTitle, { color: theme.colors.onSurfaceVariant }]}>
+              Calorie Counter
+            </Text>
           </View>
-          
+
           <TouchableOpacity 
-            style={styles.settingsButton}
+            style={styles.settingsButtonContainer}
             onPress={openSettings}
           >
-            <Text style={[styles.settingsButtonText, { color: theme.colors.primary }]}>⚙️</Text>
+            <Text style={[styles.settingsIcon, { color: theme.colors.onSurface }]}>⚙️</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Progress Circles */}
-        <View style={styles.circlesContainer}>
-          <ProgressCircle type="calories" color="#4CAF50" />
-          <ProgressCircle type="protein" color="#2196F3" />
-          <ProgressCircle type="carbs" color="#FF9800" />
+        {/* Progress Section Container */}
+        <View style={[styles.progressSectionContainer, { backgroundColor: theme.colors.background }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+            Progresso Hoje
+          </Text>
+          <View style={styles.circlesContainer}>
+            <ProgressCircle type="calories" color={theme.colors.primary} />
+            <ProgressCircle type="protein" color="#2196F3" />
+            <ProgressCircle type="carbs" color="#FF9800" />
+          </View>
         </View>
 
-        {/* Add Food Input */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, { 
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.outline,
-              color: theme.colors.onSurface
-            }]}
-            placeholder="Descreva o que você comeu (ex: 2 ovos cozidos, 1 pão integral)"
-            placeholderTextColor={theme.colors.onSurfaceVariant}
-            value={foodInput}
-            onChangeText={setFoodInput}
-            multiline
-          />
-          <TouchableOpacity 
-            style={[styles.addButton, { backgroundColor: theme.colors.primary }, loading && styles.addButtonDisabled]}
-            onPress={addMeal}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={[styles.addButtonText, { color: theme.colors.onPrimary }]}>
-                Adicionar
-              </Text>
-            )}
-          </TouchableOpacity>
+        {/* Add Food Section Container */}
+        <View style={[styles.addFoodSectionContainer, { backgroundColor: theme.colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+            Adicionar Refeição
+          </Text>
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[styles.input, { 
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outline,
+                color: theme.colors.onSurface
+              }]}
+              placeholder="Descreva o que você comeu (ex: 2 ovos cozidos, 1 pão integral)"
+              placeholderTextColor={theme.colors.onSurfaceVariant}
+              value={foodInput}
+              onChangeText={setFoodInput}
+              multiline
+            />
+            <TouchableOpacity 
+              style={[styles.addButton, { backgroundColor: theme.colors.primary }, loading && styles.addButtonDisabled]}
+              onPress={addMeal}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={theme.colors.onPrimary} />
+              ) : (
+                <Text style={[styles.addButtonText, { color: theme.colors.onPrimary }]}>
+                  Adicionar Refeição
+                </Text>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Today's Summary - CORRIGIDO */}
-        <View style={[styles.summaryContainer, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.summaryTitle, { color: theme.colors.onSurface }]}>
+        {/* Summary Section Container */}
+        <View style={[styles.summarySectionContainer, { backgroundColor: theme.colors.background }]}>
+          <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
             Resumo do Dia
           </Text>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryText, { color: theme.colors.onSurface }]}>
-              Calorias: {todayTotals.calories || 0} / {dailyGoals.calories} kcal
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryText, { color: theme.colors.onSurface }]}>
-              Proteína: {safeToFixed(todayTotals.protein)} / {dailyGoals.protein} g
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Text style={[styles.summaryText, { color: theme.colors.onSurface }]}>
-              Carboidratos: {safeToFixed(todayTotals.carbs)} / {dailyGoals.carbs} g
-            </Text>
+          <View style={[styles.summaryContainer, { backgroundColor: theme.colors.surface }]}>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Calorias
+                </Text>
+                <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>
+                  {todayTotals.calories || 0} / {dailyGoals.calories} kcal
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Proteína
+                </Text>
+                <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>
+                  {safeToFixed(todayTotals.protein)} / {dailyGoals.protein} g
+                </Text>
+              </View>
+            </View>
+            <View style={styles.summaryRow}>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Carboidratos
+                </Text>
+                <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>
+                  {safeToFixed(todayTotals.carbs)} / {dailyGoals.carbs} g
+                </Text>
+              </View>
+              <View style={styles.summaryItem}>
+                <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
+                  Restante
+                </Text>
+                <Text style={[styles.summaryValue, { color: theme.colors.primary }]}>
+                  {calculateRemaining('calories').remaining} kcal
+                </Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* Meal List */}
-        <View style={styles.mealsContainer}>
-          <Text style={[styles.mealsTitle, { color: theme.colors.onSurface }]}>
-            Refeições de Hoje
-          </Text>
-          {meals.length === 0 ? (
-            <Text style={[styles.emptyText, { color: theme.colors.onSurfaceVariant }]}>
-              Nenhuma refeição adicionada hoje
+        {/* Meals Section Container */}
+        <View style={[styles.mealsSectionContainer, { backgroundColor: theme.colors.surface }]}>
+          <View style={styles.mealsHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              Refeições de Hoje
             </Text>
+            <Text style={[styles.mealsCount, { color: theme.colors.onSurfaceVariant }]}>
+              {meals.length} refeições
+            </Text>
+          </View>
+          
+          {meals.length === 0 ? (
+            <View style={styles.emptyStateContainer}>
+              <Text style={[styles.emptyStateIcon, { color: theme.colors.onSurfaceVariant }]}>
+                🍽️
+              </Text>
+              <Text style={[styles.emptyStateText, { color: theme.colors.onSurfaceVariant }]}>
+                Nenhuma refeição adicionada hoje
+              </Text>
+              <Text style={[styles.emptyStateSubtext, { color: theme.colors.onSurfaceVariant }]}>
+                Adicione sua primeira refeição acima
+              </Text>
+            </View>
           ) : (
-            meals.map(meal => (
-              <View 
-                key={meal.id} 
-                style={[styles.mealItem, { backgroundColor: theme.colors.surface }]}
-              >
-                <View style={styles.mealInfo}>
-                  <Text style={[styles.mealName, { color: theme.colors.onSurface }]}>
-                    {meal.foodName}
-                  </Text>
-                  <Text style={[styles.mealTime, { color: theme.colors.onSurfaceVariant }]}>
-                    {meal.timestamp}
-                  </Text>
-                  <Text style={[styles.mealDetails, { color: theme.colors.onSurfaceVariant }]}>
-                    {meal.calories} kcal • {safeToFixed(meal.protein)}g proteína • {safeToFixed(meal.carbs)}g carbs
-                  </Text>
-                </View>
-                <TouchableOpacity 
-                  style={styles.deleteButton}
-                  onPress={() => removeMeal(meal.id)}
+            <View style={styles.mealsListContainer}>
+              {meals.map(meal => (
+                <View 
+                  key={meal.id} 
+                  style={[styles.mealItem, { backgroundColor: theme.colors.surfaceVariant }]}
                 >
-                  <Text style={styles.deleteButtonText}>×</Text>
-                </TouchableOpacity>
-              </View>
-            ))
+                  <View style={styles.mealContent}>
+                    <View style={styles.mealHeader}>
+                      <Text style={[styles.mealName, { color: theme.colors.onSurface }]}>
+                        {meal.foodName}
+                      </Text>
+                      <Text style={[styles.mealTime, { color: theme.colors.onSurfaceVariant }]}>
+                        {meal.timestamp}
+                      </Text>
+                    </View>
+                    <View style={styles.mealDetails}>
+                      <View style={styles.nutrientBadge}>
+                        <Text style={[styles.nutrientValue, { color: theme.colors.onSurface }]}>
+                          {meal.calories}
+                        </Text>
+                        <Text style={[styles.nutrientLabel, { color: theme.colors.onSurfaceVariant }]}>
+                          kcal
+                        </Text>
+                      </View>
+                      <View style={styles.nutrientBadge}>
+                        <Text style={[styles.nutrientValue, { color: theme.colors.onSurface }]}>
+                          {safeToFixed(meal.protein)}
+                        </Text>
+                        <Text style={[styles.nutrientLabel, { color: theme.colors.onSurfaceVariant }]}>
+                          proteína
+                        </Text>
+                      </View>
+                      <View style={styles.nutrientBadge}>
+                        <Text style={[styles.nutrientValue, { color: theme.colors.onSurface }]}>
+                          {safeToFixed(meal.carbs)}
+                        </Text>
+                        <Text style={[styles.nutrientLabel, { color: theme.colors.onSurfaceVariant }]}>
+                          carbs
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.deleteButtonContainer}
+                    onPress={() => removeMeal(meal.id)}
+                  >
+                    <Text style={[styles.deleteButtonText, { color: theme.colors.error }]}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -574,10 +652,10 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
 
             <View style={styles.modalButtons}>
               <TouchableOpacity 
-                style={[styles.modalButton, styles.cancelButton]}
+                style={[styles.modalButton, styles.cancelButton, { backgroundColor: theme.colors.surfaceVariant }]}
                 onPress={() => setSettingsModalVisible(false)}
               >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+                <Text style={[styles.cancelButtonText, { color: theme.colors.onSurfaceVariant }]}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity 
                 style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
@@ -598,52 +676,75 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    marginBottom: 10,
   },
-  scrollView: {
-    padding: 20,
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: 40,
   },
-  header: {
+
+  // Header Container
+  headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    marginBottom: 20,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#00000010',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
   },
-  backButton: {
+  backButtonContainer: {
     padding: 8,
   },
   backButtonText: {
     fontSize: 24,
     fontWeight: '600',
   },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-  },
-  headerTitle: {
+  titleContainer: {
     alignItems: 'center',
     flex: 1,
   },
-  subtitle: {
-    fontSize: 16,
-    marginTop: 2,
+  mainTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
-  settingsButton: {
+  subTitle: {
+    fontSize: 14,
+    marginTop: 2,
+    fontWeight: '500',
+  },
+  settingsButtonContainer: {
     padding: 8,
   },
-  settingsButtonText: {
+  settingsIcon: {
     fontSize: 20,
+  },
+
+  // Section Titles
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+    letterSpacing: 0.3,
+  },
+
+  // Progress Section
+  progressSectionContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   circlesContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
-    paddingHorizontal: 10,
   },
   circleContainer: {
     alignItems: 'center',
+    width: '30%',
   },
   circleWrapper: {
     position: 'relative',
@@ -660,173 +761,260 @@ const styles = StyleSheet.create({
   },
   circleNumber: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   circleLabel: {
     fontSize: 10,
-    textAlign: 'center',
+    marginTop: 2,
   },
   circleTitle: {
     marginTop: 8,
     fontSize: 12,
     fontWeight: '600',
   },
+
+  // Add Food Section
+  addFoodSectionContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+  },
   inputContainer: {
-    marginBottom: 25,
+    marginBottom: 8,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 15,
+    borderRadius: 16,
+    padding: 18,
     fontSize: 16,
-    minHeight: 60,
+    minHeight: 80,
+    marginBottom: 16,
     textAlignVertical: 'top',
-    marginBottom: 12,
   },
   addButton: {
-    padding: 15,
-    borderRadius: 12,
+    padding: 18,
+    borderRadius: 16,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   addButtonDisabled: {
     opacity: 0.6,
   },
   addButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+
+  // Summary Section
+  summarySectionContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 24,
   },
   summaryContainer: {
     padding: 20,
-    borderRadius: 12,
-    marginBottom: 25,
-    elevation: 3,
+    borderRadius: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  summaryTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
+    shadowRadius: 6,
+    elevation: 3,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
+    marginBottom: 16,
   },
-  summaryText: {
-    fontSize: 14,
+  summaryItem: {
+    flex: 1,
+    alignItems: 'center',
   },
-  mealsContainer: {
-    marginBottom: 30,
+  summaryLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  mealsTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
+  summaryValue: {
+    fontSize: 16,
+    fontWeight: '700',
   },
-  emptyText: {
-    textAlign: 'center',
-    fontStyle: 'italic',
-    marginTop: 20,
+
+  // Meals Section
+  mealsSectionContainer: {
+    paddingHorizontal: 24,
+    paddingVertical: 24,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    marginTop: 8,
   },
-  mealItem: {
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 10,
+  mealsHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+    marginBottom: 16,
   },
-  mealInfo: {
+  mealsCount: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyStateSubtext: {
+    fontSize: 14,
+    textAlign: 'center',
+    opacity: 0.7,
+  },
+  mealsListContainer: {
+    gap: 12,
+  },
+  mealItem: {
+    padding: 16,
+    borderRadius: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  mealContent: {
     flex: 1,
+  },
+  mealHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   mealName: {
     fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: 12,
   },
   mealTime: {
     fontSize: 12,
-    marginBottom: 4,
+    fontWeight: '600',
+    opacity: 0.7,
   },
   mealDetails: {
-    fontSize: 12,
+    flexDirection: 'row',
+    gap: 16,
   },
-  deleteButton: {
-    padding: 5,
+  nutrientBadge: {
+    alignItems: 'center',
+  },
+  nutrientValue: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  nutrientLabel: {
+    fontSize: 10,
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  deleteButtonContainer: {
+    padding: 4,
+    marginLeft: 8,
   },
   deleteButtonText: {
     fontSize: 20,
-    color: '#ff4444',
     fontWeight: 'bold',
   },
+
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   modalContent: {
-    width: '90%',
-    padding: 20,
-    borderRadius: 12,
-    elevation: 5,
+    width: '100%',
+    padding: 24,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 20,
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 24,
     textAlign: 'center',
   },
   settingItem: {
-    marginBottom: 15,
+    marginBottom: 20,
   },
   settingLabel: {
     fontSize: 16,
-    marginBottom: 5,
     fontWeight: '600',
+    marginBottom: 8,
   },
   settingInput: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    borderRadius: 12,
+    padding: 14,
     fontSize: 16,
   },
   modalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 24,
+    gap: 12,
   },
   modalButton: {
     flex: 1,
-    padding: 15,
-    borderRadius: 8,
+    padding: 16,
+    borderRadius: 12,
     alignItems: 'center',
-    marginHorizontal: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cancelButton: {
-    backgroundColor: '#f5f5f5',
+    // Cor definida inline usando theme
   },
   cancelButtonText: {
-    color: '#666',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 16,
   },
   modalButtonText: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  scrollViewContent: {
-  padding: 20,
-  paddingBottom: 50,
-  paddingHorizontal: 1,
-},
 });
 
 export default CalorieCounter;

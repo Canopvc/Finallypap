@@ -26,7 +26,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 LogBox.ignoreLogs(['expo-notifications']);
 LogBox.ignoreLogs(['VirtualizedLists should never be nested inside plain ScrollViews with tje same orientation']);
 
-// Types (mantidos iguais)
+// Types
 type Exercise = {
   id: string;
   name: string;
