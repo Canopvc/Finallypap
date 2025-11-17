@@ -16,7 +16,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from 'react-native-paper';
 import Svg, { Circle as SvgCircle } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GROQ_API_KEY } from '@env';
+import { COHERE_API_KEY } from '@env';
 
 // Definir tipos
 interface Meal {
@@ -119,7 +119,7 @@ const CalorieCounter: React.FC = () => {
 
   // Função para analisar alimentos usando Groq API
   const analyzeFoodWithGroq = async (foodDescription: string): Promise<FoodAnalysis> => {
-    const API_KEY = GROQ_API_KEY;
+    const API_KEY = COHERE_API_KEY;
     
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
