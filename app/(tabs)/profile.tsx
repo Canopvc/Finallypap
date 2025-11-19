@@ -24,8 +24,9 @@ import {
 import { supabase } from '../../lib/supabase';
 import { getAppTheme } from '../../lib/theme';
 import * as Notifications from 'expo-notifications';
-import { LineChart, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Line } from 'recharts';
 import { useTranslation } from '../../hooks/useTranslation';
+import Svg, { Path } from "react-native-svg";
+
 
 const { width } = Dimensions.get('window');
 const WEIGHT_GOALS_KEY = 'weightGoals';
@@ -499,8 +500,22 @@ export default function ProfileScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>{t('profile', { ns: 'common' })}</Text>
               <Pressable onPress={handleLogout} hitSlop={20} style={styles.settingsButton}>
-                <Ionicons name="settings-outline" size={24} color="#fff" />
-              </Pressable>
+  <Svg
+    width={26}
+    height={26}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="#fff"
+    strokeWidth={1.5}
+  >
+    <Path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
+    />
+  </Svg>
+</Pressable>
+
             </View>
           </View>
 

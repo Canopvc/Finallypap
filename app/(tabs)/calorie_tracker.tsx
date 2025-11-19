@@ -14,7 +14,8 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from 'react-native-paper';
-import Svg, { Circle as SvgCircle } from 'react-native-svg';
+import Svg, { Circle as SvgCircle, Path } from 'react-native-svg';
+
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COHERE_API_KEY } from '@env';
 
@@ -404,11 +405,26 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
           </View>
 
           <TouchableOpacity 
-            style={styles.settingsButtonContainer}
-            onPress={openSettings}
-          >
-            <Text style={[styles.settingsIcon, { color: theme.colors.onSurface }]}>⚙️</Text>
-          </TouchableOpacity>
+  style={styles.settingsButtonContainer}
+  onPress={openSettings}
+>
+  <Svg
+    width={28}
+    height={28}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke={theme.colors.onSurface}
+    strokeWidth={1.5}
+  >
+    <Path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
+    />
+  </Svg>
+</TouchableOpacity>
+
+
         </View>
 
         {/* Progress Section Container */}
@@ -719,12 +735,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   settingsButtonContainer: {
-    padding: 8,
+    marginTop: 18,
   },
-  settingsIcon: {
-    fontSize: 20,
-  },
-
+ 
   // Section Titles
   sectionTitle: {
     fontSize: 20,
