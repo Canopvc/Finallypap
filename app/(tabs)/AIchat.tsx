@@ -24,6 +24,7 @@ import { CohereClientV2 } from 'cohere-ai';
 
 // ⭐️ COHERE API
 const WORKOUTS_STORAGE_KEY = 'workouts';
+console.log('🔑 Usando COHERE_API_KEY:', COHERE_API_KEY );
 
 const cohere = new CohereClientV2({ token: COHERE_API_KEY });
 
