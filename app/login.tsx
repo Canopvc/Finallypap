@@ -8,6 +8,7 @@ import {
   Pressable,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -23,9 +24,6 @@ export default function LoginScreen() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-
-  
-  
   const handleLogin = async () => {
     if (!email || !password) {
       setError(t('pleaseFill', { ns: 'common' }));
@@ -56,6 +54,15 @@ export default function LoginScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      {/* Logo */}
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../assets/images/LOGO.png')} // Ajuste o caminho conforme necessário
+          style={styles.logo}
+          resizeMode="contain"
+        />
+      </View>
+      
       <Text style={[styles.title, { color: theme.colors.onBackground }]}>{t('login', { ns: 'common' })}</Text>
       
       <TextInput
@@ -101,9 +108,18 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1, 
-    paddingTop: 100, 
+    paddingTop: 60, // Reduzido para acomodar a logo
     paddingHorizontal: 20,
     justifyContent: 'center',
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 27,
+    paddingLeft: 4.7,
+  },
+  logo: {
+    width: 240,
+    height: 180,
   },
   title: {
     fontSize: 28,
