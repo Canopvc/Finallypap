@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
-import { ChevronLeft, Play, Pause, Check, Trophy, Flame, Timer, Target, Settings, Weight, Clock, Plus } from 'lucide-react-native';
+import { ChevronLeft, Play, Pause, Check, Trophy, Flame, Timer, Target, Settings, Weight, Clock, Plus, Volume2, VolumeX } from 'lucide-react-native';
 
 // Types mirrored from detail screen
 type Exercise = {
@@ -30,7 +30,7 @@ const STORAGE_KEY = 'workouts';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
 
-const raresound = require('../../../assets/Trumpsinging.mp3')
+const raresound = require('../../../assets/Trumpsinging.mp3');
 
 function formatTime(secs: number) {
   const m = Math.floor(secs / 60).toString().padStart(2, '0');
@@ -40,34 +40,6 @@ function formatTime(secs: number) {
 
 export default function StartWorkoutScreen() {
   const DEBUG_FORCE_EASTER_EGG = false;
-
-  const playAlarm = useCallback(async () => {
-    try {
-      const isEasterEgg = DEBUG_FORCE_EASTER_EGG || Math.floor(Math.random() * 7000) === 0;
-
-      console.log('🔊 DEBUG_FORCE_EASTER_EGG:', DEBUG_FORCE_EASTER_EGG);
-      console.log('🎲 Random result:', Math.floor(Math.random() * 10));
-      console.log('🔥 Easter egg activated:', isEasterEgg);
-
-      const soundFile = isEasterEgg
-        ? raresound
-        : require('../../../assets/hold-up-tiktok.mp3');
-
-      const { sound } = await Audio.Sound.createAsync(soundFile);
-      await sound.playAsync();
-
-      Vibration.vibrate(1000);
-
-      const duration = isEasterEgg ? 15000 : 5000;
-
-      setTimeout(() => {
-        sound.stopAsync();
-        sound.unloadAsync();
-      }, duration);
-    } catch (e) {
-      console.error('Failed to play alarm', e);
-    }
-  }, []);
 
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
@@ -82,6 +54,52 @@ export default function StartWorkoutScreen() {
   const [defaultRest, setDefaultRest] = useState(90);
   const [restRemaining, setRestRemaining] = useState(0);
   const [resting, setResting] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const playAlarm = useCallback(async () => {
+  if (!soundEnabled) {
+    console.log("🔇 Som desativado — alarme silencioso");
+    Vibration.vibrate([500, 500, 500]);
+    return;
+  }
+
+  try {
+    console.log("🔊 Tentando tocar alarme...");
+    
+    const isEasterEgg = DEBUG_FORCE_EASTER_EGG || Math.floor(Math.random() * 7000) === 0;
+    console.log("🎲 Easter egg?", isEasterEgg);
+
+    const soundFile = isEasterEgg
+      ? raresound
+      : require('../../../assets/hold-up-tiktok.mp3');
+
+    console.log("📁 Carregando arquivo:", soundFile);
+    
+    // PARA TESTE - força um som que sabemos que existe
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../../assets/hold-up-tiktok.mp3')
+    );
+    
+    console.log("▶️ Reproduzindo som...");
+    await sound.playAsync();
+    
+    // Vibrar também
+    Vibration.vibrate([0, 1000, 500, 1000]);
+
+    // Parar após 5 segundos
+    setTimeout(async () => {
+      console.log("⏹️ Parando som...");
+      await sound.stopAsync();
+      await sound.unloadAsync();
+    }, 5000);
+
+  } catch (e) {
+    console.error('❌ Failed to play alarm', e);
+    // Fallback - vibrar apenas
+    Vibration.vibrate([0, 1000, 500, 1000, 500, 1000]);
+  }
+}, [soundEnabled]);
+
 
   const [completed, setCompleted] = useState<Record<number, Record<number, boolean>>>({});
   const [sessionWeights, setSessionWeights] = useState<Record<number, Record<number, string>>>({});
@@ -100,19 +118,25 @@ export default function StartWorkoutScreen() {
       }
       setWorkout(found);
 
+      // Initialize session data
       const w: Record<number, Record<number, string>> = {};
       const r: Record<number, Record<number, string>> = {};
+      const c: Record<number, Record<number, boolean>> = {};
+      
       found.exercises.forEach((ex, ei) => {
         w[ei] = {};
         r[ei] = {};
+        c[ei] = {};
         const sets = ex.sets || 0;
         for (let si = 0; si < sets; si++) {
           w[ei][si] = ex.weight?.toString() ?? '';
           r[ei][si] = ex.reps?.toString() ?? '';
+          c[ei][si] = false;
         }
       });
       setSessionWeights(w);
       setSessionReps(r);
+      setCompleted(c);
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Failed to load workout.');
@@ -121,7 +145,9 @@ export default function StartWorkoutScreen() {
     }
   }, [slug]);
 
-  useEffect(() => { loadWorkout(); }, [loadWorkout]);
+  useEffect(() => { 
+    loadWorkout(); 
+  }, [loadWorkout]);
 
   useEffect(() => {
     if (!running) return;
@@ -141,25 +167,64 @@ export default function StartWorkoutScreen() {
   }, [resting, restRemaining, playAlarm]);
 
   const togglePause = () => setRunning((p) => !p);
+  
   const startRest = (secs?: number) => {
     setRestRemaining(secs ?? defaultRest);
     setResting(true);
   };
 
+  const stopRest = () => {
+    setResting(false);
+    setRestRemaining(0);
+  };
+
   const markSetDone = (ei: number, si: number) => {
     setCompleted((prev) => ({
       ...prev,
-      [ei]: { ...(prev[ei] || {}), [si]: !prev?.[ei]?.[si] },
+      [ei]: { 
+        ...(prev[ei] || {}), 
+        [si]: !prev?.[ei]?.[si] 
+      },
     }));
+    
     const afterToggleIsDone = !(completed?.[ei]?.[si]);
-    if (afterToggleIsDone) startRest();
+    if (afterToggleIsDone) {
+      startRest();
+    }
   };
 
-  const finishWorkout = () => {
-    Alert.alert('Finish workout?', 'This will stop the timer and return to details.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Finish', style: 'destructive', onPress: () => router.back() },
-    ]);
+  const finishWorkout = async () => {
+    setRunning(false);
+    stopRest();
+    
+    // Save workout progress
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      const workouts: Workout[] = raw ? JSON.parse(raw) : [];
+      const workoutIndex = workouts.findIndex(w => 
+        workoutSlugFromFields(w.name, w.createdAt) === slug
+      );
+      
+      if (workoutIndex !== -1) {
+        // Update the workout with session data if needed
+        const updatedWorkout = { ...workouts[workoutIndex] };
+        workouts[workoutIndex] = updatedWorkout;
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(workouts));
+      }
+    } catch (error) {
+      console.error('Error saving workout progress:', error);
+    }
+
+    Alert.alert(
+      'Workout Completed!', 
+      `Great job! You finished in ${formatTime(elapsed)}.`,
+      [
+        { 
+          text: 'Back to Details', 
+          onPress: () => router.back() 
+        }
+      ]
+    );
   };
 
   const totalSets = workout?.exercises.reduce((acc, ex) => acc + ex.sets, 0) || 0;
@@ -172,7 +237,7 @@ export default function StartWorkoutScreen() {
   if (loading || !workout) {
     return (
       <View style={[styles.centered, { backgroundColor: theme.colors.background }]}>
-        <Text style={{ color: theme.colors.onSurface }}>Loading...</Text>
+        <Text style={{ color: theme.colors.onSurface }}>Loading workout...</Text>
       </View>
     );
   }
@@ -184,9 +249,14 @@ export default function StartWorkoutScreen() {
       <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
         <View style={styles.headerContent}>
           <View style={styles.headerTop}>
-            <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <TouchableOpacity 
+              onPress={() => router.back()} 
+              style={styles.backButton}
+            >
               <ChevronLeft size={20} color={theme.colors.primary} />
-              <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>Back</Text>
+              <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>
+                Back
+              </Text>
             </TouchableOpacity>
             
             <TouchableOpacity
@@ -196,12 +266,16 @@ export default function StartWorkoutScreen() {
               {running ? (
                 <>
                   <Pause size={16} color={theme.colors.primary} />
-                  <Text style={[styles.pauseText, { color: theme.colors.primary }]}>Pause</Text>
+                  <Text style={[styles.pauseText, { color: theme.colors.primary }]}>
+                    Pause
+                  </Text>
                 </>
               ) : (
                 <>
                   <Play size={16} color={theme.colors.primary} />
-                  <Text style={[styles.pauseText, { color: theme.colors.primary }]}>Resume</Text>
+                  <Text style={[styles.pauseText, { color: theme.colors.primary }]}>
+                    Resume
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -209,7 +283,9 @@ export default function StartWorkoutScreen() {
 
           <View style={styles.headerInfo}>
             <View style={styles.workoutTitleRow}>
-              <Text style={[styles.workoutTitle, { color: theme.colors.primary }]}>{workout.name}</Text>
+              <Text style={[styles.workoutTitle, { color: theme.colors.primary }]}>
+                {workout.name}
+              </Text>
               <View style={[styles.timerBadge, { backgroundColor: theme.colors.primaryContainer }]}>
                 <Timer size={16} color={theme.colors.onPrimaryContainer} />
                 <Text style={[styles.timerText, { color: theme.colors.onPrimaryContainer }]}>
@@ -254,35 +330,98 @@ export default function StartWorkoutScreen() {
         </View>
       </View>
 
-      {/* Rest Timer Panel */}
+      {/* Rest Timer Panel - Improved Design */}
       <View style={[styles.restPanel, { backgroundColor: theme.colors.surface }]}>
+        {/* Informação da pausa */}
         <View style={styles.restInfo}>
-          <Text style={[styles.restLabel, { color: theme.colors.onSurface }]}>Rest Timer</Text>
-          <Text style={[styles.restTime, { color: theme.colors.primary }]}>
-            {resting ? formatTime(restRemaining) : '--:--'}
+          <Text style={[styles.restLabel, { color: theme.colors.onSurface }]}>
+            Rest Timer
+          </Text>
+          <Text style={[
+            styles.restTime, 
+            { 
+              color: resting ? theme.colors.primary : theme.colors.onSurfaceVariant 
+            }
+          ]}>
+            {resting ? formatTime(restRemaining) : "--:--"}
           </Text>
         </View>
 
+        {/* Controles */}
         <View style={styles.restControls}>
           <TouchableOpacity
-            style={[styles.restButton, { backgroundColor: theme.colors.primary }]}
-            onPress={() => startRest()}
+            style={[
+              styles.restButton,
+              styles.secondaryButton,
+              { 
+                borderColor: theme.colors.outline,
+                backgroundColor: soundEnabled ? theme.colors.primary + '20' : 'transparent'
+              }
+            ]}
+            onPress={() => setSoundEnabled((s) => !s)}
           >
-            <Play size={16} color={theme.colors.onPrimary} />
-            <Text style={[styles.restButtonText, { color: theme.colors.onPrimary }]}>Start</Text>
+            {soundEnabled ? (
+              <Volume2 size={16} color={theme.colors.primary} />
+            ) : (
+              <VolumeX size={16} color={theme.colors.onSurface} />
+            )}
+            <Text style={[
+              styles.restButtonText, 
+              { 
+                color: soundEnabled ? theme.colors.primary : theme.colors.onSurface 
+              }
+            ]}>
+              {soundEnabled ? "Sound ON" : "Sound OFF"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.restButton, styles.secondaryButton, { borderColor: theme.colors.outline }]}
-            onPress={() => {
-              setResting(false);
-              setRestRemaining(0);
-            }}
+            style={[
+              styles.restButton, 
+              { 
+                backgroundColor: resting ? theme.colors.secondary : theme.colors.primary,
+                opacity: resting ? 0.7 : 1
+              }
+            ]}
+            onPress={resting ? stopRest : () => startRest()}
+            disabled={resting}
           >
-            <Text style={[styles.restButtonText, { color: theme.colors.onSurface }]}>Stop</Text>
+            {resting ? (
+              <>
+                <Pause size={16} color={theme.colors.onPrimary} />
+                <Text style={[styles.restButtonText, { color: theme.colors.onPrimary }]}>
+                  Resting...
+                </Text>
+              </>
+            ) : (
+              <>
+                <Play size={16} color={theme.colors.onPrimary} />
+                <Text style={[styles.restButtonText, { color: theme.colors.onPrimary }]}>
+                  Start Rest
+                </Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.restButton,
+              styles.secondaryButton,
+              { 
+                borderColor: theme.colors.outline,
+                opacity: resting ? 1 : 0.5
+              }
+            ]}
+            onPress={stopRest}
+            disabled={!resting}
+          >
+            <Text style={[styles.restButtonText, { color: theme.colors.onSurface }]}>
+              Stop
+            </Text>
           </TouchableOpacity>
         </View>
 
+        {/* Ajuste do tempo padrão */}
         <View style={styles.restAdjust}>
           <Text style={[styles.smallLabel, { color: theme.colors.onSurfaceVariant }]}>
             Default Rest (s)
@@ -290,23 +429,32 @@ export default function StartWorkoutScreen() {
           <TextInput
             style={[
               styles.restInput,
-              { 
+              {
                 backgroundColor: theme.colors.surface,
                 color: theme.colors.onSurface,
-                borderColor: theme.colors.outline
+                borderColor: theme.colors.outline,
               }
             ]}
             keyboardType="numeric"
             value={String(defaultRest)}
-            onChangeText={(t) => setDefaultRest(Math.max(0, parseInt(t || '0')))}
+            onChangeText={(t) => {
+              const value = parseInt(t.replace(/[^0-9]/g, '') || '0');
+              setDefaultRest(Math.max(0, Math.min(999, value)));
+            }}
+            maxLength={3}
+            editable={!resting}
           />
         </View>
       </View>
 
       {/* Exercises List */}
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView 
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         {workout.exercises.map((ex, ei) => {
           const exerciseCompleted = Object.values(completed[ei] || {}).filter(Boolean).length === ex.sets;
+          const completedSetsCount = Object.values(completed[ei] || {}).filter(Boolean).length;
           
           return (
             <View
@@ -315,7 +463,8 @@ export default function StartWorkoutScreen() {
                 styles.card,
                 { 
                   backgroundColor: theme.colors.surface,
-                  borderColor: exerciseCompleted ? '#22c55e' : theme.colors.outline
+                  borderColor: exerciseCompleted ? '#22c55e' : theme.colors.outline,
+                  borderWidth: exerciseCompleted ? 2 : 1,
                 }
               ]}
             >
@@ -323,7 +472,10 @@ export default function StartWorkoutScreen() {
                 <View style={styles.exerciseHeader}>
                   <View style={[
                     styles.exerciseNumber,
-                    { backgroundColor: exerciseCompleted ? '#22c55e' : theme.colors.primary }
+                    { 
+                      backgroundColor: exerciseCompleted ? '#22c55e' : theme.colors.primary,
+                      transform: [{ scale: exerciseCompleted ? 1.1 : 1 }]
+                    }
                   ]}>
                     {exerciseCompleted ? (
                       <Check size={16} color="#ffffff" />
@@ -337,9 +489,9 @@ export default function StartWorkoutScreen() {
                     </Text>
                     <View style={styles.exerciseMeta}>
                       <Text style={[styles.exerciseMetaText, { color: theme.colors.onSurfaceVariant }]}>
-                        {ex.sets} × {ex.reps || '--'}
+                        {completedSetsCount}/{ex.sets} sets • {ex.reps || '--'} reps
                       </Text>
-                      {ex.weight && (
+                      {ex.weight && ex.weight > 0 && (
                         <View style={[styles.badge, { backgroundColor: theme.colors.surfaceVariant }]}>
                           <Weight size={12} color={theme.colors.onSurfaceVariant} />
                           <Text style={[styles.badgeText, { color: theme.colors.onSurfaceVariant }]}>
@@ -360,93 +512,120 @@ export default function StartWorkoutScreen() {
               </View>
 
               {/* Flags */}
-              <View style={styles.flagRow}>
-                {ex.warmup && (
-                  <View style={[styles.flag, { backgroundColor: theme.colors.primary }]}>
-                    <Text style={styles.flagText}>Warmup</Text>
-                  </View>
-                )}
-                {ex.failure && (
-                  <View style={[styles.flag, { backgroundColor: '#ef4444' }]}>
-                    <Text style={styles.flagText}>Failure</Text>
-                  </View>
-                )}
-                {ex.dropset && (
-                  <View style={[styles.flag, { backgroundColor: '#9333ea' }]}>
-                    <Text style={styles.flagText}>Dropset</Text>
-                  </View>
-                )}
-              </View>
+              {(ex.warmup || ex.failure || ex.dropset) && (
+                <View style={styles.flagRow}>
+                  {ex.warmup && (
+                    <View style={[styles.flag, { backgroundColor: '#3b82f6' }]}>
+                      <Text style={styles.flagText}>Warmup</Text>
+                    </View>
+                  )}
+                  {ex.failure && (
+                    <View style={[styles.flag, { backgroundColor: '#ef4444' }]}>
+                      <Text style={styles.flagText}>Failure</Text>
+                    </View>
+                  )}
+                  {ex.dropset && (
+                    <View style={[styles.flag, { backgroundColor: '#9333ea' }]}>
+                      <Text style={styles.flagText}>Dropset</Text>
+                    </View>
+                  )}
+                </View>
+              )}
 
               {/* Sets Grid */}
               <View style={styles.setsGrid}>
                 {Array.from({ length: ex.sets }).map((_, si) => {
                   const isCompleted = completed?.[ei]?.[si];
+                  const currentWeight = sessionWeights?.[ei]?.[si] ?? ex.weight?.toString() ?? '';
+                  const currentReps = sessionReps?.[ei]?.[si] ?? ex.reps?.toString() ?? '';
                   
                   return (
                     <TouchableOpacity
                       key={si}
                       style={[
                         styles.setButton,
-                        { borderColor: theme.colors.outline },
-                        isCompleted && [styles.setButtonCompleted, { backgroundColor: theme.colors.primary }]
+                        { 
+                          borderColor: isCompleted ? theme.colors.primary : theme.colors.outline,
+                          backgroundColor: isCompleted ? theme.colors.primary + '20' : theme.colors.surface
+                        },
+                        isCompleted && styles.setButtonCompleted
                       ]}
                       onPress={() => markSetDone(ei, si)}
                     >
                       <View style={styles.setContent}>
-                        {isCompleted ? (
-                          <Check size={20} color="#ffffff" />
-                        ) : (
-                          <View style={[styles.setCircle, { borderColor: theme.colors.outline }]} />
-                        )}
+                        <View style={[
+                          styles.setIndicator,
+                          { 
+                            backgroundColor: isCompleted ? theme.colors.primary : 'transparent',
+                            borderColor: isCompleted ? theme.colors.primary : theme.colors.outline
+                          }
+                        ]}>
+                          {isCompleted && <Check size={12} color="#ffffff" />}
+                        </View>
                         <Text style={[
                           styles.setLabel,
-                          { color: theme.colors.onSurfaceVariant },
-                          isCompleted && styles.setLabelCompleted
+                          { 
+                            color: isCompleted ? theme.colors.primary : theme.colors.onSurfaceVariant 
+                          }
                         ]}>
                           Set {si + 1}
                         </Text>
                       </View>
                       
                       <View style={styles.setInputs}>
-                        <TextInput
-                          style={[
-                            styles.setInput,
-                            { 
-                              backgroundColor: theme.colors.surface,
-                              color: theme.colors.onSurface,
-                              borderColor: theme.colors.outline
-                            }
-                          ]}
-                          placeholder="kg"
-                          keyboardType="numeric"
-                          value={sessionWeights?.[ei]?.[si] ?? ''}
-                          onChangeText={(t) =>
-                            setSessionWeights((prev) => ({
-                              ...prev,
-                              [ei]: { ...(prev[ei] || {}), [si]: t },
-                            }))
-                          }
-                        />
-                        <TextInput
-                          style={[
-                            styles.setInput,
-                            { 
-                              backgroundColor: theme.colors.surface,
-                              color: theme.colors.onSurface,
-                              borderColor: theme.colors.outline
-                            }
-                          ]}
-                          placeholder="reps"
-                          keyboardType="numeric"
-                          value={sessionReps?.[ei]?.[si] ?? ''}
-                          onChangeText={(t) =>
-                            setSessionReps((prev) => ({
-                              ...prev,
-                              [ei]: { ...(prev[ei] || {}), [si]: t },
-                            }))
-                          }
-                        />
+                        <View style={styles.inputContainer}>
+                          <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>
+                            Weight
+                          </Text>
+                          <TextInput
+                            style={[
+                              styles.setInput,
+                              { 
+                                backgroundColor: theme.colors.surface,
+                                color: theme.colors.onSurface,
+                                borderColor: isCompleted ? theme.colors.primary : theme.colors.outline
+                              }
+                            ]}
+                            placeholder="kg"
+                            keyboardType="numeric"
+                            value={currentWeight}
+                            onChangeText={(t) => {
+                              const filtered = t.replace(/[^0-9]/g, '');
+                              setSessionWeights((prev) => ({
+                                ...prev,
+                                [ei]: { ...(prev[ei] || {}), [si]: filtered },
+                              }));
+                            }}
+                            maxLength={3}
+                          />
+                        </View>
+                        
+                        <View style={styles.inputContainer}>
+                          <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>
+                            Reps
+                          </Text>
+                          <TextInput
+                            style={[
+                              styles.setInput,
+                              { 
+                                backgroundColor: theme.colors.surface,
+                                color: theme.colors.onSurface,
+                                borderColor: isCompleted ? theme.colors.primary : theme.colors.outline
+                              }
+                            ]}
+                            placeholder="reps"
+                            keyboardType="numeric"
+                            value={currentReps}
+                            onChangeText={(t) => {
+                              const filtered = t.replace(/[^0-9]/g, '');
+                              setSessionReps((prev) => ({
+                                ...prev,
+                                [ei]: { ...(prev[ei] || {}), [si]: filtered },
+                              }));
+                            }}
+                            maxLength={2}
+                          />
+                        </View>
                       </View>
                     </TouchableOpacity>
                   );
@@ -461,17 +640,20 @@ export default function StartWorkoutScreen() {
       {allSetsCompleted && (
         <View style={[styles.completionBanner, { backgroundColor: '#22c55e' }]}>
           <Trophy size={20} color="#ffffff" />
-          <Text style={styles.completionText}>Amazing Work! You've completed all exercises! 🎉</Text>
+          <Text style={styles.completionText}>
+            Amazing Work! You've completed all exercises! 🎉
+          </Text>
         </View>
       )}
 
-      {/* Footer - Simplified without notes section */}
+      {/* Footer */}
       <View style={[styles.footer, { backgroundColor: theme.colors.surface }]}>
         <TouchableOpacity
           style={[
             styles.finishButton,
             { 
-              backgroundColor: allSetsCompleted ? '#22c55e' : theme.colors.primary
+              backgroundColor: allSetsCompleted ? '#22c55e' : theme.colors.primary,
+              transform: [{ scale: allSetsCompleted ? 1.02 : 1 }]
             }
           ]}
           onPress={finishWorkout}
@@ -498,7 +680,9 @@ export default function StartWorkoutScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { 
+    flex: 1,
+  },
   centered: { 
     flex: 1, 
     alignItems: 'center', 
@@ -509,6 +693,11 @@ const styles = StyleSheet.create({
   header: {
     paddingTop: 60,
     paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   headerContent: {
     paddingHorizontal: 20,
@@ -523,6 +712,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    padding: 8,
   },
   backButtonText: {
     fontSize: 16,
@@ -532,42 +722,53 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   pauseText: {
     fontSize: 14,
     fontWeight: '600',
   },
   headerInfo: {
-    gap: 12,
+    gap: 16,
   },
   workoutTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   workoutTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
     flex: 1,
+    marginRight: 12,
   },
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   timerText: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   metaRow: {
     flexDirection: 'row',
-    gap: 16,
+    gap: 20,
     alignItems: 'center',
   },
   metaItem: {
@@ -583,55 +784,70 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   progressBackground: {
-    height: 6,
-    borderRadius: 3,
+    height: 8,
+    borderRadius: 4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 4,
   },
   progressText: {
     fontSize: 12,
+    fontWeight: '600',
     textAlign: 'right',
   },
 
-  // Rest Panel
+  // Rest Panel - Improved
   restPanel: {
     margin: 16,
-    padding: 16,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
+    padding: 20,
+    borderRadius: 16,
     gap: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   restInfo: {
-    flex: 1,
+    alignItems: 'center',
   },
   restLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 8,
+    opacity: 0.8,
   },
   restTime: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '700',
+    letterSpacing: 1,
   },
   restControls: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     gap: 8,
   },
   restButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    flex: 1,
+    minHeight: 44,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   secondaryButton: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
+    borderWidth: 2,
   },
   restButtonText: {
     fontSize: 14,
@@ -639,43 +855,45 @@ const styles = StyleSheet.create({
   },
   restAdjust: {
     alignItems: 'center',
+    marginTop: 8,
   },
   smallLabel: {
     fontSize: 12,
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 6,
+    opacity: 0.7,
   },
   restInput: {
     borderWidth: 1,
     borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    minWidth: 60,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    width: 80,
     textAlign: 'center',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: '600',
   },
 
   // Content
   content: {
     padding: 16,
-    paddingBottom: 20,
+    paddingBottom: 100,
   },
   card: {
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   exerciseHeader: {
     flexDirection: 'row',
@@ -684,40 +902,46 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   exerciseNumber: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   exerciseNumberText: {
     color: '#ffffff',
-    fontWeight: '600',
-    fontSize: 14,
+    fontWeight: '700',
+    fontSize: 16,
   },
   exerciseInfo: {
     flex: 1,
   },
   exerciseTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   exerciseMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
   },
   exerciseMetaText: {
-    fontSize: 14,
+    fontSize: 15,
+    fontWeight: '500',
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
   },
   badgeText: {
     fontSize: 12,
@@ -727,14 +951,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   completedBadgeText: {
     color: '#ffffff',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 
   // Flags
@@ -742,60 +971,84 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 16,
+    flexWrap: 'wrap',
   },
   flag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
   },
   flagText: {
     color: '#ffffff',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
 
   // Sets
   setsGrid: {
-    gap: 8,
+    gap: 12,
   },
   setButton: {
-    borderWidth: 1,
+    borderWidth: 2,
     borderRadius: 12,
-    padding: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   setButtonCompleted: {
-    borderWidth: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   setContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginBottom: 8,
+    marginBottom: 12,
   },
-  setCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  setIndicator: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   setLabel: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-  },
-  setLabelCompleted: {
-    color: '#ffffff',
+    flex: 1,
   },
   setInputs: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
+  },
+  inputContainer: {
+    flex: 1,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 4,
+    marginLeft: 4,
   },
   setInput: {
-    flex: 1,
-    borderWidth: 1,
+    borderWidth: 2,
     borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+    fontWeight: '600',
     textAlign: 'center',
   },
 
@@ -803,31 +1056,50 @@ const styles = StyleSheet.create({
   completionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    padding: 16,
+    justifyContent: 'center',
+    gap: 12,
+    padding: 20,
     margin: 16,
-    borderRadius: 12,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   completionText: {
     color: '#ffffff',
-    fontWeight: '600',
+    fontWeight: '700',
+    fontSize: 16,
     flex: 1,
+    textAlign: 'center',
   },
 
-  // Footer - Simplified
+  // Footer
   footer: {
-    padding: 16,
+    padding: 20,
+    paddingBottom: 34,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   finishButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 16,
-    borderRadius: 12,
+    gap: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   footerButtonText: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
   },
 });
