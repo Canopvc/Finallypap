@@ -266,14 +266,14 @@ Workout: Push (Chest, Shoulders, Triceps)
 Exercise: [Exercise 1]
 Sets: [number]
 Reps: [number]
-Weight: [kg]
+Weight: [kg] (never fill this one)
 Duration: 0
 Type: weightlifting
 
 Exercise: [Exercise 2]
 Sets: [number]
 Reps: [number]
-Weight: [kg]
+Weight: [kg] (never fill this one)
 Duration: 0
 Type: weightlifting
 
@@ -281,7 +281,7 @@ Workout: Pull (Back, Biceps)
 Exercise: [Exercise 1]
 Sets: [number]
 Reps: [number]
-Weight: [kg]
+Weight: [kg] (never fill this one)
 Duration: 0
 Type: weightlifting
 
@@ -289,7 +289,7 @@ Workout: Legs (Quadriceps, Hamstrings, Glutes)
 Exercise: [Exercise 1]
 Sets: [number]
 Reps: [number]
-Weight: [kg]
+Weight: [kg] (never fill this one)
 Duration: 0
 Type: weightlifting
 
