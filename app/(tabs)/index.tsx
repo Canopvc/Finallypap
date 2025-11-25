@@ -1,5 +1,4 @@
 import React, { useCallback, useState, useEffect, useRef } from 'react';
-import { Image } from 'expo-image';
 import {
   Platform,
   StyleSheet,
@@ -208,6 +207,29 @@ export default function HomeScreen() {
       console.error('Error saving step count:', error);
     }
   };
+
+  const clearAllWorkouts = useCallback(() => {
+  Alert.alert(
+    "Delete All Workouts",
+    "Are you sure you want to DELETE all workouts? This action cannot be undone.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+            setWorkouts([]);
+          } catch (e) {
+            Alert.alert("Erro", "Não foi possível apagar os treinos.");
+          }
+        }
+      }
+    ]
+  );
+}, []);
+
 
   const checkAndResetSteps = async () => {
     try {
@@ -490,10 +512,35 @@ export default function HomeScreen() {
       {/* Action Buttons */}
       
       {/* Workouts Section */}
-      <View style={styles.workoutsSection}>
-        <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-          {t('workouts', { ns: 'common' })}
-        </Text>
+     <View style={styles.workoutsSection}>
+  <View style={{ 
+    flexDirection: 'row', 
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10
+  }}>
+    <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+      {t('workouts', { ns: 'common' })}
+    </Text>
+
+    <TouchableOpacity 
+      onPress={clearAllWorkouts}
+      style={{
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: theme.colors.error,
+        borderRadius: 8
+      }}
+    >
+      <Text style={{ color: theme.colors.onError, fontWeight: '600' }}>
+        Apagar tudo
+      </Text>
+    </TouchableOpacity>
+  </View>
+
+
+        
+
         <FlatList
           data={workouts}
           keyExtractor={(item: Workout) => workoutSlugFromFields(item.name, item.createdAt)}
