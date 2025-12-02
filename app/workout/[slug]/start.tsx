@@ -5,6 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { ChevronLeft, Play, Pause, Check, Trophy, Flame, Timer, Target, Settings, Weight, Clock, Plus, Volume2, VolumeX } from 'lucide-react-native';
+import * as Notifications from 'expo-notifications';
 
 // Types mirrored from detail screen
 type Exercise = {
@@ -27,6 +28,7 @@ type Workout = {
 };
 
 const STORAGE_KEY = 'workouts';
+const ALARM_SETTINGS_KEY = 'alarmSettings';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
 
@@ -56,50 +58,119 @@ export default function StartWorkoutScreen() {
   const [resting, setResting] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
 
-  const playAlarm = useCallback(async () => {
-  if (!soundEnabled) {
-    console.log("🔇 Som desativado — alarme silencioso");
-    Vibration.vibrate([500, 500, 500]);
-    return;
-  }
+  // Configurar notificações
+  useEffect(() => {
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+  }, []);
 
-  try {
-    console.log("🔊 Tentando tocar alarme...");
-    
-    const isEasterEgg = DEBUG_FORCE_EASTER_EGG || Math.floor(Math.random() * 7000) === 0;
-    console.log("🎲 Easter egg?", isEasterEgg);
+  // Função para tocar alarme do dispositivo
+  const playDeviceAlarm = async () => {
+    try {
+      console.log("📱 Tocando alarme do dispositivo...");
+      
+      // Solicitar permissões para notificações
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        console.log("❌ Permissão de notificações não concedida");
+        throw new Error('Notification permission not granted');
+      }
 
-    const soundFile = isEasterEgg
-      ? raresound
-      : require('../../../assets/hold-up-tiktok.mp3');
+      // Criar uma notificação com som padrão
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "⏰ Rest Time Complete!",
+          body: "Time to start your next set! 💪",
+          sound: 'default', // Usa o som padrão do dispositivo
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          data: { type: 'workout_timer' },
+        },
+        trigger: null, // Imediato
+      });
 
-    console.log("📁 Carregando arquivo:", soundFile);
-    
-    // PARA TESTE - força um som que sabemos que existe
-    const { sound } = await Audio.Sound.createAsync(
-      require('../../../assets/hold-up-tiktok.mp3')
-    );
-    
-    console.log("▶️ Reproduzindo som...");
-    await sound.playAsync();
-    
-    // Vibrar também
-    Vibration.vibrate([0, 1000, 500, 1000]);
+      // Vibrar também
+      Vibration.vibrate([0, 1000, 500, 1000]);
 
-    // Parar após 5 segundos
-    setTimeout(async () => {
-      console.log("⏹️ Parando som...");
-      await sound.stopAsync();
-      await sound.unloadAsync();
-    }, 5000);
+    } catch (e) {
+      console.error('❌ Failed to play device alarm', e);
+      throw e; // Re-lançar para ser tratado no playAlarm
+    }
+  };
 
-  } catch (e) {
-    console.error('❌ Failed to play alarm', e);
-    // Fallback - vibrar apenas
-    Vibration.vibrate([0, 1000, 500, 1000, 500, 1000]);
-  }
-}, [soundEnabled]);
+  // Função para tocar alarme da aplicação
+  const playAppAlarm = async () => {
+    try {
+      console.log("📱 Tocando alarme da aplicação...");
+      
+      const isEasterEgg = DEBUG_FORCE_EASTER_EGG || Math.floor(Math.random() * 7000) === 0;
+      console.log("🎲 Easter egg?", isEasterEgg);
 
+      const soundFile = isEasterEgg
+        ? raresound
+        : require('../../../assets/hold-up-tiktok.mp3');
+
+      console.log("📁 Carregando arquivo:", soundFile);
+      
+      const { sound } = await Audio.Sound.createAsync(
+        require('../../../assets/hold-up-tiktok.mp3')
+      );
+      
+      console.log("▶️ Reproduzindo som...");
+      await sound.playAsync();
+      
+      // Vibrar também
+      Vibration.vibrate([0, 1000, 500, 1000]);
+
+      // Parar após 5 segundos
+      setTimeout(async () => {
+        console.log("⏹️ Parando som...");
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      }, 5000);
+
+    } catch (e) {
+      console.error('❌ Failed to play app alarm', e);
+      throw e;
+    }
+  };
+
+  const playAlarm = useCallback(async (soundEnabled: boolean) => {
+    try {
+      // Carregar configurações do alarme
+      const alarmSettings = await AsyncStorage.getItem(ALARM_SETTINGS_KEY);
+      const useDeviceAlarm = alarmSettings 
+        ? JSON.parse(alarmSettings).useDeviceAlarm 
+        : false;
+
+      if (!soundEnabled) {
+        console.log("🔇 Som desativado — alarme silencioso");
+        Vibration.vibrate([500, 500, 500]);
+        return;
+      }
+
+      console.log("🔊 Configuração do alarme:", useDeviceAlarm ? "Dispositivo" : "App");
+
+      if (useDeviceAlarm) {
+        // Usar alarme do dispositivo
+        await playDeviceAlarm();
+      } else {
+        // Usar sons da aplicação
+        await playAppAlarm();
+      }
+      
+    } catch (e) {
+      console.error('❌ Failed to play alarm', e);
+      // Fallback - vibrar apenas
+      Vibration.vibrate([0, 1000, 500, 1000, 500, 1000]);
+    }
+  }, []);
 
   const [completed, setCompleted] = useState<Record<number, Record<number, boolean>>>({});
   const [sessionWeights, setSessionWeights] = useState<Record<number, Record<number, string>>>({});
@@ -159,12 +230,12 @@ export default function StartWorkoutScreen() {
     if (!resting) return;
     if (restRemaining <= 0) {
       setResting(false);
-      playAlarm();
+      playAlarm(soundEnabled);
       return;
     }
     const id = setInterval(() => setRestRemaining((t) => t - 1), 1000);
     return () => clearInterval(id);
-  }, [resting, restRemaining, playAlarm]);
+  }, [resting, restRemaining, soundEnabled]);
 
   const togglePause = () => setRunning((p) => !p);
   
@@ -330,9 +401,8 @@ export default function StartWorkoutScreen() {
         </View>
       </View>
 
-      {/* Rest Timer Panel - Improved Design */}
+      {/* Rest Timer Panel */}
       <View style={[styles.restPanel, { backgroundColor: theme.colors.surface }]}>
-        {/* Informação da pausa */}
         <View style={styles.restInfo}>
           <Text style={[styles.restLabel, { color: theme.colors.onSurface }]}>
             Rest Timer
@@ -347,7 +417,6 @@ export default function StartWorkoutScreen() {
           </Text>
         </View>
 
-        {/* Controles */}
         <View style={styles.restControls}>
           <TouchableOpacity
             style={[
@@ -421,7 +490,6 @@ export default function StartWorkoutScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Ajuste do tempo padrão */}
         <View style={styles.restAdjust}>
           <Text style={[styles.smallLabel, { color: theme.colors.onSurfaceVariant }]}>
             Default Rest (s)
@@ -798,7 +866,7 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  // Rest Panel - Improved
+  // Rest Panel
   restPanel: {
     margin: 16,
     padding: 20,
@@ -1101,5 +1169,6 @@ const styles = StyleSheet.create({
   footerButtonText: {
     fontSize: 18,
     fontWeight: '700',
+    color: '#ffffff',
   },
 });

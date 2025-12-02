@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import WeightChart from '../../components/Area_chart';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import * as Haptics from 'expo-haptics';
@@ -27,11 +26,11 @@ import * as Notifications from 'expo-notifications';
 import { useTranslation } from '../../hooks/useTranslation';
 import Svg, { Path } from "react-native-svg";
 
-
 const { width } = Dimensions.get('window');
 const WEIGHT_GOALS_KEY = 'weightGoals';
 const WEIGHT_HISTORY_KEY = 'weightHistory';
 const NOTIFICATION_SETTINGS_KEY = 'notificationSettings';
+const ALARM_SETTINGS_KEY = 'alarmSettings'; // Nova chave
 
 // Configurar notificações corrigido
 Notifications.setNotificationHandler({
@@ -65,6 +64,7 @@ export default function ProfileScreen() {
   const [tempDate, setTempDate] = useState(new Date());
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
+  const [useDeviceAlarm, setUseDeviceAlarm] = useState(false); // Novo estado
 
   const progressAnim = useState(new Animated.Value(0))[0];
   const fadeAnim = useState(new Animated.Value(0))[0];
@@ -114,7 +114,7 @@ export default function ProfileScreen() {
       await loadWeightGoals();
       await loadWeightHistory();
       await loadNotificationSettings();
-      //
+      await loadAlarmSettings(); // Carregar configurações do alarme
       
     } catch (error) {
       console.error('Unexpected error in getUserData:', error);
@@ -169,6 +169,42 @@ export default function ProfileScreen() {
     }
   };
 
+  // Nova função para carregar configurações do alarme
+  const loadAlarmSettings = async () => {
+    try {
+      const settings = await AsyncStorage.getItem(ALARM_SETTINGS_KEY);
+      if (settings) {
+        const { useDeviceAlarm: savedSetting } = JSON.parse(settings);
+        setUseDeviceAlarm(savedSetting || false);
+      }
+    } catch (error) {
+      console.error('Error loading alarm settings:', error);
+    }
+  };
+
+  // Nova função para salvar configurações do alarme
+  const toggleDeviceAlarm = async () => {
+    try {
+      const newSetting = !useDeviceAlarm;
+      setUseDeviceAlarm(newSetting);
+      
+      await AsyncStorage.setItem(
+        ALARM_SETTINGS_KEY, 
+        JSON.stringify({ useDeviceAlarm: newSetting })
+      );
+
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Alert.alert(
+        'Alarm Settings Updated',
+        newSetting 
+          ? 'Device alarm will be used for workout timers'
+          : 'App sounds will be used for workout timers'
+      );
+    } catch (error) {
+      console.error('Error saving alarm settings:', error);
+      Alert.alert('Error', 'Could not save alarm settings.');
+    }
+  };
   
   const saveWeightGoals = async () => {
     try {
@@ -282,15 +318,23 @@ export default function ProfileScreen() {
         JSON.stringify({ enabled: newNotificationEnabled })
       );
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      
       if (newNotificationEnabled) {
-        //await setupNotifications();
-        Alert.alert('Success', 'Monthly reminders enabled!');
+        // Solicitar permissões
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status === 'granted') {
+          Alert.alert('Success', 'Monthly reminders enabled!');
+        } else {
+          Alert.alert('Permission Required', 'Please enable notifications in settings.');
+        }
       } else {
         await Notifications.cancelAllScheduledNotificationsAsync();
         Alert.alert('Success', 'Monthly reminders disabled.');
       }
     } catch (error) {
       console.error('Error toggling notifications:', error);
+      Alert.alert('Error', 'Could not update notification settings.');
     }
   };
 
@@ -500,22 +544,21 @@ export default function ProfileScreen() {
             <View style={styles.headerContent}>
               <Text style={styles.title}>{t('profile', { ns: 'common' })}</Text>
               <Pressable onPress={handleLogout} hitSlop={20} style={styles.settingsButton}>
-  <Svg
-    width={26}
-    height={26}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="#fff"
-    strokeWidth={1.5}
-  >
-    <Path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
-    />
-  </Svg>
-</Pressable>
-
+                <Svg
+                  width={26}
+                  height={26}
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#fff"
+                  strokeWidth={1.5}
+                >
+                  <Path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"
+                  />
+                </Svg>
+              </Pressable>
             </View>
           </View>
 
@@ -537,12 +580,12 @@ export default function ProfileScreen() {
             </View>
             <Text style={[styles.username, { color: theme.colors.onBackground }]}>{username}</Text>
             <Text style={[styles.email, { color: theme.colors.onSurfaceVariant }]} 
-      numberOfLines={1}
-      adjustsFontSizeToFit
-      minimumFontScale={0.8}
-      ellipsizeMode="tail">
-  {email}
-</Text>
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.8}
+                  ellipsizeMode="tail">
+              {email}
+            </Text>
             
             {/* Stats Cards */}
             <View style={styles.statsContainer}>
@@ -685,89 +728,88 @@ export default function ProfileScreen() {
           )}
 
           {/* Progress Tab */}
-          {/* Progress Tab */}
-{activeTab === 'progress' && (
-  <View style={styles.tabContent}>
-    <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('weightProgress', { ns: 'common' })}</Text>
+          {activeTab === 'progress' && (
+            <View style={styles.tabContent}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onBackground }]}>{t('weightProgress', { ns: 'common' })}</Text>
 
-    {weightHistory.length > 0 ? (
-      <>
-        {/* Gráfico Simples de Barras */}
-        <View style={[styles.chartContainer, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.chartTitle, { color: theme.colors.onSurface }]}>
-            {t('weightHistory', { ns: 'common' })}
-          </Text>
-          
-          <View style={styles.simpleChart}>
-            {chartData.map((item, index) => {
-              const maxWeight = Math.max(...chartData.map(d => d.weight));
-              const minWeight = Math.min(...chartData.map(d => d.weight));
-              const range = maxWeight - minWeight;
-              const barHeight = ((item.weight - minWeight) / range) * 80 + 20; // 20-100% height
-              
-              return (
-                <View key={index} style={styles.barContainer}>
-                  <View style={styles.barWrapper}>
-                    <View 
-                      style={[
-                        styles.bar, 
-                        { 
-                          height: barHeight,
-                          backgroundColor: theme.colors.primary 
-                        }
-                      ]} 
-                    />
+              {weightHistory.length > 0 ? (
+                <>
+                  {/* Gráfico Simples de Barras */}
+                  <View style={[styles.chartContainer, { backgroundColor: theme.colors.surface }]}>
+                    <Text style={[styles.chartTitle, { color: theme.colors.onSurface }]}>
+                      {t('weightHistory', { ns: 'common' })}
+                    </Text>
+                    
+                    <View style={styles.simpleChart}>
+                      {chartData.map((item, index) => {
+                        const maxWeight = Math.max(...chartData.map(d => d.weight));
+                        const minWeight = Math.min(...chartData.map(d => d.weight));
+                        const range = maxWeight - minWeight;
+                        const barHeight = ((item.weight - minWeight) / range) * 80 + 20; // 20-100% height
+                        
+                        return (
+                          <View key={index} style={styles.barContainer}>
+                            <View style={styles.barWrapper}>
+                              <View 
+                                style={[
+                                  styles.bar, 
+                                  { 
+                                    height: barHeight,
+                                    backgroundColor: theme.colors.primary 
+                                  }
+                                ]} 
+                              />
+                            </View>
+                            <Text style={[styles.barLabel, { color: theme.colors.onSurfaceVariant }]}>
+                              {item.date}
+                            </Text>
+                            <Text style={[styles.barValue, { color: theme.colors.primary }]}>
+                              {item.weight}kg
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
                   </View>
-                  <Text style={[styles.barLabel, { color: theme.colors.onSurfaceVariant }]}>
-                    {item.date}
-                  </Text>
-                  <Text style={[styles.barValue, { color: theme.colors.primary }]}>
-                    {item.weight}kg
+
+                  <View style={styles.historySection}>
+                    <View style={styles.historyHeader}>
+                      <Text style={[styles.historyTitle, { color: theme.colors.onSurface }]}>
+                        Recent Entries
+                      </Text>
+                      <Pressable onPress={clearWeightHistory}>
+                        <Text style={[styles.clearButton, { color: '#FF6B6B' }]}>
+                          Clear All
+                        </Text>
+                      </Pressable>
+                    </View>
+                    {weightHistory.slice(0, 5).map((entry, index) => (
+                      <View key={index} style={[styles.historyItem, { backgroundColor: theme.colors.surface }]}>
+                        <Text style={[styles.historyDate, { color: theme.colors.onSurface }]}>
+                          {new Date(entry.date).toLocaleDateString('pt-PT', { 
+                            weekday: 'short', 
+                            year: 'numeric', 
+                            month: 'short', 
+                            day: 'numeric' 
+                          })}
+                        </Text>
+                        <Text style={[styles.historyWeight, { color: theme.colors.primary }]}>
+                          {entry.weight} kg
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                </>
+              ) : (
+                <View style={[styles.emptyState, { backgroundColor: theme.colors.surface }]}>
+                  <Ionicons name="stats-chart" size={64} color={theme.colors.onSurfaceVariant} />
+                  <Text style={[styles.emptyStateText, { color: theme.colors.onSurfaceVariant }]}>
+                    {t('noWeightHistory', { ns: 'common' })}
                   </Text>
                 </View>
-              );
-            })}
-          </View>
-        </View>
-
-        <View style={styles.historySection}>
-          <View style={styles.historyHeader}>
-            <Text style={[styles.historyTitle, { color: theme.colors.onSurface }]}>
-              Recent Entries
-            </Text>
-            <Pressable onPress={clearWeightHistory}>
-              <Text style={[styles.clearButton, { color: '#FF6B6B' }]}>
-                Clear All
-              </Text>
-            </Pressable>
-          </View>
-          {weightHistory.slice(0, 5).map((entry, index) => (
-            <View key={index} style={[styles.historyItem, { backgroundColor: theme.colors.surface }]}>
-              <Text style={[styles.historyDate, { color: theme.colors.onSurface }]}>
-                {new Date(entry.date).toLocaleDateString('pt-PT', { 
-                  weekday: 'short', 
-                  year: 'numeric', 
-                  month: 'short', 
-                  day: 'numeric' 
-                })}
-              </Text>
-              <Text style={[styles.historyWeight, { color: theme.colors.primary }]}>
-                {entry.weight} kg
-              </Text>
+              )}
             </View>
-          ))}
-        </View>
-      </>
-    ) : (
-      <View style={[styles.emptyState, { backgroundColor: theme.colors.surface }]}>
-        <Ionicons name="stats-chart" size={64} color={theme.colors.onSurfaceVariant} />
-        <Text style={[styles.emptyStateText, { color: theme.colors.onSurfaceVariant }]}>
-          {t('noWeightHistory', { ns: 'common' })}
-        </Text>
-      </View>
-    )}
-  </View>
-)}
+          )}
 
           {/* Profile Tab */}
           {activeTab === 'profile' && (
@@ -824,6 +866,36 @@ export default function ProfileScreen() {
                 </Pressable>
               </View>
 
+              {/* Nova Seção: Configurações do Alarme do Timer */}
+              <View style={[styles.notificationSection, { backgroundColor: theme.colors.surface }]}>
+                <View style={styles.notificationHeader}>
+                  <View style={styles.notificationInfo}>
+                    <Ionicons name="alarm-outline" size={20} color={theme.colors.onSurface} />
+                    <Text style={[styles.notificationTitle, { color: theme.colors.onSurface }]}>
+                      Workout Timer Alarm
+                    </Text>
+                  </View>
+                  <Pressable onPress={toggleDeviceAlarm}>
+                    <View style={[
+                      styles.toggle, 
+                      { backgroundColor: useDeviceAlarm ? theme.colors.primary : theme.colors.outline }
+                    ]}>
+                      <View style={[
+                        styles.toggleThumb,
+                        { transform: [{ translateX: useDeviceAlarm ? 20 : 0 }] }
+                      ]} />
+                    </View>
+                  </Pressable>
+                </View>
+                <Text style={[styles.notificationDescription, { color: theme.colors.onSurfaceVariant }]}>
+                  {useDeviceAlarm 
+                    ? 'Using device default alarm sound (loudest)' 
+                    : 'Using app sounds for workout timers'
+                  }
+                </Text>
+              </View>
+
+              {/* Seção Original: Notificações Mensais */}
               <View style={[styles.notificationSection, { backgroundColor: theme.colors.surface }]}>
                 <View style={styles.notificationHeader}>
                   <View style={styles.notificationInfo}>
@@ -856,8 +928,7 @@ export default function ProfileScreen() {
   );
 }
 
-// No final do arquivo profile.tsx, no StyleSheet, remova as duplicatas:
-
+// Styles
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -1087,7 +1158,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Chart Styles - APENAS UMA VEZ
+  // Chart Styles
   chartContainer: {
     padding: 20,
     borderRadius: 16,
