@@ -3,7 +3,7 @@
     "name": "FitnessHUB",
     "slug": "FitnessHUB",
     "version": "1.0.0",
-    "icon": "./assets/Icon.png",
+    "icon": "./assets/images/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { supabase } from "../lib/supabase";
 import { View, ActivityIndicator, useColorScheme, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
@@ -52,7 +52,7 @@ export default function RootLayout() {
     };
   }, [segments, router]);
 
-  const theme = getAppTheme(scheme);
+  const theme = useMemo(() => getAppTheme(scheme), [scheme]);
 
   useEffect(() => {
     // Match the OS/background to our theme to avoid white flashes/gaps
@@ -61,7 +61,7 @@ export default function RootLayout() {
 
   if (isLoading) {
     return (
-      <PaperProvider theme={theme}>
+      <PaperProvider key={scheme} theme={theme}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
           <ActivityIndicator size="large" />
         </View>
@@ -70,7 +70,7 @@ export default function RootLayout() {
   }
 
   return (
-    <PaperProvider theme={theme}>
+    <PaperProvider key={scheme} theme={theme}>
       <SafeAreaProvider>
         <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.colors.background} />
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['bottom']}>

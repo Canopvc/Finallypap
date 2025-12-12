@@ -6,10 +6,9 @@ export const lightTheme: MD3Theme = {
   colors: {
     ...MD3LightTheme.colors,
     primary: '#2C8EC9',
-    secondary: '#798dfc',
-    background: '#f5f6fa',
-    surface: '#ffffff',
-    onPrimary: '#000000', // ← Corrigido para preto
+    background: '#f8fafc',
+    surface: '#fff',
+    onSurface: '#1e293b',
   },
 };
 
@@ -17,11 +16,15 @@ export const darkTheme: MD3Theme = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    primary: '#65a3ddff',
-    secondary: '#8294fa',
-    background: '#141414ff',
-    surface: '#1b1f27',
+    primary: '#64aef3ff',
+    background: '#0f172a',
+    surface: '#1e293b',
+    onSurface: '#f9fafb',
     onPrimary: '#000000',
+    primaryContainer: '#2C8EC9',
+    onPrimaryContainer: '#72c6faff',
+    secondary: '#eff0b0ff',
+    onSurfaceVariant: '#d1d5db',
   },
 };
 

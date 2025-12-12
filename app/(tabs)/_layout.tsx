@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Platform, useColorScheme, Keyboard, View } from 'react-native';
-import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
+import { Platform, Keyboard, View } from 'react-native';
+import { useTheme } from 'react-native-paper';
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { useTranslation } from '../../hooks/useTranslation';
 import Svg, { Path } from 'react-native-svg';
@@ -148,8 +148,8 @@ const NutritiveFilledIcon = ({ color, size }: { color: string; size: number }) =
 // TABS LAYOUT
 // =====================
 export default function TabLayout() {
-  const scheme = useColorScheme();
-  const isDark = scheme === 'dark';
+  const theme = useTheme();
+  const isDark = theme.dark;
   const { t } = useTranslation();
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const keyboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -175,38 +175,6 @@ export default function TabLayout() {
     };
   }, []);
 
-  const theme = useMemo(
-  () =>
-    isDark
-      ? {
-          ...MD3DarkTheme,
-          colors: {
-            ...MD3DarkTheme.colors,
-            primary: '#64aef3ff',
-            background: '#0f172a',
-            surface: '#1e293b',
-            onSurface: '#f9fafb',
-            onPrimary: '#000000',
-            primaryContainer: '#2C8EC9',
-            onPrimaryContainer: '#72c6faff',
-            secondary: '#eff0b0ff',
-            onSurfaceVariant: '#d1d5db',
-          },
-        }
-      : {
-          ...MD3LightTheme,
-          colors: {
-            ...MD3LightTheme.colors,
-            primary: '#2C8EC9',
-            background: '#f8fafc',
-            surface: '#fff',
-            onSurface: '#1e293b',
-          },
-        },
-  [isDark]
-);
-
-
   const screenOptions = useMemo<BottomTabNavigationOptions>(() => {
     const androidBaseStyle = {
       position: 'absolute' as const,
@@ -216,9 +184,9 @@ export default function TabLayout() {
       height: 60,
       paddingBottom: 8,
       paddingTop: 8,
-      backgroundColor: isDark ? '#111827' : '#fff',
+      backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
-      borderTopColor: isDark ? '#374151' : '#e5e7eb',
+      borderTopColor: theme.colors.outline,
       elevation: 8,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -2 },
@@ -230,9 +198,9 @@ export default function TabLayout() {
       height: 85,
       paddingBottom: 30,
       paddingTop: 8,
-      backgroundColor: isDark ? '#111827' : '#fff',
+      backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
-      borderTopColor: isDark ? '#374151' : '#e5e7eb',
+      borderTopColor: theme.colors.outline,
       elevation: 8,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: -2 },
@@ -244,8 +212,8 @@ export default function TabLayout() {
 
     return {
       headerShown: false,
-      tabBarActiveTintColor: '#64aef3ff',
-      tabBarInactiveTintColor: isDark ? '#9ca3af' : '#6b7280',
+      tabBarActiveTintColor: theme.colors.primary,
+      tabBarInactiveTintColor: theme.colors.onSurfaceVariant,
       tabBarStyle: isKeyboardVisible ? { display: 'none' } : baseStyle,
       tabBarLabelStyle: {
         fontSize: 12,
@@ -254,11 +222,10 @@ export default function TabLayout() {
       },
       tabBarHideOnKeyboard: true,
     };
-  }, [isDark, isKeyboardVisible]);
+  }, [theme, isKeyboardVisible]);
 
   return (
-    <PaperProvider theme={theme}>
-      <Tabs screenOptions={screenOptions}>
+    <Tabs screenOptions={screenOptions}>
         <Tabs.Screen
           name="index"
           options={{
@@ -304,6 +271,5 @@ export default function TabLayout() {
           }}
         />
       </Tabs>
-    </PaperProvider>
   );
 }

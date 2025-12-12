@@ -18,14 +18,17 @@ import {
   View,
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
-import { COHERE_API_KEY } from '@env';
 import { useTranslation } from '../../hooks/useTranslation';
 import { CohereClientV2 } from 'cohere-ai';
+import Constants from 'expo-constants';
+
 
 // ⭐️ COHERE API
 const WORKOUTS_STORAGE_KEY = 'workouts';
 
+const COHERE_API_KEY = Constants.expoConfig?.extra?.COHERE_API_KEY ?? '';
 const cohere = new CohereClientV2({ token: COHERE_API_KEY });
+
 
 type ExerciseType = 'calisthenics' | 'cardio' | 'weightlifting';
 
