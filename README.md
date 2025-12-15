@@ -50,3 +50,18 @@ Join our community of developers creating universal apps.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
 
 eas secret:create --name COHERE_API_KEY --value sk-xxx COLOCAR ISTO NO PC DE CASA URGENTEEEEEEEEEE
+
+eas secret:create --name COHERE_API_KEY --value sk-xxx
+// app.config.js
+export default {
+  expo: {
+    extra: {
+      COHERE_API_KEY: process.env.COHERE_API_KEY,
+    },
+  },
+};
+import Constants from 'expo-constants';
+
+const cohere = new CohereClientV2({
+  token: Constants.expoConfig?.extra?.COHERE_API_KEY,
+});
