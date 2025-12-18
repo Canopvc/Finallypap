@@ -1,4 +1,4 @@
-module.exports = function(api) {
+module.exports = function (api) {
   api.cache(true);
   return {
     presets: ['babel-preset-expo'],
@@ -8,12 +8,10 @@ module.exports = function(api) {
         {
           moduleName: '@env',
           path: '.env',
-          blacklist: null,
-          whitelist: null,
           safe: false,
-          allowUndefined: true
-        }
-      ]
-    ]
+          allowUndefined: true,
+        },
+      ],
+    ],
   };
 };
