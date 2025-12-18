@@ -1,7 +1,7 @@
 import { Tabs } from 'expo-router';
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Platform, Keyboard, View } from 'react-native';
-import { useTheme } from 'react-native-paper';
+import { Platform, useColorScheme, Keyboard, View } from 'react-native';
+import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, useTheme } from 'react-native-paper';
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { useTranslation } from '../../hooks/useTranslation';
 import Svg, { Path } from 'react-native-svg';
@@ -148,11 +148,10 @@ const NutritiveFilledIcon = ({ color, size }: { color: string; size: number }) =
 // TABS LAYOUT
 // =====================
 export default function TabLayout() {
-  const theme = useTheme();
-  const isDark = theme.dark;
   const { t } = useTranslation();
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const keyboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -226,50 +225,50 @@ export default function TabLayout() {
 
   return (
     <Tabs screenOptions={screenOptions}>
-        <Tabs.Screen
-          name="index"
-          options={{
-            title: t('home'),
-            tabBarIcon: ({ color, size, focused }) =>
-              focused ? <HomeFilledIcon color={color} size={size} /> : <HomeOutlineIcon color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="addWorkout"
-          options={{
-            title: t('workouts'),
-            tabBarIcon: ({ color, size, focused }) =>
-              focused ? <AddFilledIcon color={color} size={size} /> : <AddOutlineIcon color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="AIchat"
-          options={{
-            title: t('aiChat'),
-            tabBarIcon: ({ color, size, focused }) =>
-              focused ? <ChatFilledIcon color={color} size={size} /> : <ChatOutlineIcon color={color} size={size} />,
-          }}
-        />
-        <Tabs.Screen
-          name="calorie_tracker"
-          options={{
-            title: t('Calories'),
-            tabBarIcon: ({ color, size, focused }) =>
-              focused ? (
-                <NutritiveFilledIcon color={color} size={size} />
-              ) : (
-                <NutritiveOutlineIcon color={color} size={size} />
+      <Tabs.Screen
+        name="index"
+        options={{
+          title: t('home'),
+          tabBarIcon: ({ color, size, focused }) =>
+            focused ? <HomeFilledIcon color={color} size={size} /> : <HomeOutlineIcon color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="addWorkout"
+        options={{
+          title: t('workouts'),
+          tabBarIcon: ({ color, size, focused }) =>
+            focused ? <AddFilledIcon color={color} size={size} /> : <AddOutlineIcon color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="AIchat"
+        options={{
+          title: t('aiChat'),
+          tabBarIcon: ({ color, size, focused }) =>
+            focused ? <ChatFilledIcon color={color} size={size} /> : <ChatOutlineIcon color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="calorie_tracker"
+        options={{
+          title: t('Calories'),
+          tabBarIcon: ({ color, size, focused }) =>
+            focused ? (
+              <NutritiveFilledIcon color={color} size={size} />
+            ) : (
+              <NutritiveOutlineIcon color={color} size={size} />
               ),
-          }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{
-            title: t('profile'),
-            tabBarIcon: ({ color, size, focused }) =>
-              focused ? <ProfileFilledIcon color={color} size={size} /> : <ProfileOutlineIcon color={color} size={size} />,
-          }}
-        />
-      </Tabs>
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: t('profile'),
+          tabBarIcon: ({ color, size, focused }) =>
+            focused ? <ProfileFilledIcon color={color} size={size} /> : <ProfileOutlineIcon color={color} size={size} />,
+        }}
+      />
+    </Tabs>
   );
 }

@@ -14,7 +14,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yourname.fitnesshub"
     },
-    "android": {
+    "android": { 
       "package": "com.yourname.fitnesshub",
       "softwareKeyboardLayoutMode": "pan",
       "enableDangerousExperimentalWebImplementation": true,

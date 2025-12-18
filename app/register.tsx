@@ -18,7 +18,7 @@ export default function RegisterScreen() {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState(''); 
   const [phone_number, setPhoneNumber] = useState('');
   const [confirmpassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);

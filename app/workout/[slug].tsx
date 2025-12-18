@@ -16,7 +16,7 @@ type Exercise = {
   minutes?: number;
   dropset: boolean;
   failure: boolean;
-  warmup: boolean;
+  warmup: boolean; 
 };
 
 export type Workout = {

@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform,
+  Platform, 
   ScrollView,
   StyleSheet,
   Switch,

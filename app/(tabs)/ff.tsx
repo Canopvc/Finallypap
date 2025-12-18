@@ -10,7 +10,7 @@ export default function StepCounterScreen() {
   // Autorizar Google Fit
   const authorizeGoogleFit = async () => {
     try {
-      console.log('Iniciando autorização...');
+      console.log('Iniciando autorização...'); 
       
       const options = {
         scopes: [

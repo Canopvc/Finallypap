@@ -1,21 +1,22 @@
 import { useEffect, useState, useMemo } from "react";
 import { Slot, useRouter, useSegments } from "expo-router";
 import { supabase } from "../lib/supabase";
-import { View, ActivityIndicator, useColorScheme, KeyboardAvoidingView, Platform, ScrollView } from "react-native";
+import { View, ActivityIndicator, KeyboardAvoidingView, Platform } from "react-native";
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { getAppTheme } from "../lib/theme";
+import { ThemeProvider, useThemeContext } from "../contexts/ThemeContext";
 import "../lib/i18n"; // Inicializar i18n
 
-export default function RootLayout() {
+function RootLayoutContent() {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const segments = useSegments();
-  const scheme = useColorScheme();
+  const { colorScheme } = useThemeContext();
 
-  useEffect(() => {
+  useEffect(() => { 
     let isMounted = true;
 
     const redirectBySession = (session: any) => {
@@ -52,16 +53,24 @@ export default function RootLayout() {
     };
   }, [segments, router]);
 
-  const theme = useMemo(() => getAppTheme(scheme), [scheme]);
+  const theme = useMemo(() => {
+    const appTheme = getAppTheme(colorScheme);
+    return appTheme;
+  }, [colorScheme]);
 
   useEffect(() => {
     // Match the OS/background to our theme to avoid white flashes/gaps
-    SystemUI.setBackgroundColorAsync(theme.colors.background).catch(() => {});
+    SystemUI.setBackgroundColorAsync(theme.colors.background).catch((error) => {
+      console.warn('[Theme] Failed to set SystemUI background:', error);
+    });
+    
+    // Log para debug
+    console.log('[Theme] SystemUI background set to:', theme.colors.background);
   }, [theme.colors.background]);
 
   if (isLoading) {
     return (
-      <PaperProvider key={scheme} theme={theme}>
+      <PaperProvider key={colorScheme} theme={theme}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background }}>
           <ActivityIndicator size="large" />
         </View>
@@ -70,9 +79,9 @@ export default function RootLayout() {
   }
 
   return (
-    <PaperProvider key={scheme} theme={theme}>
+    <PaperProvider key={colorScheme} theme={theme}>
       <SafeAreaProvider>
-        <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.colors.background} />
+        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.colors.background} />
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['bottom']}>
           <KeyboardAvoidingView 
             style={{ flex: 1, backgroundColor: theme.colors.background }}
@@ -87,5 +96,13 @@ export default function RootLayout() {
         </SafeAreaView>
       </SafeAreaProvider>
     </PaperProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutContent />
+    </ThemeProvider>
   );
 }

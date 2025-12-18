@@ -15,7 +15,7 @@ import { supabase } from '../lib/supabase';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from '../hooks/useTranslation';
 
-export default function LoginScreen() {
+export default function LoginScreen() { 
   const router = useRouter();
   const theme = useTheme();
   const { t } = useTranslation();

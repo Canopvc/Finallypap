@@ -12,18 +12,18 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
+  Pressable, 
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from 'react-native';
 import { supabase } from '../../lib/supabase';
 import { getAppTheme } from '../../lib/theme';
 import * as Notifications from 'expo-notifications';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useThemeContext } from '../../contexts/ThemeContext';
 import Svg, { Path } from "react-native-svg";
 
 const { width } = Dimensions.get('window');
@@ -44,7 +44,7 @@ Notifications.setNotificationHandler({
 });
 
 export default function ProfileScreen() {
-  const colorScheme = useColorScheme();
+  const { themeMode, setThemeMode, colorScheme } = useThemeContext();
   const theme = getAppTheme(colorScheme);
   const { t } = useTranslation();
   const [userId, setUserId] = useState('');
@@ -920,6 +920,115 @@ export default function ProfileScreen() {
                   {t('monthlyNotifications', { ns: 'common' })}
                 </Text>
               </View>
+
+              {/* Seção: Tema do App */}
+              <View style={[styles.notificationSection, { backgroundColor: theme.colors.surface }]}>
+                <View style={styles.notificationHeader}>
+                  <View style={styles.notificationInfo}>
+                    <Ionicons 
+                      name={colorScheme === 'dark' ? 'moon' : 'sunny'} 
+                      size={20} 
+                      color={theme.colors.onSurface} 
+                    />
+                    <Text style={[styles.notificationTitle, { color: theme.colors.onSurface }]}>
+                      App Theme
+                    </Text>
+                  </View>
+                </View>
+                <Text style={[styles.notificationDescription, { color: theme.colors.onSurfaceVariant, marginBottom: 12 }]}>
+                  Choose how the app theme should behave
+                </Text>
+                
+                {/* Opções de tema */}
+                <View style={styles.themeOptions}>
+                  <Pressable
+                    onPress={() => {
+                      setThemeMode('automatic');
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    style={[
+                      styles.themeOption,
+                      { 
+                        backgroundColor: themeMode === 'automatic' ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
+                        borderColor: themeMode === 'automatic' ? theme.colors.primary : theme.colors.outline,
+                      }
+                    ]}
+                  >
+                    <Ionicons 
+                      name="phone-portrait" 
+                      size={18} 
+                      color={themeMode === 'automatic' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant} 
+                    />
+                    <Text style={[
+                      styles.themeOptionText,
+                      { color: themeMode === 'automatic' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant }
+                    ]}>
+                      Automatic
+                    </Text>
+                    {themeMode === 'automatic' && (
+                      <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} />
+                    )}
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => {
+                      setThemeMode('light');
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    style={[
+                      styles.themeOption,
+                      { 
+                        backgroundColor: themeMode === 'light' ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
+                        borderColor: themeMode === 'light' ? theme.colors.primary : theme.colors.outline,
+                      }
+                    ]}
+                  >
+                    <Ionicons 
+                      name="sunny" 
+                      size={18} 
+                      color={themeMode === 'light' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant} 
+                    />
+                    <Text style={[
+                      styles.themeOptionText,
+                      { color: themeMode === 'light' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant }
+                    ]}>
+                      Light
+                    </Text>
+                    {themeMode === 'light' && (
+                      <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} />
+                    )}
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => {
+                      setThemeMode('dark');
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                    style={[
+                      styles.themeOption,
+                      { 
+                        backgroundColor: themeMode === 'dark' ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
+                        borderColor: themeMode === 'dark' ? theme.colors.primary : theme.colors.outline,
+                      }
+                    ]}
+                  >
+                    <Ionicons 
+                      name="moon" 
+                      size={18} 
+                      color={themeMode === 'dark' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant} 
+                    />
+                    <Text style={[
+                      styles.themeOptionText,
+                      { color: themeMode === 'dark' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant }
+                    ]}>
+                      Dark
+                    </Text>
+                    {themeMode === 'dark' && (
+                      <Ionicons name="checkmark-circle" size={18} color={theme.colors.primary} />
+                    )}
+                  </Pressable>
+                </View>
+              </View>
             </View>
           )}
         </Animated.View>
@@ -1299,6 +1408,23 @@ const styles = StyleSheet.create({
   notificationDescription: {
     fontSize: 14,
     lineHeight: 20,
+  },
+  themeOptions: {
+    gap: 12,
+    marginTop: 8,
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    gap: 12,
+  },
+  themeOptionText: {
+    fontSize: 15,
+    fontWeight: '500',
+    flex: 1,
   },
   toggle: {
     width: 50,

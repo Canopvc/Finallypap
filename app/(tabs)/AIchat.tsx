@@ -9,7 +9,7 @@ import {
   Modal,
   Platform,
   SafeAreaView,
-  ScrollView,
+  ScrollView, 
   StatusBar,
   StyleSheet,
   Text,
