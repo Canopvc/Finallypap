@@ -3,8 +3,7 @@
     "name": "FitnessHUB",
     "slug": "FitnessHUB",
     "version": "1.0.0",
-    "icon": "./assets/images/Icon.png",
-
+    "icon": "./assets/images/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "assetBundlePatterns": [
@@ -14,7 +13,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.yourname.fitnesshub"
     },
-    "android": { 
+    "android": {
       "package": "com.yourname.fitnesshub",
       "softwareKeyboardLayoutMode": "pan",
       "enableDangerousExperimentalWebImplementation": true,
@@ -44,7 +43,9 @@
             "https://www.googleapis.com/auth/fitness.activity.write"
           ]
         }
-      ]
+      ],
+      "expo-localization",
+      "expo-web-browser"
     ],
     "extra": {
       "router": {},

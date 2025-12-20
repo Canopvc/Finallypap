@@ -32,6 +32,7 @@ const ALARM_SETTINGS_KEY = 'alarmSettings';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
 
+
 const raresound = require('../../../assets/Trumpsinging.mp3');
 
 function formatTime(secs: number) {
@@ -65,6 +66,41 @@ const SoundToggleButton: React.FC<SoundToggleProps> = ({ soundEnabled, onToggle,
   </TouchableOpacity>
 );
 
+interface RestToggleProps {
+  resting: boolean;
+  restRemaining: number;
+  onPress: () => void;
+  theme: any;
+}
+const RestToggleButton: React.FC<RestToggleProps> = ({
+  resting,
+  restRemaining,
+  onPress,
+  theme,
+}) => (
+  <TouchableOpacity
+    onPress={onPress}
+    style={[
+      styles.soundToggleButton,
+      {
+        backgroundColor: resting
+          ? theme.colors.primary + '20'
+          : theme.colors.surfaceVariant,
+        borderColor: resting
+          ? theme.colors.primary
+          : theme.colors.outline,
+      },
+    ]}
+  >
+    <Timer
+      size={18}
+      color={resting ? theme.colors.primary : theme.colors.onSurfaceVariant}
+    />
+  </TouchableOpacity>
+);
+
+
+
 export default function StartWorkoutScreen() {
   const DEBUG_FORCE_EASTER_EGG = false;
 
@@ -83,7 +119,12 @@ export default function StartWorkoutScreen() {
   const [resting, setResting] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showSoundTooltip, setShowSoundTooltip] = useState(false);
+  const [showRestMenu, setShowRestMenu] = useState(false);
+  const [restPaused, setRestPaused] = useState(false);
 
+
+
+  
   // Configurar notificações
   useEffect(() => {
     Notifications.setNotificationHandler({
@@ -109,6 +150,8 @@ export default function StartWorkoutScreen() {
     };
     checkFirstTime();
   }, []);
+
+  
 
   // Função para tocar alarme do dispositivo
   const playDeviceAlarm = async () => {
@@ -257,28 +300,37 @@ export default function StartWorkoutScreen() {
     return () => clearInterval(id);
   }, [running]);
 
-  useEffect(() => {
-    if (!resting) return;
-    if (restRemaining <= 0) {
-      setResting(false);
-      playAlarm(soundEnabled);
-      return;
-    }
-    const id = setInterval(() => setRestRemaining((t) => t - 1), 1000);
-    return () => clearInterval(id);
-  }, [resting, restRemaining, soundEnabled]);
+ useEffect(() => {
+  if (!resting || restPaused) return;
+
+  if (restRemaining <= 0) {
+    setResting(false);
+    setRestPaused(false);
+    playAlarm(soundEnabled);
+    return;
+  }
+
+  const id = setInterval(() => {
+    setRestRemaining(t => t - 1);
+  }, 1000);
+
+  return () => clearInterval(id);
+}, [resting, restPaused, restRemaining, soundEnabled]);
 
   const togglePause = () => setRunning((p) => !p);
   
-  const startRest = (secs?: number) => {
-    setRestRemaining(secs ?? defaultRest);
-    setResting(true);
-  };
+ const startRest = (secs?: number) => {
+  setRestRemaining(secs ?? defaultRest);
+  setRestPaused(false);
+  setResting(true);
+};
 
   const stopRest = () => {
-    setResting(false);
-    setRestRemaining(0);
-  };
+  setResting(false);
+  setRestPaused(false);
+  setRestRemaining(0);
+};
+
 
   const markSetDone = (ei: number, si: number) => {
     setCompleted((prev) => ({
@@ -368,12 +420,60 @@ export default function StartWorkoutScreen() {
                   onToggle={() => setSoundEnabled(s => !s)}
                   theme={theme}
                 />
+               
+
+                
                 {showSoundTooltip && (
                   <View style={[styles.tooltip, { backgroundColor: theme.colors.primary }]}>
-                    <Text style={styles.tooltipText}>Toggle timer sound</Text>
                   </View>
                 )}
               </View>
+
+              <View style={styles.headerRightActions}>
+
+  <RestToggleButton
+    resting={resting}
+    restRemaining={restRemaining}
+    theme={theme}
+    onPress={() => {
+      if (resting) {
+        stopRest();
+      } else {
+        setShowRestMenu(s => !s);
+      }
+    }}
+  />
+
+  {showRestMenu && !resting && (
+  <View style={[
+    styles.restDropdown,
+    { backgroundColor: theme.colors.surface }
+  ]}>
+    {[30, 60, 90, 120].map(seconds => (
+      <TouchableOpacity
+        key={seconds}
+        style={styles.restOption}
+        onPress={() => {
+          setShowRestMenu(false);
+          startRest(seconds);
+        }}
+      >
+        <Text style={[
+          styles.restOptionText,
+          { color: theme.colors.onSurface }
+        ]}>
+          {seconds}s
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </View>
+)}
+
+  
+
+  
+
+</View>
               
               <TouchableOpacity
                 onPress={togglePause}
@@ -403,12 +503,55 @@ export default function StartWorkoutScreen() {
               <Text style={[styles.workoutTitle, { color: theme.colors.primary }]}>
                 {workout.name}
               </Text>
-              <View style={[styles.timerBadge, { backgroundColor: theme.colors.primaryContainer }]}>
-                <Timer size={16} color={theme.colors.onPrimaryContainer} />
-                <Text style={[styles.timerText, { color: theme.colors.onPrimaryContainer }]}>
-                  {formatTime(elapsed)}
-                </Text>
-              </View>
+              
+              <View style={styles.timerRow}>
+
+  {/* Timer principal */}
+  <View style={[
+    styles.timerBadge,
+    { backgroundColor: theme.colors.primaryContainer }
+  ]}>
+    <Timer size={16} color={theme.colors.onPrimaryContainer} />
+    <Text style={[styles.timerText, { color: theme.colors.onPrimaryContainer }]}>
+      {formatTime(elapsed)}
+    </Text>
+  </View>
+
+  {/* Mini Rest Timer */}
+  {resting && (
+  <TouchableOpacity
+    onPress={() => setRestPaused(p => !p)}
+    style={[
+      styles.miniRestBadge,
+      { 
+        backgroundColor: restPaused
+          ? theme.colors.errorContainer
+          : theme.colors.secondaryContainer
+      }
+    ]}
+  >
+    {restPaused ? (
+      <Pause size={14} color={theme.colors.onErrorContainer} />
+    ) : (
+      <Timer size={14} color={theme.colors.onSecondaryContainer} />
+    )}
+
+    <Text
+      style={[
+        styles.miniRestText,
+        {
+          color: restPaused
+            ? theme.colors.onErrorContainer
+            : theme.colors.onSecondaryContainer
+        }
+      ]}
+    >
+      {formatTime(restRemaining)}
+    </Text>
+  </TouchableOpacity>
+)}
+
+</View>
             </View>
 
             <View style={styles.metaRow}>
@@ -448,104 +591,7 @@ export default function StartWorkoutScreen() {
       </View>
 
       {/* Rest Timer Panel */}
-      <View style={[styles.restPanel, { backgroundColor: theme.colors.surface }]}>
-        <View style={styles.restHeader}>
-          <Text style={[styles.restLabel, { color: theme.colors.onSurface }]}>
-            Rest Timer
-          </Text>
-          <Text style={[
-            styles.restTime, 
-            { 
-              color: resting ? theme.colors.primary : theme.colors.onSurfaceVariant,
-              fontSize: resting ? 36 : 24
-            }
-          ]}>
-            {resting ? formatTime(restRemaining) : "Ready"}
-          </Text>
-        </View>
-
-        <View style={styles.restControls}>
-          <TouchableOpacity
-            style={[
-              styles.restButton, 
-              { 
-                backgroundColor: resting ? theme.colors.secondary : theme.colors.primary,
-                flex: 2
-              }
-            ]}
-            onPress={resting ? stopRest : () => startRest()}
-            disabled={resting}
-          >
-            {resting ? (
-              <>
-                <Pause size={16} color={theme.colors.onPrimary} />
-                <Text style={[styles.restButtonText, { color: theme.colors.onPrimary }]}>
-                  Resting
-                </Text>
-              </>
-            ) : (
-              <>
-                <Play size={16} color={theme.colors.onPrimary} />
-                <Text style={[styles.restButtonText, { color: theme.colors.onPrimary }]}>
-                  Start Rest
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-
-          {resting && (
-            <TouchableOpacity
-              style={[
-                styles.restButton,
-                styles.secondaryButton,
-                { 
-                  borderColor: theme.colors.outline,
-                  flex: 1
-                }
-              ]}
-              onPress={stopRest}
-            >
-              <Text style={[styles.restButtonText, { color: theme.colors.onSurface }]}>
-                Skip
-              </Text>
-            </TouchableOpacity>
-          )}
-        </View>
-
-        <View style={styles.restAdjust}>
-          <Text style={[styles.smallLabel, { color: theme.colors.onSurfaceVariant }]}>
-            Default: {defaultRest}s
-          </Text>
-          <View style={styles.restQuickButtons}>
-            {[30, 60, 90, 120].map((seconds) => (
-              <TouchableOpacity
-                key={seconds}
-                style={[
-                  styles.quickButton,
-                  { 
-                    backgroundColor: defaultRest === seconds 
-                      ? theme.colors.primary 
-                      : theme.colors.surfaceVariant,
-                    borderColor: theme.colors.outline
-                  }
-                ]}
-                onPress={() => setDefaultRest(seconds)}
-              >
-                <Text style={[
-                  styles.quickButtonText,
-                  { 
-                    color: defaultRest === seconds 
-                      ? theme.colors.onPrimary 
-                      : theme.colors.onSurfaceVariant 
-                  }
-                ]}>
-                  {seconds}s
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </View>
+      
 
       {/* Exercises List */}
       <ScrollView 
@@ -682,13 +728,13 @@ export default function StartWorkoutScreen() {
                               styles.setInput,
                               { 
                                 backgroundColor: theme.colors.surface,
-                                color: theme.colors.onSurface,
                                 borderColor: isCompleted ? theme.colors.primary : theme.colors.outline
                               }
                             ]}
                             placeholder="kg"
                             keyboardType="numeric"
                             value={currentWeight}
+                            placeholderTextColor={theme.colors.onSurfaceVariant}
                             onChangeText={(t) => {
                               const filtered = t.replace(/[^0-9]/g, '');
                               setSessionWeights((prev) => ({
@@ -716,6 +762,7 @@ export default function StartWorkoutScreen() {
                             placeholder="reps"
                             keyboardType="numeric"
                             value={currentReps}
+                            placeholderTextColor={theme.colors.onSurfaceVariant}
                             onChangeText={(t) => {
                               const filtered = t.replace(/[^0-9]/g, '');
                               setSessionReps((prev) => ({
@@ -843,9 +890,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     padding: 8,
+    marginLeft: -21,
   },
   backButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '500',
   },
   pauseButton: {
@@ -860,6 +908,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    margin: 10,
   },
   pauseText: {
     fontSize: 14,
@@ -879,6 +928,31 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
+  timerRow: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+
+miniRestBadge: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 4,
+  paddingHorizontal: 10,
+  paddingVertical: 6,
+  borderRadius: 14,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.15,
+  shadowRadius: 3,
+  elevation: 2,
+},
+
+miniRestText: {
+  fontSize: 12,
+  fontWeight: '700',
+},
+
   timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -891,6 +965,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3,
     elevation: 2,
+    marginRight: 12.9,
   },
   timerText: {
     fontSize: 14,
@@ -928,12 +1003,36 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
+  restDropdown: {
+  position: 'absolute',
+  top: 48,
+  right: 0,
+  borderRadius: 12,
+  paddingVertical: 6,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.25,
+  shadowRadius: 8,
+  elevation: 6,
+  zIndex: 2000,
+},
+
+restOption: {
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+},
+
+restOptionText: {
+  fontSize: 14,
+  fontWeight: '600',
+},
+
+
   // Rest Panel
   restPanel: {
-    margin: 16,
-    padding: 20,
+    margin: 10,
+    padding: 17,
     borderRadius: 16,
-    gap: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
