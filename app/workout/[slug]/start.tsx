@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
+import { Alert, AppState, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { ChevronLeft, Play, Pause, Check, Trophy, Flame, Timer, Target, Weight, Volume2, VolumeX } from 'lucide-react-native';
 import * as Notifications from 'expo-notifications';
@@ -31,6 +31,10 @@ const STORAGE_KEY = 'workouts';
 const ALARM_SETTINGS_KEY = 'alarmSettings';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
+
+const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
+const [restStartTime, setRestStartTime] = useState<number | null>(null);
+const [initialRestSeconds, setInitialRestSeconds] = useState(0);
 
 
 const raresound = require('../../../assets/Trumpsinging.mp3');
@@ -286,6 +290,19 @@ export default function StartWorkoutScreen() {
       console.error(e);
       Alert.alert('Error', 'Failed to load workout.');
     } finally {
+      try {
+        const savedStartTime = await AsyncStorage.getItem(`@workout_start_${slug}`);
+        if (savedStartTime) {
+          const startTime = parseInt(savedStartTime, 10);
+          setWorkoutStartTime(startTime);
+          // Calculate elapsed time from saved start time
+          const now = Date.now();
+          const elapsedSeconds = Math.floor((now - startTime) / 1000);
+          setElapsed(elapsedSeconds);
+        }
+      } catch (e) {
+        console.error('Error loading workout start time:', e);
+      }
       setLoading(false);
     }
   }, [slug]);
@@ -293,6 +310,48 @@ export default function StartWorkoutScreen() {
   useEffect(() => { 
     loadWorkout(); 
   }, [loadWorkout]);
+
+  useEffect(() => {
+    const initializeWorkoutStart = async () => {
+      if(running && !workoutStartTime){
+        const start = Date.now();
+        setWorkoutStartTime(start);
+        try {
+          await AsyncStorage.setItem('@workout_start_${slug}', start.toString());
+        } catch (e) {
+          console.error('Error saving workout start time:', e);
+        }
+      }
+    };
+    initializeWorkoutStart();
+  }, [running, workoutStartTime, slug]);
+
+  useEffect(() => {
+    if(!running || !workoutStartTime) return;
+
+    const calculateElapsed = () => {
+      const now = Date.now();
+      const elapsedSeconds = Math.floor((now - workoutStartTime) / 1000);
+      setElapsed(elapsedSeconds);
+    };
+
+    calculateElapsed();
+
+
+    const id = setInterval(calculateElapsed, 1000);
+    return () => clearInterval(id);
+  }, [running, workoutStartTime]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active' && running && workoutStartTime) {
+        const now = Date.now();
+        const elapsedSeconds = Math.floor((now - workoutStartTime) / 1000);
+        setElapsed(elapsedSeconds);
+      }
+    });
+    return () => subscription.remove();
+  }, [running, workoutStartTime]);
 
   useEffect(() => {
     if (!running) return;
@@ -317,10 +376,26 @@ export default function StartWorkoutScreen() {
   return () => clearInterval(id);
 }, [resting, restPaused, restRemaining, soundEnabled]);
 
-  const togglePause = () => setRunning((p) => !p);
+const togglePause = () => {
+  setRunning((p) => {
+    const newRunning = !p;
+    if (newRunning && workoutStartTime) {
+      const now = Date.now();
+      const adjustedStartTime = now - (elapsed * 1000);
+      setWorkoutStartTime(adjustedStartTime);
+      AsyncStorage.setItem(`@workout_start_${slug}`, adjustedStartTime.toString()).catch(e => 
+        console.error('Error saving adjusted start time:', e)
+      );
+    }
+    return newRunning;
+  });
+};
   
- const startRest = (secs?: number) => {
-  setRestRemaining(secs ?? defaultRest);
+const startRest = (secs?: number) => {
+  const restSeconds = secs ?? defaultRest;
+  setRestRemaining(restSeconds);
+  setInitialRestSeconds(restSeconds);
+  setRestStartTime(Date.now());
   setRestPaused(false);
   setResting(true);
 };

@@ -8,7 +8,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { getAppTheme } from "../lib/theme";
 import { ThemeProvider, useThemeContext } from "../contexts/ThemeContext";
-import "../lib/i18n"; // Inicializar i18n
+import "../lib/i18n"; 
 
 function RootLayoutContent() {
   const [isLoading, setIsLoading] = useState(true);
