@@ -32,9 +32,8 @@ const ALARM_SETTINGS_KEY = 'alarmSettings';
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
 
-const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
-const [restStartTime, setRestStartTime] = useState<number | null>(null);
-const [initialRestSeconds, setInitialRestSeconds] = useState(0);
+
+
 
 
 const raresound = require('../../../assets/Trumpsinging.mp3');
@@ -111,7 +110,9 @@ export default function StartWorkoutScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const theme = useTheme();
-
+  const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
+const [restStartTime, setRestStartTime] = useState<number | null>(null);
+const [initialRestSeconds, setInitialRestSeconds] = useState(0);
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
   
