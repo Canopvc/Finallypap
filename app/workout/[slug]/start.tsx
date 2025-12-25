@@ -128,7 +128,7 @@ const [initialRestSeconds, setInitialRestSeconds] = useState(0);
   const [restPaused, setRestPaused] = useState(false);
 
 
-
+  
   
   // Configurar notificações
   useEffect(() => {

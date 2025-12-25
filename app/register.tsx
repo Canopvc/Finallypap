@@ -6,6 +6,7 @@ import {
   Alert,
   ActivityIndicator,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
@@ -89,7 +90,14 @@ export default function RegisterScreen() {
   }
 
   return (
+
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={styles.logoContainer}>
+        <Image
+          source={require('../assets/images/LOGO.png')} 
+          style={styles.logo}
+          resizeMode="contain"/>
+      </View>
       <Text style={[styles.title, { color: theme.colors.onBackground }]}>{t('register', { ns: 'common' })}</Text>
 
       <TextInput
@@ -139,7 +147,13 @@ export default function RegisterScreen() {
         <TouchableOpacity onPress={handleRegister} style={[styles.primaryBtn, { backgroundColor: theme.colors.primary }] }>
           <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>{t('register', { ns: 'common' })}</Text>
         </TouchableOpacity>
+        
       )}
+
+      
+          <Text style={styles.loginText} onPress={() => router.replace('/login')}>
+            If you already have an account, Login
+          </Text>
     </View>
   );
 }
@@ -149,6 +163,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     paddingTop: 10,
     paddingLeft: 5,
+    color: '#2AACF5',
+  },
+  loginText: { 
+    marginTop: 18, 
+    fontSize: 15, 
+    textAlign: 'center', 
+    textDecorationLine: 'underline' ,
     color: '#2AACF5',
   },
   container: { flex: 1, paddingTop: 215, paddingHorizontal: 20 },
@@ -162,6 +183,14 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     padding: 10,
     marginBottom: 15,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 27,
+  },
+   logo: {
+    width: 160,
+    height: 120,
   },
   primaryBtn: { marginTop: 8, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
   primaryBtnTxt: { fontWeight: '700', fontSize: 16 },
