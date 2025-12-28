@@ -43,6 +43,9 @@ export default function WorkoutDetailScreen() {
   const [loading, setLoading] = useState(true);
 
   const loadWorkout = useCallback(async () => {
+
+    console.log(slug);
+
     try {
       setLoading(true);
       const raw = await AsyncStorage.getItem(STORAGE_KEY);

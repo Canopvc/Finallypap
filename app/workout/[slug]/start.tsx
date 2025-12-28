@@ -128,8 +128,8 @@ export default function StartWorkoutScreen() {
   const [restPaused, setRestPaused] = useState(false);
 
 
-
-
+  
+  
   // Configurar notificações
   useEffect(() => {
     Notifications.setNotificationHandler({
