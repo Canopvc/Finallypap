@@ -12,7 +12,7 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
-  Pressable, 
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -68,7 +68,7 @@ export default function ProfileScreen() {
 
   const progressAnim = useState(new Animated.Value(0))[0];
   const fadeAnim = useState(new Animated.Value(0))[0];
-  
+
   const router = useRouter();
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function ProfileScreen() {
   const getUserData = async () => {
     try {
       setBusy(true);
-      
+
       const { data, error } = await supabase.auth.getUser();
       if (error) {
         console.error('Auth error:', error);
@@ -98,14 +98,14 @@ export default function ProfileScreen() {
         setBusy(false);
         return;
       }
-      
+
       if (!data.user) {
         console.error('No user found');
         Alert.alert('Error', 'No user session found.');
         setBusy(false);
         return;
       }
-      
+
       const user = data.user;
       setUserId(user.id);
       setEmail(user.email ?? '');
@@ -115,7 +115,7 @@ export default function ProfileScreen() {
       await loadWeightHistory();
       await loadNotificationSettings();
       await loadAlarmSettings(); // Carregar configurações do alarme
-      
+
     } catch (error) {
       console.error('Unexpected error in getUserData:', error);
       Alert.alert('Error', 'An unexpected error occurred.');
@@ -135,7 +135,7 @@ export default function ProfileScreen() {
         setStartingWeight(goals.startingWeight || '');
         setHeight(goals.height || '');
         setAge(goals.age || '');
-        
+
         if (goals.targetDate) {
           setTempDate(new Date(goals.targetDate));
         }
@@ -187,16 +187,16 @@ export default function ProfileScreen() {
     try {
       const newSetting = !useDeviceAlarm;
       setUseDeviceAlarm(newSetting);
-      
+
       await AsyncStorage.setItem(
-        ALARM_SETTINGS_KEY, 
+        ALARM_SETTINGS_KEY,
         JSON.stringify({ useDeviceAlarm: newSetting })
       );
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Alert.alert(
         'Alarm Settings Updated',
-        newSetting 
+        newSetting
           ? 'Device alarm will be used for workout timers'
           : 'App sounds will be used for workout timers'
       );
@@ -205,11 +205,11 @@ export default function ProfileScreen() {
       Alert.alert('Error', 'Could not save alarm settings.');
     }
   };
-  
+
   const saveWeightGoals = async () => {
     try {
       console.log('💾 Salvando goals...');
-      
+
       if (!weight || !weightGoal) {
         Alert.alert(t('error', { ns: 'common' }), t('pleaseFill', { ns: 'common' }));
         return;
@@ -242,7 +242,7 @@ export default function ProfileScreen() {
         age,
         savedAt: new Date().toISOString(),
       };
-      
+
       await AsyncStorage.setItem(WEIGHT_GOALS_KEY, JSON.stringify(goals));
       await AsyncStorage.setItem(WEIGHT_HISTORY_KEY, JSON.stringify(updatedHistory));
 
@@ -251,7 +251,7 @@ export default function ProfileScreen() {
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Alert.alert(t('success', { ns: 'common' }), t('goalsSaved', { ns: 'common' }));
-      
+
     } catch (error) {
       console.error('❌ Error saving weight goals:', error);
       Alert.alert(t('error', { ns: 'common' }), t('couldNotSaveGoals', { ns: 'common' }));
@@ -261,7 +261,7 @@ export default function ProfileScreen() {
   const sendUserDataToSupabase = async (goals: any, history: any[], bmi: string) => {
     try {
       console.log('🚀 Enviando dados para Supabase...');
-      
+
       if (!email) {
         console.error('❌ Email não disponível');
         return;
@@ -270,13 +270,13 @@ export default function ProfileScreen() {
       // Inserir/Atualizar informações do usuário na tabela userinfo
       const { data: userData, error: userError } = await supabase
         .from('UserInfo')
-        .upsert([{ 
+        .upsert([{
           user_email: email,
           Weight: parseFloat(goals.weight),
           BMI: parseFloat(bmi) || null,
-        }], { 
+        }], {
           onConflict: 'user_email',
-          ignoreDuplicates: false 
+          ignoreDuplicates: false
         });
 
       if (userError) {
@@ -302,7 +302,7 @@ export default function ProfileScreen() {
       }
 
       console.log('✅ Dados enviados com sucesso para Supabase');
-      
+
     } catch (error) {
       console.error('❌ Erro inesperado no envio para Supabase:', error);
     }
@@ -312,14 +312,14 @@ export default function ProfileScreen() {
     try {
       const newNotificationEnabled = !notificationEnabled;
       setNotificationEnabled(newNotificationEnabled);
-      
+
       await AsyncStorage.setItem(
-        NOTIFICATION_SETTINGS_KEY, 
+        NOTIFICATION_SETTINGS_KEY,
         JSON.stringify({ enabled: newNotificationEnabled })
       );
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      
+
       if (newNotificationEnabled) {
         // Solicitar permissões
         const { status } = await Notifications.requestPermissionsAsync();
@@ -364,7 +364,7 @@ export default function ProfileScreen() {
 
   const handleDateChange = (event: any, selectedDate?: Date) => {
     setShowDatePicker(false);
-    
+
     if (selectedDate) {
       setTempDate(selectedDate);
       const formattedDate = selectedDate.toISOString().split('T')[0];
@@ -374,39 +374,39 @@ export default function ProfileScreen() {
 
   const handleUpdateEmail = async () => {
     const trimmedEmail = newEmail.trim();
-    
+
     if (!trimmedEmail) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
       Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
-    
+
     setLoading(true);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    
+
     try {
-      const { data, error } = await supabase.auth.updateUser({ 
-        email: trimmedEmail 
+      const { data, error } = await supabase.auth.updateUser({
+        email: trimmedEmail
       });
-      
+
       if (error) throw error;
-      
+
       setEmail(trimmedEmail);
       setNewEmail('');
       Alert.alert(
-        'Success', 
+        'Success',
         'Confirmation email sent! Please check your inbox to verify your new email address.'
       );
-      
+
     } catch (error: any) {
       console.error('Email update error:', error);
       Alert.alert(
-        'Update Failed', 
+        'Update Failed',
         error?.message || 'Unable to update email. Please try again.'
       );
     } finally {
@@ -445,9 +445,9 @@ export default function ProfileScreen() {
   const calculateBMI = () => {
     const weightNum = parseFloat(weight) || 0;
     const heightNum = parseFloat(height) || 0;
-    
+
     if (weightNum === 0 || heightNum === 0) return '0';
-    
+
     const heightInMeters = heightNum / 100;
     return (weightNum / (heightInMeters * heightInMeters)).toFixed(1);
   };
@@ -466,8 +466,8 @@ export default function ProfileScreen() {
       t('logoutConfirm', { ns: 'common' }),
       [
         { text: t('cancel', { ns: 'common' }), style: 'cancel' },
-        { 
-          text: t('logout', { ns: 'common' }), 
+        {
+          text: t('logout', { ns: 'common' }),
           style: 'destructive',
           onPress: async () => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -486,7 +486,7 @@ export default function ProfileScreen() {
       t('clearHistoryConfirm', { ns: 'common' }),
       [
         { text: t('cancel', { ns: 'common' }), style: 'cancel' },
-        { 
+        {
           text: t('delete', { ns: 'common' }),
           style: 'destructive',
           onPress: async () => {
@@ -538,7 +538,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ scale: progressAnim }] }}>
-          
+
           {/* Header */}
           <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
             <View style={styles.headerContent}>
@@ -579,14 +579,14 @@ export default function ProfileScreen() {
               </Pressable>
             </View>
             <Text style={[styles.username, { color: theme.colors.onBackground }]}>{username}</Text>
-            <Text style={[styles.email, { color: theme.colors.onSurfaceVariant }]} 
-                  numberOfLines={1}
-                  adjustsFontSizeToFit
-                  minimumFontScale={0.8}
-                  ellipsizeMode="tail">
+            <Text style={[styles.email, { color: theme.colors.onSurfaceVariant }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              ellipsizeMode="tail">
               {email}
             </Text>
-            
+
             {/* Stats Cards */}
             <View style={styles.statsContainer}>
               <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
@@ -606,27 +606,27 @@ export default function ProfileScreen() {
 
           {/* Navigation Tabs */}
           <View style={[styles.tabContainer, { backgroundColor: theme.colors.surface }]}>
-            <Pressable 
+            <Pressable
               style={[styles.tab, activeTab === 'goals' && [styles.activeTab, { backgroundColor: theme.colors.primary }]]}
               onPress={() => setActiveTab('goals')}
             >
-              <Text style={[styles.tabText, {color: theme.colors.primary }, activeTab === 'goals' && styles.activeTabText]}>
+              <Text style={[styles.tabText, { color: theme.colors.primary }, activeTab === 'goals' && styles.activeTabText]}>
                 {t('goals', { ns: 'common' })}
               </Text>
             </Pressable>
-            <Pressable 
+            <Pressable
               style={[styles.tab, activeTab === 'progress' && [styles.activeTab, { backgroundColor: theme.colors.primary }]]}
               onPress={() => setActiveTab('progress')}
             >
-              <Text style={[styles.tabText, {color: theme.colors.primary}, activeTab === 'progress' && styles.activeTabText]}>
+              <Text style={[styles.tabText, { color: theme.colors.primary }, activeTab === 'progress' && styles.activeTabText]}>
                 {t('Progress', { ns: 'common' })}
               </Text>
             </Pressable>
-            <Pressable 
+            <Pressable
               style={[styles.tab, activeTab === 'profile' && [styles.activeTab, { backgroundColor: theme.colors.primary }]]}
               onPress={() => setActiveTab('profile')}
             >
-              <Text style={[styles.tabText, {color: theme.colors.primary}, activeTab === 'profile' && styles.activeTabText]}>
+              <Text style={[styles.tabText, { color: theme.colors.primary }, activeTab === 'profile' && styles.activeTabText]}>
                 {t('profile', { ns: 'common' })}
               </Text>
             </Pressable>
@@ -665,7 +665,7 @@ export default function ProfileScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: theme.colors.onSurface }]}>{t('Target Date', { ns: 'common' })}</Text>
-                <Pressable 
+                <Pressable
                   style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, justifyContent: 'center' }]}
                   onPress={handleShowDatePicker}
                 >
@@ -694,14 +694,14 @@ export default function ProfileScreen() {
                     </Text>
                   </View>
                   <View style={[styles.progressBar, { backgroundColor: theme.colors.outline }]}>
-                    <Animated.View 
+                    <Animated.View
                       style={[
-                        styles.progressFill, 
-                        { 
-                          width: `${progressPercentage}%`, 
-                          backgroundColor: theme.colors.primary 
+                        styles.progressFill,
+                        {
+                          width: `${progressPercentage}%`,
+                          backgroundColor: theme.colors.primary
                         }
-                      ]} 
+                      ]}
                     />
                   </View>
                   <Text style={[styles.progressText, { color: theme.colors.onSurfaceVariant }]}>
@@ -739,25 +739,25 @@ export default function ProfileScreen() {
                     <Text style={[styles.chartTitle, { color: theme.colors.onSurface }]}>
                       {t('weightHistory', { ns: 'common' })}
                     </Text>
-                    
+
                     <View style={styles.simpleChart}>
                       {chartData.map((item, index) => {
                         const maxWeight = Math.max(...chartData.map(d => d.weight));
                         const minWeight = Math.min(...chartData.map(d => d.weight));
                         const range = maxWeight - minWeight;
                         const barHeight = ((item.weight - minWeight) / range) * 80 + 20; // 20-100% height
-                        
+
                         return (
                           <View key={index} style={styles.barContainer}>
                             <View style={styles.barWrapper}>
-                              <View 
+                              <View
                                 style={[
-                                  styles.bar, 
-                                  { 
+                                  styles.bar,
+                                  {
                                     height: barHeight,
-                                    backgroundColor: theme.colors.primary 
+                                    backgroundColor: theme.colors.primary
                                   }
-                                ]} 
+                                ]}
                               />
                             </View>
                             <Text style={[styles.barLabel, { color: theme.colors.onSurfaceVariant }]}>
@@ -786,11 +786,11 @@ export default function ProfileScreen() {
                     {weightHistory.slice(0, 5).map((entry, index) => (
                       <View key={index} style={[styles.historyItem, { backgroundColor: theme.colors.surface }]}>
                         <Text style={[styles.historyDate, { color: theme.colors.onSurface }]}>
-                          {new Date(entry.date).toLocaleDateString('pt-PT', { 
-                            weekday: 'short', 
-                            year: 'numeric', 
-                            month: 'short', 
-                            day: 'numeric' 
+                          {new Date(entry.date).toLocaleDateString('pt-PT', {
+                            weekday: 'short',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
                           })}
                         </Text>
                         <Text style={[styles.historyWeight, { color: theme.colors.primary }]}>
@@ -877,7 +877,7 @@ export default function ProfileScreen() {
                   </View>
                   <Pressable onPress={toggleDeviceAlarm}>
                     <View style={[
-                      styles.toggle, 
+                      styles.toggle,
                       { backgroundColor: useDeviceAlarm ? theme.colors.primary : theme.colors.outline }
                     ]}>
                       <View style={[
@@ -888,8 +888,8 @@ export default function ProfileScreen() {
                   </Pressable>
                 </View>
                 <Text style={[styles.notificationDescription, { color: theme.colors.onSurfaceVariant }]}>
-                  {useDeviceAlarm 
-                    ? 'Using device default alarm sound (loudest)' 
+                  {useDeviceAlarm
+                    ? 'Using device default alarm sound (loudest)'
                     : 'Using app sounds for workout timers'
                   }
                 </Text>
@@ -906,7 +906,7 @@ export default function ProfileScreen() {
                   </View>
                   <Pressable onPress={toggleNotifications}>
                     <View style={[
-                      styles.toggle, 
+                      styles.toggle,
                       { backgroundColor: notificationEnabled ? theme.colors.primary : theme.colors.outline }
                     ]}>
                       <View style={[
@@ -925,10 +925,10 @@ export default function ProfileScreen() {
               <View style={[styles.notificationSection, { backgroundColor: theme.colors.surface }]}>
                 <View style={styles.notificationHeader}>
                   <View style={styles.notificationInfo}>
-                    <Ionicons 
-                      name={colorScheme === 'dark' ? 'moon' : 'sunny'} 
-                      size={20} 
-                      color={theme.colors.onSurface} 
+                    <Ionicons
+                      name={colorScheme === 'dark' ? 'moon' : 'sunny'}
+                      size={20}
+                      color={theme.colors.onSurface}
                     />
                     <Text style={[styles.notificationTitle, { color: theme.colors.onSurface }]}>
                       App Theme
@@ -938,7 +938,7 @@ export default function ProfileScreen() {
                 <Text style={[styles.notificationDescription, { color: theme.colors.onSurfaceVariant, marginBottom: 12 }]}>
                   Choose how the app theme should behave
                 </Text>
-                
+
                 {/* Opções de tema */}
                 <View style={styles.themeOptions}>
                   <Pressable
@@ -948,16 +948,16 @@ export default function ProfileScreen() {
                     }}
                     style={[
                       styles.themeOption,
-                      { 
+                      {
                         backgroundColor: themeMode === 'automatic' ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
                         borderColor: themeMode === 'automatic' ? theme.colors.primary : theme.colors.outline,
                       }
                     ]}
                   >
-                    <Ionicons 
-                      name="phone-portrait" 
-                      size={18} 
-                      color={themeMode === 'automatic' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant} 
+                    <Ionicons
+                      name="phone-portrait"
+                      size={18}
+                      color={themeMode === 'automatic' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant}
                     />
                     <Text style={[
                       styles.themeOptionText,
@@ -977,16 +977,16 @@ export default function ProfileScreen() {
                     }}
                     style={[
                       styles.themeOption,
-                      { 
+                      {
                         backgroundColor: themeMode === 'light' ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
                         borderColor: themeMode === 'light' ? theme.colors.primary : theme.colors.outline,
                       }
                     ]}
                   >
-                    <Ionicons 
-                      name="sunny" 
-                      size={18} 
-                      color={themeMode === 'light' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant} 
+                    <Ionicons
+                      name="sunny"
+                      size={18}
+                      color={themeMode === 'light' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant}
                     />
                     <Text style={[
                       styles.themeOptionText,
@@ -1006,16 +1006,16 @@ export default function ProfileScreen() {
                     }}
                     style={[
                       styles.themeOption,
-                      { 
+                      {
                         backgroundColor: themeMode === 'dark' ? theme.colors.primaryContainer : theme.colors.surfaceVariant,
                         borderColor: themeMode === 'dark' ? theme.colors.primary : theme.colors.outline,
                       }
                     ]}
                   >
-                    <Ionicons 
-                      name="moon" 
-                      size={18} 
-                      color={themeMode === 'dark' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant} 
+                    <Ionicons
+                      name="moon"
+                      size={18}
+                      color={themeMode === 'dark' ? theme.colors.onPrimaryContainer : theme.colors.onSurfaceVariant}
                     />
                     <Text style={[
                       styles.themeOptionText,
@@ -1050,8 +1050,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  title: { 
-    fontSize: 32, 
+  title: {
+    fontSize: 32,
     fontWeight: '700',
     color: '#fff',
   },
@@ -1061,8 +1061,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
   },
 
-  profileSection: { 
-    alignItems: 'center', 
+  profileSection: {
+    alignItems: 'center',
     marginTop: -60,
     paddingHorizontal: 24,
   },
@@ -1090,9 +1090,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatar: { 
-    width: 104, 
-    height: 104, 
+  avatar: {
+    width: 104,
+    height: 104,
     borderRadius: 52,
   },
   editAvatarButton: {
@@ -1112,13 +1112,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  username: { 
-    fontSize: 28, 
-    fontWeight: '700', 
+  username: {
+    fontSize: 28,
+    fontWeight: '700',
     marginTop: 16,
   },
-  email: { 
-    fontSize: 16, 
+  email: {
+    fontSize: 16,
     marginTop: 4,
     textAlign: 'center',
     maxWidth: '95%',
@@ -1466,8 +1466,8 @@ const styles = StyleSheet.create({
   },
 
   // Skeleton styles
-  headerSkeleton: { 
-    height: 120, 
+  headerSkeleton: {
+    height: 120,
     backgroundColor: '#e5e5e5',
   },
   avatarSkeleton: {
@@ -1478,11 +1478,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#e5e5e5',
     borderRadius: 60,
   },
-  lineSkeleton: { 
-    height: 20, 
-    width: 200, 
-    alignSelf: 'center', 
-    marginTop: 10, 
+  lineSkeleton: {
+    height: 20,
+    width: 200,
+    alignSelf: 'center',
+    marginTop: 10,
     backgroundColor: '#e5e5e5',
     borderRadius: 12,
   },

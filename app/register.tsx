@@ -18,7 +18,7 @@ export default function RegisterScreen() {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [username, setUsername] = useState(''); 
+  const [username, setUsername] = useState('');
   const [phone_number, setPhoneNumber] = useState('');
   const [confirmpassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,7 +45,7 @@ export default function RegisterScreen() {
         password,
       });
 
-  console.log('supabase.auth.signUp response:', { authData, authError });
+      console.log('supabase.auth.signUp response:', { authData, authError });
 
       if (authError) {
         console.log('Authentication error:', authError.message, authError);
@@ -55,8 +55,8 @@ export default function RegisterScreen() {
       }
 
       // Se o usuário já existe, pode retornar erro, mas tentamos inserir na tabela personalizada mesmo assim
-  console.log('Auth account created, inserting into ContasRegistradas (no password saved)...');
-  console.log('Data for insert:', { username, user_email: email, phone_number });
+      console.log('Auth account created, inserting into ContasRegistradas (no password saved)...');
+      console.log('Data for insert:', { username, user_email: email, phone_number });
 
       // 2. Inserir na tabela personalizada
       // IMPORTANT: do NOT store plaintext passwords. We only save non-sensitive profile fields here.
@@ -67,7 +67,7 @@ export default function RegisterScreen() {
           phone_number: phone_number,
         },
       ]);
-      
+
       console.log('Resposta do insert:', { dbData, dbError });
 
       if (dbError) {
@@ -136,7 +136,7 @@ export default function RegisterScreen() {
       {loading ? (
         <ActivityIndicator size="large" style={{ marginTop: 20 }} />
       ) : (
-        <TouchableOpacity onPress={handleRegister} style={[styles.primaryBtn, { backgroundColor: theme.colors.primary }] }>
+        <TouchableOpacity onPress={handleRegister} style={[styles.primaryBtn, { backgroundColor: theme.colors.primary }]}>
           <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>{t('register', { ns: 'common' })}</Text>
         </TouchableOpacity>
       )}

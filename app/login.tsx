@@ -15,7 +15,7 @@ import { supabase } from '../lib/supabase';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from '../hooks/useTranslation';
 
-export default function LoginScreen() { 
+export default function LoginScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useTranslation();
@@ -32,15 +32,15 @@ export default function LoginScreen() {
 
     setError('');
     setIsLoading(true);
-    
+
     try {
       const { error } = await supabase.auth.signInWithPassword({
         email: email.trim(),
         password: password.trim(),
       });
-      
+
       if (error) throw error;
-      
+
     } catch (error: any) {
       console.error('Erro no login:', error);
       setError(error.message || t('couldNotSave', { ns: 'common' }));
@@ -62,9 +62,9 @@ export default function LoginScreen() {
           resizeMode="contain"
         />
       </View>
-      
+
       <Text style={[styles.title, { color: theme.colors.onBackground }]}>{t('login', { ns: 'common' })}</Text>
-      
+
       <TextInput
         placeholder={t('email', { ns: 'common' })}
         placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
@@ -74,7 +74,7 @@ export default function LoginScreen() {
         autoCapitalize="none"
         keyboardType="email-address"
       />
-      
+
       <TextInput
         placeholder={t('password', { ns: 'common' })}
         placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
@@ -83,7 +83,7 @@ export default function LoginScreen() {
         onChangeText={setPassword}
         secureTextEntry
       />
-      
+
       <TouchableOpacity
         onPress={handleLogin}
         disabled={isLoading}
@@ -95,19 +95,19 @@ export default function LoginScreen() {
           <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>{t('enter', { ns: 'common' })}</Text>
         )}
       </TouchableOpacity>
-      
+
       <Pressable onPress={handleRegister} style={{ marginTop: 16 }}>
         <Text style={[styles.registerText, { color: theme.colors.primary }]}>{t('noAccount', { ns: 'common' })}</Text>
       </Pressable>
-      
+
       {!!error && <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
+  container: {
+    flex: 1,
     paddingTop: 60, // Reduzido para acomodar a logo
     paddingHorizontal: 20,
     justifyContent: 'center',
@@ -134,21 +134,21 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     fontSize: 16,
   },
-  primaryBtn: { 
-    paddingVertical: 16, 
-    borderRadius: 12, 
+  primaryBtn: {
+    paddingVertical: 16,
+    borderRadius: 12,
     alignItems: 'center',
     marginTop: 10,
   },
-  primaryBtnTxt: { 
-    fontSize: 16, 
-    fontWeight: '700' 
+  primaryBtnTxt: {
+    fontSize: 16,
+    fontWeight: '700'
   },
-  registerText: { 
-    marginTop: 18, 
-    fontSize: 15, 
-    textAlign: 'center', 
-    textDecorationLine: 'underline' 
+  registerText: {
+    marginTop: 18,
+    fontSize: 15,
+    textAlign: 'center',
+    textDecorationLine: 'underline'
   },
   separatorContainer: {
     flexDirection: 'row',

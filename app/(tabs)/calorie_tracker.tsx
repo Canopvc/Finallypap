@@ -10,7 +10,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Modal, 
+  Modal,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from 'react-native-paper';
@@ -121,7 +121,7 @@ const CalorieCounter: React.FC = () => {
   // Função para analisar alimentos usando Groq API
   const analyzeFoodWithGroq = async (foodDescription: string): Promise<FoodAnalysis> => {
     const API_KEY = COHERE_API_KEY;
-    
+
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -174,11 +174,11 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
       });
 
       const data = await response.json();
-      
+
       if (data.choices && data.choices[0].message.content) {
         const content = data.choices[0].message.content;
         console.log('Resposta da API:', content);
-        
+
         try {
           const parsedData = JSON.parse(content);
           return {
@@ -193,9 +193,9 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
           throw new Error('Resposta da API em formato inválido');
         }
       }
-      
+
       throw new Error('Resposta da API inválida');
-      
+
     } catch (error) {
       console.error('Erro Groq API:', error);
       throw error;
@@ -245,7 +245,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
 
     try {
       let foodData: FoodAnalysis;
-      
+
       // Tenta usar a API do Groq primeiro
       try {
         foodData = await analyzeFoodWithGroq(foodInput);
@@ -258,9 +258,9 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
       const newMeal: Meal = {
         id: Date.now().toString(),
         ...foodData,
-        timestamp: new Date().toLocaleTimeString('pt-BR', { 
-          hour: '2-digit', 
-          minute: '2-digit' 
+        timestamp: new Date().toLocaleTimeString('pt-BR', {
+          hour: '2-digit',
+          minute: '2-digit'
         })
       };
 
@@ -298,7 +298,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
     const consumed = todayTotals[type] || 0;
     const remaining = Math.max(0, goal - consumed);
     const percentage = goal > 0 ? Math.min(100, (consumed / goal) * 100) : 0;
-    
+
     return {
       remaining,
       percentage
@@ -318,7 +318,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
     const strokeWidth = 8;
     const circumference = 2 * Math.PI * radius;
     const strokeDashoffset = circumference - (percentage / 100) * circumference;
-  
+
     const getTypeLabel = (): string => {
       switch (type) {
         case 'calories': return 'Calorias';
@@ -327,7 +327,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
         default: return '';
       }
     };
-  
+
     const getUnit = (): string => {
       return type === 'calories' ? 'kcal' : 'g';
     };
@@ -335,7 +335,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
     // Mostrar o consumo atual em vez do restante
     const currentValue = todayTotals[type] || 0;
     const goalValue = dailyGoals[type] || 0;
-  
+
     return (
       <View style={styles.circleContainer}>
         <View style={styles.circleWrapper}>
@@ -378,17 +378,17 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={[styles.container, { backgroundColor: theme.colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollViewContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header Container */}
         <View style={[styles.headerContainer, { backgroundColor: theme.colors.surface }]}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.backButtonContainer}
             onPress={handleBackToHome}
           >
@@ -404,25 +404,25 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
             </Text>
           </View>
 
-          <TouchableOpacity 
-  style={styles.settingsButtonContainer}
-  onPress={openSettings}
->
-  <Svg
-    width={28}
-    height={28}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={theme.colors.onSurface}
-    strokeWidth={1.5}
-  >
-    <Path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
-    />
-  </Svg>
-</TouchableOpacity>
+          <TouchableOpacity
+            style={styles.settingsButtonContainer}
+            onPress={openSettings}
+          >
+            <Svg
+              width={28}
+              height={28}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={theme.colors.onSurface}
+              strokeWidth={1.5}
+            >
+              <Path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
+              />
+            </Svg>
+          </TouchableOpacity>
 
 
         </View>
@@ -446,7 +446,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
           </Text>
           <View style={styles.inputContainer}>
             <TextInput
-              style={[styles.input, { 
+              style={[styles.input, {
                 backgroundColor: theme.colors.surface,
                 borderColor: theme.colors.outline,
                 color: theme.colors.onSurface
@@ -457,7 +457,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
               onChangeText={setFoodInput}
               multiline
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.addButton, { backgroundColor: theme.colors.primary }, loading && styles.addButtonDisabled]}
               onPress={addMeal}
               disabled={loading}
@@ -528,7 +528,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
               {meals.length} refeições
             </Text>
           </View>
-          
+
           {meals.length === 0 ? (
             <View style={styles.emptyStateContainer}>
               <Text style={[styles.emptyStateIcon, { color: theme.colors.onSurfaceVariant }]}>
@@ -544,8 +544,8 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
           ) : (
             <View style={styles.mealsListContainer}>
               {meals.map(meal => (
-                <View 
-                  key={meal.id} 
+                <View
+                  key={meal.id}
                   style={[styles.mealItem, { backgroundColor: theme.colors.surfaceVariant }]}
                 >
                   <View style={styles.mealContent}>
@@ -584,7 +584,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
                       </View>
                     </View>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.deleteButtonContainer}
                     onPress={() => removeMeal(meal.id)}
                   >
@@ -608,13 +608,13 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
             <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
               Configurar Metas Diárias
             </Text>
-            
+
             <View style={styles.settingItem}>
               <Text style={[styles.settingLabel, { color: theme.colors.onSurface }]}>
                 Calorias (kcal)
               </Text>
               <TextInput
-                style={[styles.settingInput, { 
+                style={[styles.settingInput, {
                   backgroundColor: theme.colors.background,
                   borderColor: theme.colors.outline,
                   color: theme.colors.onSurface
@@ -633,7 +633,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
                 Proteína (g)
               </Text>
               <TextInput
-                style={[styles.settingInput, { 
+                style={[styles.settingInput, {
                   backgroundColor: theme.colors.background,
                   borderColor: theme.colors.outline,
                   color: theme.colors.onSurface
@@ -652,7 +652,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
                 Carboidratos (g)
               </Text>
               <TextInput
-                style={[styles.settingInput, { 
+                style={[styles.settingInput, {
                   backgroundColor: theme.colors.background,
                   borderColor: theme.colors.outline,
                   color: theme.colors.onSurface
@@ -667,13 +667,13 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
             </View>
 
             <View style={styles.modalButtons}>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, styles.cancelButton, { backgroundColor: theme.colors.surfaceVariant }]}
                 onPress={() => setSettingsModalVisible(false)}
               >
                 <Text style={[styles.cancelButtonText, { color: theme.colors.onSurfaceVariant }]}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
                 onPress={applySettings}
               >
@@ -737,7 +737,7 @@ const styles = StyleSheet.create({
   settingsButtonContainer: {
     marginTop: 18,
   },
- 
+
   // Section Titles
   sectionTitle: {
     fontSize: 20,

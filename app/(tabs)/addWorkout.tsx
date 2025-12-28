@@ -6,7 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform, 
+  Platform,
   ScrollView,
   StyleSheet,
   Switch,
@@ -115,8 +115,8 @@ export default function AddWorkout() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={{ flex: 1 }}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
@@ -135,19 +135,19 @@ export default function AddWorkout() {
           <Text style={[styles.label, { color: theme.colors.onSurface }]}>
             {t('workoutName', { ns: 'workouts' })}
           </Text>
-          <TextInput 
-            value={workoutName} 
-            onChangeText={setWorkoutName} 
-            placeholder={t('exampleWorkoutName', { ns: 'workouts' })} 
+          <TextInput
+            value={workoutName}
+            onChangeText={setWorkoutName}
+            placeholder={t('exampleWorkoutName', { ns: 'workouts' })}
             style={[
-              styles.input, 
-              { 
+              styles.input,
+              {
                 backgroundColor: theme.colors.background,
-                color: theme.colors.onSurface, 
-                borderColor: theme.colors.outline 
+                color: theme.colors.onSurface,
+                borderColor: theme.colors.outline
               }
-            ]} 
-            placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface} 
+            ]}
+            placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
           />
         </View>
 
@@ -159,8 +159,8 @@ export default function AddWorkout() {
               <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
                 {t('exerciseNumber', { ns: 'workouts', number: idx + 1 })}
               </Text>
-              <TouchableOpacity 
-                onPress={() => removeExercise(ex.id)} 
+              <TouchableOpacity
+                onPress={() => removeExercise(ex.id)}
                 disabled={exercises.length === 1}
               >
                 <Text style={[
@@ -180,11 +180,11 @@ export default function AddWorkout() {
             <TextInput
               placeholder={t('Bench Press', { ns: 'workouts' })}
               style={[
-                styles.input, 
-                { 
+                styles.input,
+                {
                   backgroundColor: theme.colors.background,
-                  color: theme.colors.onSurface, 
-                  borderColor: theme.colors.outline 
+                  color: theme.colors.onSurface,
+                  borderColor: theme.colors.outline
                 }
               ]}
               placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
@@ -200,11 +200,11 @@ export default function AddWorkout() {
                 </Text>
                 <TextInput
                   style={[
-                    styles.input, 
-                    { 
+                    styles.input,
+                    {
                       backgroundColor: theme.colors.background,
-                      color: theme.colors.onSurface, 
-                      borderColor: theme.colors.outline 
+                      color: theme.colors.onSurface,
+                      borderColor: theme.colors.outline
                     }
                   ]}
                   keyboardType="number-pad"
@@ -218,11 +218,11 @@ export default function AddWorkout() {
                 </Text>
                 <TextInput
                   style={[
-                    styles.input, 
-                    { 
+                    styles.input,
+                    {
                       backgroundColor: theme.colors.background,
-                      color: theme.colors.onSurface, 
-                      borderColor: theme.colors.outline 
+                      color: theme.colors.onSurface,
+                      borderColor: theme.colors.outline
                     }
                   ]}
                   keyboardType="number-pad"
@@ -242,11 +242,11 @@ export default function AddWorkout() {
                 </Text>
                 <TextInput
                   style={[
-                    styles.input, 
-                    { 
+                    styles.input,
+                    {
                       backgroundColor: theme.colors.background,
-                      color: theme.colors.onSurface, 
-                      borderColor: theme.colors.outline 
+                      color: theme.colors.onSurface,
+                      borderColor: theme.colors.outline
                     }
                   ]}
                   keyboardType="numeric"
@@ -262,11 +262,11 @@ export default function AddWorkout() {
                 </Text>
                 <TextInput
                   style={[
-                    styles.input, 
-                    { 
+                    styles.input,
+                    {
                       backgroundColor: theme.colors.background,
-                      color: theme.colors.onSurface, 
-                      borderColor: theme.colors.outline 
+                      color: theme.colors.onSurface,
+                      borderColor: theme.colors.outline
                     }
                   ]}
                   keyboardType="numeric"
@@ -283,10 +283,10 @@ export default function AddWorkout() {
               {t('type', { ns: 'workouts' })}
             </Text>
             <View style={[
-              styles.segmentContainer, 
-              { 
+              styles.segmentContainer,
+              {
                 backgroundColor: theme.colors.background,
-                borderColor: theme.colors.outline 
+                borderColor: theme.colors.outline
               }
             ]}>
               {(['weightlifting', 'calisthenics', 'cardio'] as const).map((type) => (
@@ -294,32 +294,32 @@ export default function AddWorkout() {
                   key={type}
                   style={[
                     styles.segmentBtn,
-                    ex.type === type 
-                      ? { 
-                          backgroundColor: theme.colors.onPrimaryContainer,
-                          shadowColor: theme.colors.primary,
-                          shadowOffset: { width: 0, height: 2 },
-                          shadowOpacity: 0.3,
-                          shadowRadius: 4,
-                          elevation: 3,
-                        }
-                      : { 
-                          backgroundColor: 'transparent' 
-                        }
+                    ex.type === type
+                      ? {
+                        backgroundColor: theme.colors.onPrimaryContainer,
+                        shadowColor: theme.colors.primary,
+                        shadowOffset: { width: 0, height: 2 },
+                        shadowOpacity: 0.3,
+                        shadowRadius: 4,
+                        elevation: 3,
+                      }
+                      : {
+                        backgroundColor: 'transparent'
+                      }
                   ]}
                   onPress={() => updateExercise(ex.id, 'type', type)}
                 >
-                  <Text 
+                  <Text
                     style={[
                       styles.segmentTxt,
-                      ex.type === type 
-                        ? { 
-                            color: theme.colors.onPrimary,
-                            fontWeight: '700'
-                          } 
-                        : { 
-                            color: theme.colors.onSurfaceVariant 
-                          }
+                      ex.type === type
+                        ? {
+                          color: theme.colors.onPrimary,
+                          fontWeight: '700'
+                        }
+                        : {
+                          color: theme.colors.onSurfaceVariant
+                        }
                     ]}
                   >
                     {t(type, { ns: 'workouts' })}
@@ -334,8 +334,8 @@ export default function AddWorkout() {
                 <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
                   {t('warmup', { ns: 'workouts' })}
                 </Text>
-                <Switch 
-                  value={ex.warmup} 
+                <Switch
+                  value={ex.warmup}
                   onValueChange={v => updateExercise(ex.id, 'warmup', v)}
                   trackColor={{
                     false: theme.colors.surfaceVariant,
@@ -348,8 +348,8 @@ export default function AddWorkout() {
                 <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
                   {t('dropset', { ns: 'workouts' })}
                 </Text>
-                <Switch 
-                  value={ex.dropset} 
+                <Switch
+                  value={ex.dropset}
                   onValueChange={v => updateExercise(ex.id, 'dropset', v)}
                   trackColor={{
                     false: theme.colors.surfaceVariant,
@@ -362,8 +362,8 @@ export default function AddWorkout() {
                 <Text style={[styles.switchLabel, { color: theme.colors.onSurface }]}>
                   {t('failure', { ns: 'workouts' })}
                 </Text>
-                <Switch 
-                  value={ex.failure} 
+                <Switch
+                  value={ex.failure}
                   onValueChange={v => updateExercise(ex.id, 'failure', v)}
                   trackColor={{
                     false: theme.colors.surfaceVariant,
@@ -378,29 +378,29 @@ export default function AddWorkout() {
 
         {/* Footer Buttons */}
         <View style={styles.footerRow}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.secondaryBtn, 
-              { 
+              styles.secondaryBtn,
+              {
                 borderColor: theme.colors.outline,
                 backgroundColor: theme.colors.surface
               }
-            ]} 
+            ]}
             onPress={addExercise}
           >
             <Text style={[styles.secondaryBtnTxt, { color: theme.colors.onSurface }]}>
               + {t('addExercise', { ns: 'workouts' })}
             </Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.primaryBtn, 
-              { 
+              styles.primaryBtn,
+              {
                 backgroundColor: theme.colors.primary,
                 opacity: loading ? 0.7 : 1
               }
-            ]} 
-            onPress={handleSave} 
+            ]}
+            onPress={handleSave}
             disabled={loading}
           >
             {loading ? (
@@ -418,65 +418,65 @@ export default function AddWorkout() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    padding: 20, 
-    paddingBottom: 40, 
-    paddingTop: Platform.OS === 'ios' ? 60 : 40 
+  container: {
+    padding: 20,
+    paddingBottom: 40,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40
   },
-  header: { 
-    fontSize: 28, 
-    fontWeight: '800', 
-    textAlign: 'center', 
-    marginBottom: 24 
+  header: {
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 24
   },
-  card: { 
-    borderRadius: 16, 
-    padding: 20, 
-    marginBottom: 16, 
+  card: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { 
-      width: 0, 
-      height: Platform.OS === 'ios' ? 4 : 2 
+    shadowOffset: {
+      width: 0,
+      height: Platform.OS === 'ios' ? 4 : 2
     },
     shadowOpacity: Platform.OS === 'ios' ? 0.1 : 0.08,
-    shadowRadius: Platform.OS === 'ios'  ? 12 : 4,
+    shadowRadius: Platform.OS === 'ios' ? 12 : 4,
     elevation: 4,
   },
-  cardTitle: { 
-    fontSize: 18, 
+  cardTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    marginBottom: 4 
+    marginBottom: 4
   },
-  label: { 
-    fontSize: 14, 
+  label: {
+    fontSize: 14,
     fontWeight: '600',
-    marginTop: 12, 
-    marginBottom: 8 
+    marginTop: 12,
+    marginBottom: 8
   },
-  input: { 
-    paddingVertical: Platform.OS === 'ios' ? 14 : 10, 
-    paddingHorizontal: 16, 
-    borderRadius: 12, 
-    fontSize: 16, 
+  input: {
+    paddingVertical: Platform.OS === 'ios' ? 14 : 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    fontSize: 16,
     borderWidth: 1,
     minHeight: Platform.OS === 'ios' ? 50 : 46,
   },
-  row: { 
-    flexDirection: 'row', 
-    gap: 12 
+  row: {
+    flexDirection: 'row',
+    gap: 12
   },
-  rowBetween: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
+  rowBetween: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8 
+    marginBottom: 8
   },
-  half: { 
-    flex: 1 
+  half: {
+    flex: 1
   },
-  removeBtn: { 
+  removeBtn: {
     fontWeight: '600',
-    fontSize: 14 
+    fontSize: 14
   },
   segmentContainer: {
     flexDirection: 'row',
@@ -496,41 +496,41 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  switchRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
+  switchRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 16,
     paddingHorizontal: 0,
     gap: 4,
   },
-  switchItem: { 
-    flexDirection: 'column', 
-    alignItems: 'center', 
+  switchItem: {
+    flexDirection: 'column',
+    alignItems: 'center',
     gap: 8,
     flex: 1,
     justifyContent: 'center',
     minWidth: 70,
   },
-  switchLabel: { 
+  switchLabel: {
     fontSize: 15,
     fontWeight: '500',
     flex: 1,
     textAlign: 'center',
     includeFontPadding: false,
   },
-  footerRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    gap: 12, 
-    marginTop: 24, 
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginTop: 24,
     marginBottom: 40,
   },
-  primaryBtn: { 
-    paddingVertical: Platform.OS === 'ios' ? 16 : 14, 
-    paddingHorizontal: 20, 
-    borderRadius: 14, 
-    alignItems: 'center', 
+  primaryBtn: {
+    paddingVertical: Platform.OS === 'ios' ? 16 : 14,
+    paddingHorizontal: 20,
+    borderRadius: 14,
+    alignItems: 'center',
     flex: 1,
     minHeight: Platform.OS === 'ios' ? 56 : 52,
     justifyContent: 'center',
@@ -540,22 +540,22 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  primaryBtnTxt: { 
-    fontWeight: '700', 
-    fontSize: 16 
+  primaryBtnTxt: {
+    fontWeight: '700',
+    fontSize: 16
   },
-  secondaryBtn: { 
-    borderRadius: 14, 
-    borderWidth: 1, 
-    paddingVertical: Platform.OS === 'ios' ? 16 : 14, 
-    paddingHorizontal: 20, 
-    alignItems: 'center', 
+  secondaryBtn: {
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: Platform.OS === 'ios' ? 16 : 14,
+    paddingHorizontal: 20,
+    alignItems: 'center',
     justifyContent: 'center',
     flex: 1,
     minHeight: Platform.OS === 'ios' ? 56 : 52,
   },
-  secondaryBtnTxt: { 
+  secondaryBtnTxt: {
     fontWeight: '600',
-    fontSize: 15 
+    fontSize: 15
   },
 });

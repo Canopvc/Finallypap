@@ -9,7 +9,7 @@ import {
   Modal,
   Platform,
   SafeAreaView,
-  ScrollView, 
+  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -80,7 +80,7 @@ export default function FitnessAIChat() {
   const [savingWorkout, setSavingWorkout] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState<Workout | null>(null);
   const [workoutName, setWorkoutName] = useState('');
-  
+
   const scrollViewRef = useRef<ScrollView>(null);
 
   useEffect(() => {
@@ -94,26 +94,26 @@ export default function FitnessAIChat() {
   const extractWorkoutFromText = (text: string): Workout | WorkoutPlan | null => {
     try {
       console.log('🔍 Analisando texto:', text.substring(0, 200));
-      
+
       const hasPlan = text.includes('Plano:') || text.includes('Plan:');
       const workoutBlocks = text.split(/(?:Treino|Workout):\s*/i).slice(1);
-      
+
       console.log('📋 Blocos de treino encontrados:', workoutBlocks.length);
       console.log('📝 Tem plano?:', hasPlan);
-  
+
       if (workoutBlocks.length === 0) return null;
-  
+
       if (hasPlan || workoutBlocks.length > 1) {
         return extractWorkoutPlan(workoutBlocks, text);
       }
-  
+
       return extractSingleWorkout(workoutBlocks[0], text);
     } catch (error) {
       console.error('Erro ao extrair treino:', error);
       return null;
     }
   };
-  
+
   const extractSingleWorkout = (block: string, fullText: string): Workout | null => {
     const exercises: Exercise[] = [];
     let workoutName = 'Treino Gerado pela IA';
@@ -124,7 +124,7 @@ export default function FitnessAIChat() {
     }
 
     const exerciseBlocks = block.split(/Exercício:\s*/i).slice(1);
-    
+
     for (const exerciseBlock of exerciseBlocks) {
       const exercise = extractExercise(exerciseBlock);
       if (exercise) {
@@ -138,7 +138,7 @@ export default function FitnessAIChat() {
       exercises
     } : null;
   };
-  
+
   const extractWorkoutPlan = (workoutBlocks: string[], fullText: string): WorkoutPlan | null => {
     const workouts: Workout[] = [];
     let planName = 'Plano de Treino Gerado pela IA';
@@ -151,7 +151,7 @@ export default function FitnessAIChat() {
 
     for (let i = 0; i < workoutBlocks.length; i++) {
       const block = workoutBlocks[i];
-      
+
       let workoutName = `Treino ${i + 1}`;
       const workoutNameMatch = block.match(/^([^\n]+?)(?=\n(?:Exercício|Exercise):|\n$)/i);
       if (workoutNameMatch) {
@@ -161,7 +161,7 @@ export default function FitnessAIChat() {
 
       const exercises: Exercise[] = [];
       const exerciseBlocks = block.split(/(?:Exercício|Exercise):\s*/i).slice(1);
-      
+
       console.log(`📊 Exercícios no treino ${i + 1}:`, exerciseBlocks.length);
 
       for (const exerciseBlock of exerciseBlocks) {
@@ -182,32 +182,32 @@ export default function FitnessAIChat() {
     }
 
     console.log(`✅ Total de treinos extraídos: ${workouts.length}`);
-    
+
     return workouts.length > 0 ? {
       workouts,
       planName,
       createdAt: new Date().toISOString()
     } : null;
   };
-  
+
   const extractExercise = (block: string): Exercise | null => {
     const exercise: Partial<Exercise> = {};
-    
+
     const nameMatch = block.match(/^([^\n]+)/);
     if (nameMatch) exercise.name = nameMatch[1].trim();
-    
+
     const setsMatch = block.match(/(?:Sets|Séries|Series):\s*(\d+)/i);
     if (setsMatch) exercise.sets = parseInt(setsMatch[1]);
-    
+
     const repsMatch = block.match(/(?:Reps|Repetições|Repeticiones):\s*(\d+)/i);
     if (repsMatch) exercise.reps = parseInt(repsMatch[1]);
-    
+
     const weightMatch = block.match(/(?:Weight|Peso|Poids):\s*(\d+)/i);
     if (weightMatch) exercise.weight = parseInt(weightMatch[1]);
-    
+
     const minutesMatch = block.match(/(?:Duration|Duração|Durée):\s*(\d+)/i);
     if (minutesMatch) exercise.minutes = parseInt(minutesMatch[1]);
-    
+
     const typeMatch = block.match(/(?:Type|Tipo):\s*(weightlifting|calisthenics|cardio|peso|calistenia|cardio|musculation)/i);
     if (typeMatch) {
       const type = typeMatch[1].toLowerCase();
@@ -230,34 +230,34 @@ export default function FitnessAIChat() {
         warmup: false,
       };
     }
-    
+
     return null;
   };
 
   const handleGenerateResponse = async () => {
-  if (!prompt.trim()) {
-    Alert.alert('Erro', 'Por favor, insira um texto.');
-    return;
-  }
+    if (!prompt.trim()) {
+      Alert.alert('Erro', 'Por favor, insira um texto.');
+      return;
+    }
 
-  const userMessage: MessageType = {
-    text: prompt,
-    isUser: true,
-    timestamp: new Date()
-  };
-  setMessages(prev => [...prev, userMessage]);
-  setPrompt('');
-  setLoading(true);
+    const userMessage: MessageType = {
+      text: prompt,
+      isUser: true,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setPrompt('');
+    setLoading(true);
 
-  try {
-    console.log('🚀 Enviando para Cohere AI...');
-    
-    const response = await cohere.chat({
-      model: 'command-a-03-2025',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an expert fitness coach. Follow these rules STRICTLY:
+    try {
+      console.log('🚀 Enviando para Cohere AI...');
+
+      const response = await cohere.chat({
+        model: 'command-a-03-2025',
+        messages: [
+          {
+            role: 'system',
+            content: `You are an expert fitness coach. Follow these rules STRICTLY:
 
 🎯 **MANDATORY STRUCTURE:**
 
@@ -334,92 +334,92 @@ ALWAYS USE THE MOST SIMPLE NAMES OF THE EXERCISES, USE SIMPLE AND USEFULL LANGUA
 → Always use short, clear and standard exercise names. Avoid complex or fancy terms.
 
 Respond in the same language as the user's query.`
-        },
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
-    });
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      });
 
-    console.log('✅ Resposta recebida da Cohere:', response);
+      console.log('✅ Resposta recebida da Cohere:', response);
 
-    let generatedText = '';
-    
-    // CORREÇÃO: Lidar com o formato correto da resposta da Cohere
-    if (response.message?.content) {
-      if (typeof response.message.content === 'string') {
-        generatedText = response.message.content;
-      } else if (Array.isArray(response.message.content)) {
-        // A Cohere retorna um array de objetos, precisamos extrair o texto
-        generatedText = response.message.content
-          .map(part => {
-            // Verificar se é um objeto com propriedade 'text'
-            if (part && typeof part === 'object' && 'text' in part) {
-              return part.text;
-            }
-            return '';
-          })
-          .filter(text => text !== '')
-          .join('\n');
+      let generatedText = '';
+
+      // CORREÇÃO: Lidar com o formato correto da resposta da Cohere
+      if (response.message?.content) {
+        if (typeof response.message.content === 'string') {
+          generatedText = response.message.content;
+        } else if (Array.isArray(response.message.content)) {
+          // A Cohere retorna um array de objetos, precisamos extrair o texto
+          generatedText = response.message.content
+            .map(part => {
+              // Verificar se é um objeto com propriedade 'text'
+              if (part && typeof part === 'object' && 'text' in part) {
+                return part.text;
+              }
+              return '';
+            })
+            .filter(text => text !== '')
+            .join('\n');
+        }
       }
-    }
 
-    // Se ainda estiver vazio, tentar extrair do conteúdo direto
-    if (!generatedText && response.message?.content) {
-      generatedText = JSON.stringify(response.message.content);
-    }
-
-    if (!generatedText) {
-      throw new Error('Resposta da API vazia');
-    }
-
-    console.log('📝 Resposta IA:', generatedText);
-    
-    const workoutData = extractWorkoutFromText(generatedText);
-    
-    console.log('💪 Dados extraídos:', workoutData);
-    
-    let isWorkoutPlan = false;
-    let isSingleWorkout = false;
-    
-    if (workoutData) {
-      if ('workouts' in workoutData) {
-        isWorkoutPlan = true;
-        console.log('📋 Múltiplos treinos detectados:', workoutData.workouts.length);
-      } else {
-        isSingleWorkout = true;
-        console.log('🎯 Treino único detectado');
+      // Se ainda estiver vazio, tentar extrair do conteúdo direto
+      if (!generatedText && response.message?.content) {
+        generatedText = JSON.stringify(response.message.content);
       }
-    }
-    
-    const botMessage: MessageType = {
-      text: generatedText,
-      isUser: false,
-      timestamp: new Date(),
-      isWorkout: isSingleWorkout,
-      isWorkoutPlan: isWorkoutPlan,
-      workoutData: isSingleWorkout ? workoutData as Workout : undefined,
-      workoutPlanData: isWorkoutPlan ? workoutData as WorkoutPlan : undefined
-    };
-    
-    setMessages(prev => [...prev, botMessage]);
 
-  } catch (error: any) {
-    console.error('❌ Erro na Cohere AI:', error);
-    
-    Alert.alert('Erro', 'Falha ao obter resposta da IA. Verifique sua conexão e chave API.');
-    
-    const errorMessage: MessageType = {
-      text: '❌ Erro ao conectar com a IA. Verifique sua conexão e chave API.',
-      isUser: false,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, errorMessage]);
-  } finally {
-    setLoading(false);
-  }
-};
+      if (!generatedText) {
+        throw new Error('Resposta da API vazia');
+      }
+
+      console.log('📝 Resposta IA:', generatedText);
+
+      const workoutData = extractWorkoutFromText(generatedText);
+
+      console.log('💪 Dados extraídos:', workoutData);
+
+      let isWorkoutPlan = false;
+      let isSingleWorkout = false;
+
+      if (workoutData) {
+        if ('workouts' in workoutData) {
+          isWorkoutPlan = true;
+          console.log('📋 Múltiplos treinos detectados:', workoutData.workouts.length);
+        } else {
+          isSingleWorkout = true;
+          console.log('🎯 Treino único detectado');
+        }
+      }
+
+      const botMessage: MessageType = {
+        text: generatedText,
+        isUser: false,
+        timestamp: new Date(),
+        isWorkout: isSingleWorkout,
+        isWorkoutPlan: isWorkoutPlan,
+        workoutData: isSingleWorkout ? workoutData as Workout : undefined,
+        workoutPlanData: isWorkoutPlan ? workoutData as WorkoutPlan : undefined
+      };
+
+      setMessages(prev => [...prev, botMessage]);
+
+    } catch (error: any) {
+      console.error('❌ Erro na Cohere AI:', error);
+
+      Alert.alert('Erro', 'Falha ao obter resposta da IA. Verifique sua conexão e chave API.');
+
+      const errorMessage: MessageType = {
+        text: '❌ Erro ao conectar com a IA. Verifique sua conexão e chave API.',
+        isUser: false,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSaveWorkout = async () => {
     if (!selectedWorkout || !workoutName.trim()) {
@@ -439,7 +439,7 @@ Respond in the same language as the user's query.`
       const list: Workout[] = raw ? JSON.parse(raw) : [];
       list.unshift(workoutToSave);
       await AsyncStorage.setItem(WORKOUTS_STORAGE_KEY, JSON.stringify(list));
-      
+
       Alert.alert('Sucesso', 'Treino salvo com sucesso!');
       setSelectedWorkout(null);
       setWorkoutName('');
@@ -456,7 +456,7 @@ Respond in the same language as the user's query.`
     try {
       const raw = await AsyncStorage.getItem(WORKOUTS_STORAGE_KEY);
       const list: Workout[] = raw ? JSON.parse(raw) : [];
-      
+
       let savedCount = 0;
       for (const workout of workoutPlan.workouts) {
         const workoutToSave: Workout = {
@@ -467,9 +467,9 @@ Respond in the same language as the user's query.`
         list.unshift(workoutToSave);
         savedCount++;
       }
-      
+
       await AsyncStorage.setItem(WORKOUTS_STORAGE_KEY, JSON.stringify(list));
-      
+
       Alert.alert('Sucesso', `${savedCount} treinos salvos com sucesso!`);
     } catch (error) {
       console.error('Erro ao salvar treinos:', error);
@@ -482,29 +482,29 @@ Respond in the same language as the user's query.`
   const renderMessages = () => {
     return messages.map((msg, index) => (
       <View key={index} style={styles.messageRow}>
-        <View 
+        <View
           style={[
             styles.messageContainer,
             msg.isUser ? styles.userMessageContainer : styles.geminiMessageContainer
           ]}
         >
-          <View 
+          <View
             style={[
               styles.messageBubble,
-              { 
-                backgroundColor: msg.isUser 
-                  ? theme.colors.primaryContainer 
-                  : theme.colors.surfaceVariant 
+              {
+                backgroundColor: msg.isUser
+                  ? theme.colors.primaryContainer
+                  : theme.colors.surfaceVariant
               }
             ]}
           >
-            <Text 
+            <Text
               style={[
                 styles.messageText,
-                { 
-                  color: msg.isUser 
-                    ? theme.colors.onPrimaryContainer 
-                    : theme.colors.onSurfaceVariant 
+                {
+                  color: msg.isUser
+                    ? theme.colors.onPrimaryContainer
+                    : theme.colors.onSurfaceVariant
                 }
               ]}
             >
@@ -518,12 +518,12 @@ Respond in the same language as the user's query.`
             </Text>
           </View>
         </View>
-  
+
         {msg.isWorkout && msg.workoutData && (
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
               styles.saveWorkoutButton,
-              { 
+              {
                 borderColor: theme.colors.primary,
                 backgroundColor: theme.colors.surface
               }
@@ -541,7 +541,7 @@ Respond in the same language as the user's query.`
             </Text>
           </TouchableOpacity>
         )}
-  
+
         {msg.isWorkoutPlan && msg.workoutPlanData && (
           <View style={[
             styles.workoutPlanContainer,
@@ -559,13 +559,13 @@ Respond in the same language as the user's query.`
             ]}>
               {msg.workoutPlanData.workouts.length} treinos do programa
             </Text>
-            
+
             {msg.workoutPlanData.workouts.map((workout, workoutIndex) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={workoutIndex}
                 style={[
                   styles.saveWorkoutButton,
-                  { 
+                  {
                     borderColor: theme.colors.secondary,
                     backgroundColor: theme.colors.surface,
                     marginVertical: 4
@@ -584,11 +584,11 @@ Respond in the same language as the user's query.`
                 </Text>
               </TouchableOpacity>
             ))}
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={[
                 styles.saveAllButton,
-                { 
+                {
                   backgroundColor: theme.colors.primary,
                   marginTop: 8
                 }
@@ -618,17 +618,17 @@ Respond in the same language as the user's query.`
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <StatusBar 
-        barStyle={theme.dark ? "light-content" : "dark-content"} 
+      <StatusBar
+        barStyle={theme.dark ? "light-content" : "dark-content"}
         backgroundColor={theme.colors.background}
       />
-      
+
       {/* HEADER FIXO */}
       <View style={[
-        styles.header, 
-        { 
+        styles.header,
+        {
           backgroundColor: theme.colors.surface,
-          borderBottomColor: theme.colors.outline 
+          borderBottomColor: theme.colors.outline
         }
       ]}>
         <Text style={[
@@ -638,10 +638,10 @@ Respond in the same language as the user's query.`
           {t('fitnessAI', { ns: 'common' })}
         </Text>
       </View>
-      
+
       {/* ÁREA DE MENSAGENS - COM PADDING BOTTOM PARA O INPUT */}
       <View style={styles.messagesWrapper}>
-        <ScrollView 
+        <ScrollView
           ref={scrollViewRef}
           style={styles.messagesContainer}
           contentContainerStyle={styles.messagesContent}
@@ -670,9 +670,9 @@ Respond in the same language as the user's query.`
           )}
           {loading && (
             <View style={styles.loadingContainer}>
-              <ActivityIndicator 
-                size="small" 
-                color={theme.colors.primary} 
+              <ActivityIndicator
+                size="small"
+                color={theme.colors.primary}
               />
               <Text style={[
                 styles.loadingText,
@@ -687,10 +687,10 @@ Respond in the same language as the user's query.`
 
       {/* INPUT - POSICIONAMENTO ABSOLUTO PARA GARANTIR ACESSIBILIDADE */}
       <View style={styles.inputWrapper} pointerEvents="box-none">
-        <View 
+        <View
           style={[
-            styles.inputContainer, 
-            { 
+            styles.inputContainer,
+            {
               backgroundColor: theme.colors.surface,
               borderColor: theme.colors.outline,
             }
@@ -700,7 +700,7 @@ Respond in the same language as the user's query.`
           <TextInput
             style={[
               styles.input,
-              { 
+              {
                 color: theme.colors.onSurface,
                 backgroundColor: theme.colors.background
               }
@@ -720,11 +720,11 @@ Respond in the same language as the user's query.`
               }, 300);
             }}
           />
-          <TouchableOpacity 
-            onPress={handleGenerateResponse} 
+          <TouchableOpacity
+            onPress={handleGenerateResponse}
             style={[
               styles.sendButton,
-              { 
+              {
                 backgroundColor: theme.colors.primary,
                 opacity: loading || !prompt.trim() ? 0.6 : 1
               }
@@ -732,9 +732,9 @@ Respond in the same language as the user's query.`
             disabled={loading || !prompt.trim()}
             activeOpacity={0.7}
           >
-            <MaterialCommunityIcons 
-              name="send" 
-              size={20} 
+            <MaterialCommunityIcons
+              name="send"
+              size={20}
               color="#fff"
             />
           </TouchableOpacity>
@@ -743,14 +743,14 @@ Respond in the same language as the user's query.`
 
       {/* Save Workout Modal */}
       <Modal visible={!!selectedWorkout} animationType="slide" transparent={true}>
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
           <View style={styles.modalContainer}>
             <View style={[
-              styles.modalContent, 
-              { 
+              styles.modalContent,
+              {
                 backgroundColor: theme.colors.surface,
               }
             ]}>
@@ -760,7 +760,7 @@ Respond in the same language as the user's query.`
               ]}>
                 Salvar Treino da IA
               </Text>
-              
+
               <Text style={[
                 styles.label,
                 { color: theme.colors.onSurface }
@@ -769,11 +769,11 @@ Respond in the same language as the user's query.`
               </Text>
               <TextInput
                 style={[
-                  styles.modalInput, 
-                  { 
+                  styles.modalInput,
+                  {
                     backgroundColor: theme.colors.background,
                     color: theme.colors.onSurface,
-                    borderColor: theme.colors.outline 
+                    borderColor: theme.colors.outline
                   }
                 ]}
                 value={workoutName}
@@ -789,7 +789,7 @@ Respond in the same language as the user's query.`
               ]}>
                 Exercícios gerados pela IA:
               </Text>
-              <ScrollView 
+              <ScrollView
                 style={styles.exercisesList}
                 showsVerticalScrollIndicator={true}
                 keyboardShouldPersistTaps="handled"
@@ -816,9 +816,9 @@ Respond in the same language as the user's query.`
               </ScrollView>
 
               <View style={styles.modalButtons}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={[
-                    styles.modalButton, 
+                    styles.modalButton,
                     styles.cancelButton,
                     { backgroundColor: theme.colors.surfaceVariant }
                   ]}
@@ -832,12 +832,12 @@ Respond in the same language as the user's query.`
                     Cancelar
                   </Text>
                 </TouchableOpacity>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   style={[
-                    styles.modalButton, 
+                    styles.modalButton,
                     styles.saveButton,
-                    { 
+                    {
                       backgroundColor: theme.colors.primary,
                       opacity: savingWorkout ? 0.6 : 1
                     }
@@ -863,7 +863,7 @@ Respond in the same language as the user's query.`
 }
 
 const styles = StyleSheet.create({
-  container: { 
+  container: {
     flex: 1,
   },
   header: {
@@ -952,8 +952,8 @@ const styles = StyleSheet.create({
       elevation: 10,
     } : {}),
   },
-  inputContainer: { 
-    flexDirection: 'row', 
+  inputContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
     marginHorizontal: 16,
     borderRadius: 25,
@@ -990,7 +990,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
   },
-  saveWorkoutButton: { 
+  saveWorkoutButton: {
     borderWidth: 1,
     padding: 12,
     borderRadius: 12,
@@ -1013,9 +1013,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: { 
+  modalContent: {
     width: '100%',
-    padding: 20, 
+    padding: 20,
     borderRadius: 16,
     maxHeight: '80%',
   },
@@ -1087,10 +1087,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   cancelButton: {
-    
+
   },
   saveButton: {
-    
+
   },
   saveAllButton: {
     padding: 12,

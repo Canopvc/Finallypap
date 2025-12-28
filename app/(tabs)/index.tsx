@@ -53,7 +53,7 @@ const STEP_TARGET = 10000;
 
 // Utils
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-const workoutSlugFromFields = (name: string, createdAt: string) => 
+const workoutSlugFromFields = (name: string, createdAt: string) =>
   `${slugify(name)}-${new Date(createdAt).getTime()}`;
 
 export default function HomeScreen() {
@@ -151,14 +151,14 @@ export default function HomeScreen() {
     try {
       const available = await Pedometer.isAvailableAsync();
       setIsPedometerAvailable(available);
-      
+
       if (available) {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
         try {
           const stepCountResult = await Pedometer.getStepCountAsync(today, new Date());
-          
+
           if (stepCountResult && stepCountResult.steps !== undefined) {
             const steps = stepCountResult.steps;
             setCurrentStepCount(steps);
@@ -168,14 +168,14 @@ export default function HomeScreen() {
           console.error('Erro ao obter passos:', stepError);
           await loadStoredSteps();
         }
-        
+
         const subscription = Pedometer.watchStepCount(result => {
           if (result.steps !== undefined) {
             setCurrentStepCount(result.steps);
             saveStepCount(result.steps);
           }
         });
-        
+
         return () => subscription && subscription.remove();
       } else {
         console.log('Pedómetro não disponível - usando modo manual');
@@ -209,39 +209,39 @@ export default function HomeScreen() {
   };
 
   const clearAllWorkouts = useCallback(() => {
-  Alert.alert(
-    "Delete All Workouts",
-    "Are you sure you want to DELETE all workouts? This action cannot be undone.",
-    [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Delete",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]));
-            setWorkouts([]);
-          } catch (e) {
-            Alert.alert("Erro", "Não foi possível apagar os treinos.");
+    Alert.alert(
+      "Delete All Workouts",
+      "Are you sure you want to DELETE all workouts? This action cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+              setWorkouts([]);
+            } catch (e) {
+              Alert.alert("Erro", "Não foi possível apagar os treinos.");
+            }
           }
         }
-      }
-    ]
-  );
-}, []);
+      ]
+    );
+  }, []);
 
 
   const checkAndResetSteps = async () => {
     try {
       const today = new Date().toDateString();
       const lastReset = await AsyncStorage.getItem('@last_reset_date');
-      
+
       if (lastReset !== today) {
         await AsyncStorage.setItem('@step_count', '0');
         await AsyncStorage.setItem('@last_reset_date', today);
         setCurrentStepCount(0);
         setProgress(0);
-        
+
         notificationsSentRef.current = { half: false, target: false, double: false };
         return 0;
       } else {
@@ -297,7 +297,7 @@ export default function HomeScreen() {
         content: { title, body, sound: 'default', data: { type: 'step_milestone' } },
         trigger: null,
       });
-      
+
       if (Platform.OS !== 'web') {
         Vibration.vibrate([0, 500, 200, 500]);
       }
@@ -350,8 +350,8 @@ export default function HomeScreen() {
     <View style={styles.itemWrap}>
       <TouchableOpacity
         style={[
-          styles.workoutItem, 
-          { 
+          styles.workoutItem,
+          {
             backgroundColor: theme.colors.surface,
             borderColor: theme.colors.outline,
           }
@@ -367,18 +367,18 @@ export default function HomeScreen() {
               {item.name}
             </Text>
             <Text style={[
-              styles.dateText, 
+              styles.dateText,
               { color: theme.colors.onSurfaceVariant }
             ]}>
               {new Date(item.createdAt).toLocaleDateString()}
             </Text>
           </View>
           <View style={[
-            styles.exerciseCount, 
+            styles.exerciseCount,
             { backgroundColor: theme.colors.primary + '20' }
           ]}>
             <Text style={[
-              styles.countText, 
+              styles.countText,
               { color: theme.colors.primary }
             ]}>
               {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
@@ -395,178 +395,178 @@ export default function HomeScreen() {
   const activeMinutes = Math.round(currentStepCount / 175);
 
   return (
-    
+
     <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ flex: 1 }}>
 
-    
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-        <View style={styles.headerContent}>
-          <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-            Fitness HUB
-          </Text>
-          <Text style={[
-            styles.subtitle, 
-            { color: theme.colors.onSurfaceVariant }
-          ]}>
-            {t('Track your daily activity and progress', { ns: 'common' })}
-          </Text>
-        </View>
-        <Pressable style={[styles.settingsIcon]} onPress={handleLogout} hitSlop={20}>
-  <Svg
-    width={28}
-    height={28}
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke={theme.colors.onSurface}
-    strokeWidth={1.5}
-  >
-    <Path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
-    />
-    <Path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-    />
-  </Svg>
-</Pressable>
 
-      </View>
-
-      {/* Steps Progress Section */}
-      <View style={[styles.progressContainer, { backgroundColor: theme.colors.surface }]}>
-        <View style={styles.progressHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            {t('steps', { ns: 'common' })} {t('today', { ns: 'common' })}
-          </Text>
-          <Text style={[styles.sectionSubtitle, { color: theme.colors.onSurfaceVariant }]}>
-            {t('keepMoving', { ns: 'common' })}
-          </Text>
-        </View>
-        
-        <View style={styles.stepsContainer}>
-          <View style={styles.stepsCount}>
-            <Text style={[styles.stepsNumber, { color: theme.colors.primary }]}>
-              {currentStepCount.toLocaleString()}
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        {/* Header */}
+        <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
+          <View style={styles.headerContent}>
+            <Text style={[styles.title, { color: theme.colors.onSurface }]}>
+              Fitness HUB
             </Text>
-            <Text style={[styles.stepsDivider, { color: theme.colors.onSurfaceVariant }]}>
-              /
-            </Text>
-            <Text style={[styles.stepsTarget, { color: theme.colors.onSurfaceVariant }]}>
-              {STEP_TARGET.toLocaleString()}
+            <Text style={[
+              styles.subtitle,
+              { color: theme.colors.onSurfaceVariant }
+            ]}>
+              {t('Track your daily activity and progress', { ns: 'common' })}
             </Text>
           </View>
-          <Text style={[styles.stepsRemaining, { color: theme.colors.onSurface }]}>
-            {remainingSteps.toLocaleString()} {t('steps', { ns: 'common' })} {t('toGo', { ns: 'common' })}
-          </Text>
+          <Pressable style={[styles.settingsIcon]} onPress={handleLogout} hitSlop={20}>
+            <Svg
+              width={28}
+              height={28}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke={theme.colors.onSurface}
+              strokeWidth={1.5}
+            >
+              <Path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
+              />
+              <Path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+              />
+            </Svg>
+          </Pressable>
+
         </View>
 
-        {/* Progress Bar */}
-        <View style={[styles.progressBar, { backgroundColor: theme.colors.surfaceVariant }]}>
-          <View 
-            style={[
-              styles.progressFill, 
-              { 
-                backgroundColor: theme.colors.primary,
-                width: `${Math.min(100, progress * 100)}%`,
-              }
-            ]} 
+        {/* Steps Progress Section */}
+        <View style={[styles.progressContainer, { backgroundColor: theme.colors.surface }]}>
+          <View style={styles.progressHeader}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              {t('steps', { ns: 'common' })} {t('today', { ns: 'common' })}
+            </Text>
+            <Text style={[styles.sectionSubtitle, { color: theme.colors.onSurfaceVariant }]}>
+              {t('keepMoving', { ns: 'common' })}
+            </Text>
+          </View>
+
+          <View style={styles.stepsContainer}>
+            <View style={styles.stepsCount}>
+              <Text style={[styles.stepsNumber, { color: theme.colors.primary }]}>
+                {currentStepCount.toLocaleString()}
+              </Text>
+              <Text style={[styles.stepsDivider, { color: theme.colors.onSurfaceVariant }]}>
+                /
+              </Text>
+              <Text style={[styles.stepsTarget, { color: theme.colors.onSurfaceVariant }]}>
+                {STEP_TARGET.toLocaleString()}
+              </Text>
+            </View>
+            <Text style={[styles.stepsRemaining, { color: theme.colors.onSurface }]}>
+              {remainingSteps.toLocaleString()} {t('steps', { ns: 'common' })} {t('toGo', { ns: 'common' })}
+            </Text>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={[styles.progressBar, { backgroundColor: theme.colors.surfaceVariant }]}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  backgroundColor: theme.colors.primary,
+                  width: `${Math.min(100, progress * 100)}%`,
+                }
+              ]}
+            />
+          </View>
+
+          {!isPedometerAvailable && (
+            <Text style={[styles.pedometerWarning, { color: theme.colors.error }]}>
+              Pedometer not available
+            </Text>
+          )}
+        </View>
+
+        {/* Stats Grid */}
+        <View style={styles.statsGrid}>
+          <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.statValue, { color: theme.colors.primary }]}>
+              {caloriesBurned}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>
+              {t('Calories Burned', { ns: 'common' })}
+            </Text>
+            <Text style={[styles.statSubtext, { color: theme.colors.onSurfaceVariant }]}>
+              {t('from', { ns: 'common' })} {currentStepCount.toLocaleString()} {t('steps', { ns: 'common' })}
+            </Text>
+          </View>
+
+          <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.statValue, { color: theme.colors.primary }]}>
+              {activeMinutes}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>
+              {t('Active Minutes', { ns: 'common' })}
+            </Text>
+          </View>
+        </View>
+
+        {/* Action Buttons */}
+
+        {/* Workouts Section */}
+        <View style={styles.workoutsSection}>
+          <View style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginBottom: 10
+          }}>
+            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+              {t('workouts', { ns: 'common' })}
+            </Text>
+
+            <TouchableOpacity
+              onPress={clearAllWorkouts}
+              style={{
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                backgroundColor: theme.colors.error,
+                borderRadius: 8
+              }}
+            >
+              <Text style={{ color: theme.colors.onError, fontWeight: '600' }}>
+                Apagar tudo
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+
+
+
+          <FlatList
+            data={workouts}
+            keyExtractor={(item: Workout) => workoutSlugFromFields(item.name, item.createdAt)}
+            contentContainerStyle={styles.list}
+            ListEmptyComponent={renderEmpty}
+            renderItem={renderWorkoutItem}
+            showsVerticalScrollIndicator={false}
           />
         </View>
-
-        {!isPedometerAvailable && (
-          <Text style={[styles.pedometerWarning, { color: theme.colors.error }]}>
-            Pedometer not available
-          </Text>
-        )}
       </View>
 
-      {/* Stats Grid */}
-      <View style={styles.statsGrid}>
-        <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.statValue, { color: theme.colors.primary }]}>
-            {caloriesBurned}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>
-            {t('Calories Burned', { ns: 'common' })}
-          </Text>
-          <Text style={[styles.statSubtext, { color: theme.colors.onSurfaceVariant }]}>
-            {t('from', { ns: 'common' })} {currentStepCount.toLocaleString()} {t('steps', { ns: 'common' })}
-          </Text>
-        </View>
-
-        <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.statValue, { color: theme.colors.primary }]}>
-            {activeMinutes}
-          </Text>
-          <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>
-            {t('Active Minutes', { ns: 'common' })}
-          </Text>
-        </View>
-      </View>
-
-      {/* Action Buttons */}
-      
-      {/* Workouts Section */}
-     <View style={styles.workoutsSection}>
-  <View style={{ 
-    flexDirection: 'row', 
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10
-  }}>
-    <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-      {t('workouts', { ns: 'common' })}
-    </Text>
-
-    <TouchableOpacity 
-      onPress={clearAllWorkouts}
-      style={{
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: theme.colors.error,
-        borderRadius: 8
-      }}
-    >
-      <Text style={{ color: theme.colors.onError, fontWeight: '600' }}>
-        Apagar tudo
-      </Text>
-    </TouchableOpacity>
-  </View>
-
-
-        
-
-        <FlatList
-          data={workouts}
-          keyExtractor={(item: Workout) => workoutSlugFromFields(item.name, item.createdAt)}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={renderEmpty}
-          renderItem={renderWorkoutItem}
-          showsVerticalScrollIndicator={false}
-        />
-      </View>
-    </View>
-
-        <TouchableOpacity
-  style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-  onPress={() => router.push('/addWorkout')}
->
-  <Text style={[styles.fabText, { color: theme.colors.surface }]}>+</Text>
-</TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
+        onPress={() => router.push('/addWorkout')}
+      >
+        <Text style={[styles.fabText, { color: theme.colors.surface }]}>+</Text>
+      </TouchableOpacity>
 
 
     </ScrollView>
 
-      
-    
+
+
   );
 
-  
+
 }
 
 const styles = StyleSheet.create({
@@ -584,12 +584,12 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
   },
-  title: { 
-    fontSize: 28, 
+  title: {
+    fontSize: 28,
     fontWeight: '700',
     marginBottom: 4,
   },
-  subtitle: { 
+  subtitle: {
     fontSize: 16,
     opacity: 0.7,
   },
@@ -693,7 +693,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.7,
   },
-  actionsRow: { 
+  actionsRow: {
     paddingHorizontal: 20,
     marginBottom: 24,
     gap: 12,
@@ -734,10 +734,10 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     marginBottom: 25,
   },
-  list: { 
+  list: {
     paddingBottom: 20,
   },
-  itemWrap: { 
+  itemWrap: {
     marginBottom: 20,
   },
   workoutItem: {
@@ -759,12 +759,12 @@ const styles = StyleSheet.create({
   workoutInfo: {
     flex: 1,
   },
-  workoutText: { 
-    fontSize: 18, 
+  workoutText: {
+    fontSize: 18,
     fontWeight: '700',
     marginBottom: 6,
   },
-  dateText: { 
+  dateText: {
     fontSize: 14,
     opacity: 0.7,
   },
@@ -773,7 +773,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 16,
   },
-  countText: { 
+  countText: {
     fontSize: 14,
     fontWeight: '600',
   },
@@ -793,26 +793,26 @@ const styles = StyleSheet.create({
     opacity: 0.7,
   },
   fab: {
-  position: 'absolute',
-  bottom: 83,
-  right: 30,
-  width: 64,
-  height: 64,
-  borderRadius: 32,
-  alignItems: 'center',
-  justifyContent: 'center',
-  elevation: 8,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 3 },
-  shadowOpacity: 0.3,
-  shadowRadius: 5,
-  zIndex: 999, // garante que fica por cima do conteúdo
-},
-fabText: {
-  fontSize: 36,
-  fontWeight: 'bold',
-  lineHeight: 38,
-},
+    position: 'absolute',
+    bottom: 83,
+    right: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    zIndex: 999, // garante que fica por cima do conteúdo
+  },
+  fabText: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    lineHeight: 38,
+  },
 
 },
 ); 

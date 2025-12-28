@@ -8,7 +8,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Provider as PaperProvider } from 'react-native-paper';
 import { getAppTheme } from "../lib/theme";
 import { ThemeProvider, useThemeContext } from "../contexts/ThemeContext";
-import "../lib/i18n"; 
+import "../lib/i18n";
 
 function RootLayoutContent() {
   const [isLoading, setIsLoading] = useState(true);
@@ -16,7 +16,7 @@ function RootLayoutContent() {
   const segments = useSegments();
   const { colorScheme } = useThemeContext();
 
-  useEffect(() => { 
+  useEffect(() => {
     let isMounted = true;
 
     const redirectBySession = (session: any) => {
@@ -63,7 +63,7 @@ function RootLayoutContent() {
     SystemUI.setBackgroundColorAsync(theme.colors.background).catch((error) => {
       console.warn('[Theme] Failed to set SystemUI background:', error);
     });
-    
+
     // Log para debug
     console.log('[Theme] SystemUI background set to:', theme.colors.background);
   }, [theme.colors.background]);
@@ -83,7 +83,7 @@ function RootLayoutContent() {
       <SafeAreaProvider>
         <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor={theme.colors.background} />
         <SafeAreaView style={{ flex: 1, backgroundColor: theme.colors.background }} edges={['bottom']}>
-          <KeyboardAvoidingView 
+          <KeyboardAvoidingView
             style={{ flex: 1, backgroundColor: theme.colors.background }}
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}

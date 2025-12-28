@@ -16,7 +16,7 @@ type Exercise = {
   minutes?: number;
   dropset: boolean;
   failure: boolean;
-  warmup: boolean; 
+  warmup: boolean;
 };
 
 export type Workout = {
@@ -144,7 +144,7 @@ export default function WorkoutDetailScreen() {
 
   if (loading || !workout) {
     return (
-      <View style={[styles.centered, { backgroundColor: theme.colors.background }]}> 
+      <View style={[styles.centered, { backgroundColor: theme.colors.background }]}>
         <Text style={{ color: theme.colors.onSurface }}>Loading...</Text>
       </View>
     );
@@ -175,7 +175,7 @@ export default function WorkoutDetailScreen() {
               placeholder="Workout Name"
               placeholderTextColor={theme.colors.onSurfaceVariant}
             />
-            
+
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
                 <Clock size={16} color={theme.colors.onSurfaceVariant} />
@@ -218,8 +218,8 @@ export default function WorkoutDetailScreen() {
                   />
                 </View>
               </View>
-              
-              <TouchableOpacity 
+
+              <TouchableOpacity
                 onPress={() => deleteExercise(index)}
                 style={styles.deleteButton}
               >
@@ -292,7 +292,7 @@ export default function WorkoutDetailScreen() {
                   Dropset
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.tag,
@@ -309,7 +309,7 @@ export default function WorkoutDetailScreen() {
                   Failure
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.tag,
@@ -330,7 +330,7 @@ export default function WorkoutDetailScreen() {
           </View>
         ))}
 
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.addExerciseButton, { borderColor: theme.colors.outline }]}
           onPress={addExercise}
         >
@@ -343,21 +343,21 @@ export default function WorkoutDetailScreen() {
 
       {/* Footer Actions */}
       <View style={[styles.footer, { backgroundColor: theme.colors.surface, borderTopColor: theme.colors.outline }]}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.footerButton, styles.secondaryButton]}
           onPress={deleteWorkout}
         >
           <Text style={styles.secondaryButtonText}>Delete</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.footerButton, { backgroundColor: theme.colors.primary }]}
           onPress={saveWorkout}
         >
           <Text style={[styles.footerButtonText, { color: theme.colors.onPrimary }]}>Save</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
+
+        <TouchableOpacity
           style={[styles.footerButton, styles.primaryButton, { backgroundColor: theme.colors.primary }]}
           onPress={() => router.push(`/workout/${slug}/start`)}
         >

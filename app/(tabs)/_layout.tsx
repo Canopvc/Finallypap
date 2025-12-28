@@ -258,7 +258,7 @@ export default function TabLayout() {
               <NutritiveFilledIcon color={color} size={size} />
             ) : (
               <NutritiveOutlineIcon color={color} size={size} />
-              ),
+            ),
         }}
       />
       <Tabs.Screen
