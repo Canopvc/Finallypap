@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-
+import { insertWorkout } from '../../components/Insert_Workouts_DB';
+import {supabase} from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ActivityIndicator,
@@ -100,6 +101,15 @@ export default function AddWorkout() {
       createdAt: new Date().toISOString(),
       exercises,
     };
+    try{
+      const userResp = await supabase.auth.getUser();
+      const userId = userResp.data.user?.id;
+
+      await insertWorkout(newWorkout, userId);
+      router.back();
+    }catch(err) {
+      console.error('Insert workout error', err);
+    
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const list: Workout[] = raw ? JSON.parse(raw) : [];
@@ -112,6 +122,7 @@ export default function AddWorkout() {
     } finally {
       setLoading(false);
     }
+  }
   };
 
   return (
