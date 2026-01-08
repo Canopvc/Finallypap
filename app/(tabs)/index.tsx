@@ -404,7 +404,7 @@ export default function HomeScreen() {
         <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.headerContent}>
             <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-              Fitness HUB
+              Zedith
             </Text>
             <Text style={[
               styles.subtitle,
