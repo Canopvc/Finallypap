@@ -60,7 +60,6 @@ export default function HomeScreen() {
   // Hooks
   const router = useRouter();
   const theme = useTheme();
-  const scheme = useColorScheme();
   const { t } = useTranslation();
 
   // State (mantido igual)

@@ -1,43 +1,49 @@
+// services/workouts.ts
 import { supabase } from '../lib/supabase';
 
-export async function insertWorkout(workout: {
+export type InsertWorkoutInput = {
   name: string;
-  createdAt?: string;
-  created_at?: string;
   exercises: any[];
-}, userId?: string) {
-  const created_at = workout.created_at ?? workout.createdAt ?? new Date().toISOString();
+  createdAt?: string;
+};
 
-  const payload = {
-    user_id: userId ?? null,
+export async function insertWorkout(
+  workout: InsertWorkoutInput,
+  userId?: string
+) {
+  const payload: any = {
     name: workout.name,
-    created_at,
+    created_at: workout.createdAt ?? new Date().toISOString(),
     exercises: workout.exercises,
   };
 
-  const { data, error } = await supabase.from('workouts').insert([payload]);
-  if (error) throw error;
-  return data;
-}
-```// filepath: c:\pap\Finallypap\components\Insert_Workouts_DB.tsx
-import { supabase } from '../lib/supabase';
+  // If your DB uses bigint user_id, only send numeric ids.
+  // If your DB uses UUIDs (or you added user_uuid), send UUID properly.
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (userId) {
+    if (uuidRegex.test(userId)) {
+      // prefer user_uuid column (add this column in DB) to store auth.user.id
+      payload.user_uuid = userId;
+    } else if (!Number.isNaN(Number(userId))) {
+      payload.user_id = Number(userId);
+    } else {
+      // fallback: don't send user_id to avoid DB type error
+      payload.user_id = null;
+    }
+  } else {
+    payload.user_id = null;
+  }
 
-export async function insertWorkout(workout: {
-  name: string;
-  createdAt?: string;
-  created_at?: string;
-  exercises: any[];
-}, userId?: string) {
-  const created_at = workout.created_at ?? workout.createdAt ?? new Date().toISOString();
+  console.log('[insertWorkout] payload:', payload);
 
-  const payload = {
-    user_id: userId ?? null,
-    name: workout.name,
-    created_at,
-    exercises: workout.exercises,
-  };
+  const { data, error } = await supabase
+    .from('workouts')
+    .insert([payload]);
 
-  const { data, error } = await supabase.from('workouts').insert([payload]);
-  if (error) throw error;
+  if (error) {
+    console.error('[insertWorkout] error:', error);
+    throw error;
+  }
+
   return data;
 }
