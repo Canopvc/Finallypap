@@ -22,6 +22,7 @@ import { useTheme } from 'react-native-paper';
 import { Pedometer } from 'expo-sensors';
 import { useTranslation } from '../../hooks/useTranslation';
 import Svg, { Path } from "react-native-svg";
+import {supabase} from '../../lib/supabase';
 
 
 LogBox.ignoreLogs(['expo-notifications']);
@@ -548,6 +549,7 @@ export default function HomeScreen() {
             renderItem={renderWorkoutItem}
             showsVerticalScrollIndicator={false}
           />
+          
         </View>
       </View>
 

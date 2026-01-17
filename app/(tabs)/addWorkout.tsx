@@ -138,9 +138,13 @@ const saveWorkout = async (workout: Workout, saveOnline: boolean) => {
       if (userId) {
         await insertWorkout(workout, userId);
       }
+
+      
+
+      console.log('Create workout id= ', workout.createdAt);
     }
 
-    // 💾 ALWAYS save locally
+    
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     const list: Workout[] = raw ? JSON.parse(raw) : [];
 
