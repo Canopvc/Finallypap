@@ -38,7 +38,8 @@ export async function insertWorkout(
 
   const { data, error } = await supabase
     .from('workouts')
-    .insert([payload]);
+    .insert([payload, {user_id: userId}]);
+    
 
    
 
@@ -47,10 +48,6 @@ export async function insertWorkout(
     throw error;
   }
 
-  const {data: dbData, error: dbError} = await supabase.from('ContasRegistradas').insert([{
-    created_at: workout.createdAt ?? new Date().toISOString(),
 
-    
-  }]);
   return data;
 }
