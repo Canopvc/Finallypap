@@ -4,6 +4,7 @@ import { useTheme } from 'react-native-paper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChevronLeft, Plus, Trash2, GripVertical, Clock, Flame, Play } from 'lucide-react-native';
+import { supabase } from '../../lib/supabase';
 
 // Types should mirror the list screen
 type Exercise = {
@@ -41,31 +42,102 @@ export default function WorkoutDetailScreen() {
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFromDB, setIsFromDB] = useState(false); // Rastrear se o workout veio da DB
 
   const loadWorkout = useCallback(async () => {
-
-    console.log(slug);
+    console.log('Loading workout with slug:', slug);
 
     try {
       setLoading(true);
+      
+      // 1. Primeiro tentar buscar no AsyncStorage
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const parsed: Workout[] = raw ? JSON.parse(raw) : [];
       setWorkouts(parsed);
-      const found = parsed.find(w => workoutSlugFromFields(w.name, w.createdAt) === slug);
+      let found = parsed.find(w => workoutSlugFromFields(w.name, w.createdAt) === slug);
+      
       if (found) {
-        // clone to edit safely
+        // Encontrado no AsyncStorage
+        setIsFromDB(false);
         setWorkout(JSON.parse(JSON.stringify(found)));
-      } else {
-        Alert.alert('Not found', 'Workout not found.');
+        setLoading(false);
+        return;
+      }
+      
+      // 2. Se não encontrou no AsyncStorage, buscar na DB
+      console.log('Workout não encontrado localmente, buscando na DB...');
+      try {
+        const userResp = await supabase.auth.getUser();
+        const userId = userResp.data.user?.id;
+        
+        if (!userId) {
+          Alert.alert('Not found', 'Workout not found and user not authenticated.');
+          router.back();
+          return;
+        }
+        
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const isUuid = uuidRegex.test(userId);
+        
+        // Buscar todos os workouts do utilizador
+        let query = supabase
+          .from('workouts')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (isUuid) {
+          query = query.eq('user_uuid', userId);
+        } else {
+          query = query.eq('user_id', userId);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('Erro ao buscar workouts da DB:', error);
+          Alert.alert('Error', 'Failed to load workout from database.');
+          router.back();
+          return;
+        }
+        
+        if (data && data.length > 0) {
+          // Converter workouts da DB para o formato local
+          const dbWorkouts: Workout[] = data.map((w: any) => ({
+            name: w.name,
+            createdAt: w.created_at || w.createdAt,
+            exercises: w.exercises || [],
+          }));
+          
+          // Procurar pelo slug nos workouts da DB
+          found = dbWorkouts.find(w => workoutSlugFromFields(w.name, w.createdAt) === slug);
+          
+          if (found) {
+            // Encontrado na DB
+            setIsFromDB(true);
+            setWorkout(JSON.parse(JSON.stringify(found)));
+            setWorkouts(dbWorkouts); // Atualizar lista também
+            console.log('Workout encontrado na DB!');
+          } else {
+            Alert.alert('Not found', 'Workout not found.');
+            router.back();
+          }
+        } else {
+          Alert.alert('Not found', 'Workout not found.');
+          router.back();
+        }
+      } catch (dbError) {
+        console.error('Erro ao buscar workout da DB:', dbError);
+        Alert.alert('Error', 'Failed to load workout from database.');
         router.back();
       }
     } catch (e) {
       console.error(e);
       Alert.alert('Error', 'Failed to load workout.');
+      router.back();
     } finally {
       setLoading(false);
     }
-  }, [slug]);
+  }, [slug, router]);
 
   useEffect(() => {
     loadWorkout();
@@ -108,13 +180,66 @@ export default function WorkoutDetailScreen() {
 
   const saveWorkout = async () => {
     if (!workout) return;
+    
     try {
-      // Replace in list by matching original slug (from URL)
-      const updated = workouts.map(w =>
-        workoutSlugFromFields(w.name, w.createdAt) === slug ? workout : w
-      );
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      Alert.alert('Saved', 'Workout updated successfully.');
+      if (isFromDB) {
+        // Se veio da DB, salvar na DB
+        const userResp = await supabase.auth.getUser();
+        const userId = userResp.data.user?.id;
+        
+        if (!userId) {
+          Alert.alert('Error', 'User not authenticated.');
+          return;
+        }
+        
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const isUuid = uuidRegex.test(userId);
+        
+        // Buscar o workout na DB pelo nome e createdAt
+        let query = supabase
+          .from('workouts')
+          .select('id')
+          .eq('name', workout.name)
+          .eq('created_at', workout.createdAt);
+        
+        if (isUuid) {
+          query = query.eq('user_uuid', userId);
+        } else {
+          query = query.eq('user_id', userId);
+        }
+        
+        const { data: workoutData, error: fetchError } = await query;
+        
+        if (fetchError || !workoutData || workoutData.length === 0) {
+          Alert.alert('Error', 'Could not find workout in database.');
+          return;
+        }
+        
+        // Atualizar na DB
+        const { error: updateError } = await supabase
+          .from('workouts')
+          .update({
+            name: workout.name,
+            exercises: workout.exercises,
+          })
+          .eq('id', workoutData[0].id);
+        
+        if (updateError) {
+          console.error('Erro ao atualizar workout na DB:', updateError);
+          Alert.alert('Error', 'Could not update workout in database.');
+          return;
+        }
+        
+        Alert.alert('Saved', 'Workout updated successfully in database.');
+      } else {
+        // Se veio do AsyncStorage, salvar no AsyncStorage
+        const updated = workouts.map(w =>
+          workoutSlugFromFields(w.name, w.createdAt) === slug ? workout : w
+        );
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        Alert.alert('Saved', 'Workout updated successfully.');
+      }
+      
       router.back();
     } catch (e) {
       console.error(e);
@@ -124,15 +249,77 @@ export default function WorkoutDetailScreen() {
 
   const deleteWorkout = async () => {
     if (!workout) return;
-    try {
-      const filtered = workouts.filter(w => workoutSlugFromFields(w.name, w.createdAt) !== slug);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-      Alert.alert('Deleted', 'Workout deleted successfully.');
-      router.back();
-    } catch (e) {
-      console.error(e);
-      Alert.alert('Error', 'Could not delete workout.');
-    }
+    
+    Alert.alert(
+      'Delete Workout',
+      'Are you sure you want to delete this workout? This action cannot be undone.',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // 1. Apagar do AsyncStorage
+              const filtered = workouts.filter(w => workoutSlugFromFields(w.name, w.createdAt) !== slug);
+              await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+              
+              // 2. Apagar da base de dados
+              try {
+                const userResp = await supabase.auth.getUser();
+                const userId = userResp.data.user?.id;
+                
+                if (userId) {
+                  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                  const isUuid = uuidRegex.test(userId);
+                  
+                  // Buscar o workout na DB pelo nome e createdAt
+                  let query = supabase
+                    .from('workouts')
+                    .select('id')
+                    .eq('name', workout.name)
+                    .eq('created_at', workout.createdAt);
+                  
+                  if (isUuid) {
+                    query = query.eq('user_uuid', userId);
+                  } else {
+                    query = query.eq('user_id', userId);
+                  }
+                  
+                  const { data: workoutData, error: fetchError } = await query;
+                  
+                  if (!fetchError && workoutData && workoutData.length > 0) {
+                    // Apagar da DB usando o ID encontrado
+                    const { error: deleteError } = await supabase
+                      .from('workouts')
+                      .delete()
+                      .eq('id', workoutData[0].id);
+                    
+                    if (deleteError) {
+                      console.error('Erro ao apagar workout da DB:', deleteError);
+                    } else {
+                      console.log('Workout apagado da DB com sucesso');
+                    }
+                  }
+                }
+              } catch (dbError) {
+                console.error('Erro ao apagar workout da base de dados:', dbError);
+                // Continuar mesmo se houver erro na DB, pois já foi apagado localmente
+              }
+              
+              Alert.alert('Deleted', 'Workout deleted successfully.');
+              router.back();
+            } catch (e) {
+              console.error(e);
+              Alert.alert('Error', 'Could not delete workout.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const estimatedDuration = useMemo(() => {

@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useMemo } from "react";
 import { insertWorkout } from "../../components/Insert_Workouts_DB";
 import { supabase } from "../../lib/supabase";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -24,6 +24,7 @@ import {
 import { useTheme } from "react-native-paper";
 import { useTranslation } from "../../hooks/useTranslation";
 import Svg, { Path } from "react-native-svg";
+import { AddExerciseModal } from "../../components/addExerciseModal";
 
 type Exercise = {
   id: string;
@@ -74,292 +75,6 @@ function defaultExercise(): Exercise {
   };
 }
 
-// 🔄 COMPONENTE MODAL COMPLETAMENTE ISOLADO
-const AddExerciseModal = React.memo(({ 
-  visible, 
-  onClose, 
-  onExerciseAdded 
-}: { 
-  visible: boolean; 
-  onClose: () => void; 
-  onExerciseAdded: () => void; 
-}) => {
-  const theme = useTheme();
-  const { t } = useTranslation();
-  
-  // ESTADO LOCAL - NÃO AFETA O COMPONENTE PAI
-  const [exerciseName, setExerciseName] = useState("");
-  const [imageUrl, setImageUrl] = useState("");
-  const [exerciseType, setExerciseType] = useState<"weightlifting" | "calisthenics" | "cardio">("weightlifting");
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const nameInputRef = React.useRef<TextInput>(null);
-  const imageInputRef = React.useRef<TextInput>(null);
-
-  const isValidUrl = (url: string) => {
-    try {
-      new URL(url);
-      return true;
-    } catch {
-      return false;
-    }
-  };
-
-  const handleAddExercise = async () => {
-    if (!exerciseName.trim()) {
-      Alert.alert("Erro", "Por favor, insira um nome para o exercício");
-      return;
-    }
-
-    if (imageUrl.trim() && !isValidUrl(imageUrl)) {
-      Alert.alert("Erro", "Por favor, insira uma URL de imagem válida");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const { error } = await supabase
-        .from("Exercicios_table")
-        .insert([
-          {
-            exercise_name: exerciseName.trim(),
-            exercise_img: imageUrl.trim() || null,
-            exercise_type: exerciseType,
-          },
-        ]);
-
-      if (error) throw error;
-
-      Alert.alert("Sucesso", "Exercício adicionado à base de dados!");
-      
-      // Notificar o componente pai para atualizar a lista
-      onExerciseAdded();
-      
-      // Limpar e fechar
-      setExerciseName("");
-      setImageUrl("");
-      setExerciseType("weightlifting");
-      onClose();
-    } catch (error: any) {
-      console.error("Error adding exercise:", error);
-      Alert.alert(
-        "Erro",
-        `Não foi possível adicionar o exercício: ${error.message}`,
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Focar no input quando o modal abre
-  useEffect(() => {
-    if (visible) {
-      // Pequeno delay para garantir que o modal está renderizado
-      setTimeout(() => {
-        nameInputRef.current?.focus();
-      }, 300);
-    } else {
-      // Limpar quando fecha
-      setExerciseName("");
-      setImageUrl("");
-      setExerciseType("weightlifting");
-    }
-  }, [visible]);
-
-  return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
-      statusBarTranslucent={true}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.modalOverlayFixed}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 0}
-      >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalOverlayFixed}>
-            <View style={[
-              styles.modalContainerFixed,
-              { 
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.outline,
-              }
-            ]}>
-              {/* Header */}
-              <View style={styles.modalHeaderFixed}>
-                <Text style={[styles.modalTitleFixed, { color: theme.colors.onSurface }]}>
-                  Adicionar Novo Exercício
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    Keyboard.dismiss();
-                    onClose();
-                  }}
-                  style={styles.closeButtonFixed}
-                >
-                  <Text style={{ color: theme.colors.primary, fontSize: 24 }}>×</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Conteúdo */}
-              <ScrollView 
-                style={styles.modalScrollFixed}
-                keyboardShouldPersistTaps="handled"
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.modalContentFixed}
-              >
-                {/* Nome do Exercício */}
-                <Text style={[styles.labelFixed, { color: theme.colors.onSurface }]}>
-                  Nome do Exercício *
-                </Text>
-                <TextInput
-                  ref={nameInputRef}
-                  placeholder="Ex: Supino Reto"
-                  value={exerciseName}
-                  onChangeText={setExerciseName}
-                  style={[
-                    styles.inputFixed,
-                    {
-                      backgroundColor: theme.colors.background,
-                      color: theme.colors.onSurface,
-                      borderColor: theme.colors.outline,
-                    },
-                  ]}
-                  placeholderTextColor={theme.colors.onSurfaceVariant}
-                  returnKeyType="next"
-                  autoCapitalize="words"
-                  autoFocus={visible}
-                  onSubmitEditing={() => {
-                    imageInputRef.current?.focus();
-                  }}
-                />
-
-                {/* Tipo do Exercício */}
-                <Text style={[styles.labelFixed, { color: theme.colors.onSurface, marginTop: 16 }]}>
-                  Tipo do Exercício
-                </Text>
-                <View style={[
-                  styles.segmentContainerFixed,
-                  {
-                    backgroundColor: theme.colors.background,
-                    borderColor: theme.colors.outline,
-                  }
-                ]}>
-                  {(["weightlifting", "calisthenics", "cardio"] as const).map((type) => (
-                    <TouchableOpacity
-                      key={type}
-                      style={[
-                        styles.segmentBtnFixed,
-                        exerciseType === type
-                          ? { backgroundColor: theme.colors.primary }
-                          : { backgroundColor: "transparent" },
-                      ]}
-                      onPress={() => setExerciseType(type)}
-                    >
-                      <Text style={[
-                        styles.segmentTxtFixed,
-                        exerciseType === type
-                          ? { color: theme.colors.onPrimary, fontWeight: "700" }
-                          : { color: theme.colors.onSurfaceVariant }
-                      ]}>
-                        {t(type, { ns: "workouts" })}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-
-                {/* URL da Imagem */}
-                <Text style={[styles.labelFixed, { color: theme.colors.onSurface, marginTop: 16 }]}>
-                  URL da Imagem (Opcional)
-                </Text>
-                <TextInput
-                  ref={imageInputRef}
-                  placeholder="https://exemplo.com/imagem.jpg"
-                  value={imageUrl}
-                  onChangeText={setImageUrl}
-                  style={[
-                    styles.inputFixed,
-                    {
-                      backgroundColor: theme.colors.background,
-                      color: theme.colors.onSurface,
-                      borderColor: theme.colors.outline,
-                    },
-                  ]}
-                  placeholderTextColor={theme.colors.onSurfaceVariant}
-                  keyboardType="url"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="done"
-                  onSubmitEditing={handleAddExercise}
-                />
-
-                {/* Preview da Imagem */}
-                {imageUrl.trim() && isValidUrl(imageUrl) && (
-                  <View style={styles.imagePreviewContainerFixed}>
-                    <Text style={[styles.labelFixed, { color: theme.colors.onSurface }]}>
-                      Pré-visualização da Imagem:
-                    </Text>
-                    <Image
-                      source={{ uri: imageUrl }}
-                      style={styles.imagePreviewFixed}
-                      resizeMode="cover"
-                    />
-                  </View>
-                )}
-              </ScrollView>
-
-              {/* Botões */}
-              <View style={styles.modalButtonsFixed}>
-                <TouchableOpacity
-                  style={[
-                    styles.cancelButtonFixed,
-                    { 
-                      borderColor: theme.colors.outline,
-                      backgroundColor: theme.colors.surface,
-                    }
-                  ]}
-                  onPress={onClose}
-                  disabled={isLoading}
-                >
-                  <Text style={[styles.cancelButtonTextFixed, { color: theme.colors.onSurface }]}>
-                    Cancelar
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[
-                    styles.addButtonFixed,
-                    { 
-                      backgroundColor: theme.colors.primary,
-                      opacity: (!exerciseName.trim() || isLoading) ? 0.7 : 1,
-                    }
-                  ]}
-                  onPress={handleAddExercise}
-                  disabled={!exerciseName.trim() || isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color={theme.colors.onPrimary} size="small" />
-                  ) : (
-                    <Text style={[styles.addButtonTextFixed, { color: theme.colors.onPrimary }]}>
-                      Adicionar
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-});
-
-// Adiciona display name para o componente
-AddExerciseModal.displayName = 'AddExerciseModal';
-
 export default function AddWorkout() {
   const router = useRouter();
   const theme = useTheme();
@@ -377,12 +92,19 @@ export default function AddWorkout() {
 
   // APENAS controle de visibilidade do modal
   const [showAddExerciseModal, setShowAddExerciseModal] = useState(false);
+  
+  // Controlar erros de carregamento de imagens
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
-  // Buscar exercícios do banco de dados
-  useEffect(() => {
-    fetchDatabaseExercises();
+  // Intervalo de atualização da base de dados (em milissegundos)
+  // 30000 = 30 segundos, 60000 = 1 minuto, 120000 = 2 minutos
+  const DB_UPDATE_INTERVAL = 60000; // Altere este valor para mudar a frequência
+
+  const handleImageError = useCallback((exerciseId: string) => {
+    setImageErrors(prev => new Set(prev).add(exerciseId));
   }, []);
 
+  // Buscar exercícios do banco de dados
   const fetchDatabaseExercises = async () => {
     setLoadingExercises(true);
     try {
@@ -393,16 +115,34 @@ export default function AddWorkout() {
 
       if (error) {
         console.error("Error fetching exercises:", error);
+        Alert.alert("Erro", "Não foi possível carregar os exercícios");
         return;
       }
 
       setDatabaseExercises(data || []);
     } catch (err) {
       console.error("Failed to fetch exercises:", err);
+      Alert.alert("Erro", "Não foi possível carregar os exercícios");
     } finally {
       setLoadingExercises(false);
     }
   };
+
+  // Buscar exercícios quando o componente monta
+  useEffect(() => {
+    fetchDatabaseExercises();
+  }, []);
+
+  // Atualizar exercícios periodicamente
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchDatabaseExercises();
+    }, DB_UPDATE_INTERVAL);
+
+    // Limpar intervalo quando o componente desmonta
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // DB_UPDATE_INTERVAL é uma constante, não precisa estar nas dependências
 
   const addExercise = useCallback(() => {
     setExercises((prev) => [...prev, defaultExercise()]);
@@ -452,7 +192,8 @@ export default function AddWorkout() {
     fetchDatabaseExercises(); // Atualiza a lista quando um exercício é adicionado
   }, []);
 
-  const ExerciseSelectionModal = () => (
+  const ExerciseSelectionModal = useCallback(() => {
+    return (
     <Modal
       animationType="slide"
       transparent={true}
@@ -570,20 +311,35 @@ export default function AddWorkout() {
                     }
                   >
                     <View style={styles.exerciseListItemContent}>
-                      {item.exercise_img ? (
-                        <Image
-                          source={{ uri: item.exercise_img }}
-                          style={styles.exerciseImage}
-                          defaultSource={require("../../assets/images/favicon.png")}
-                        />
+                      {item.exercise_img && item.exercise_img.trim() && !imageErrors.has(item.id) ? (
+                        <View style={styles.exerciseImageContainer}>
+                          <Image
+                            source={{ uri: item.exercise_img }}
+                            style={styles.exerciseImage}
+                            resizeMode="cover"
+                            onError={(error) => {
+                              const errorMsg = error?.nativeEvent?.error || 'Erro desconhecido';
+                              console.log('Erro ao carregar imagem do exercício:', errorMsg);
+                              handleImageError(item.id);
+                            }}
+                            onLoad={(event) => {
+                              console.log('Imagem do exercício carregada com sucesso');
+                              // Log das dimensões para debug
+                              const { width, height } = event.nativeEvent.source;
+                              if (width && height) {
+                                console.log(`Dimensões: ${width}x${height}`);
+                              }
+                            }}
+                          />
+                        </View>
                       ) : (
                         <View
                           style={[
-                            styles.exerciseImage,
+                            styles.exerciseImageContainer,
                             { backgroundColor: theme.colors.surfaceVariant },
                           ]}
                         >
-                          <Text style={{ color: theme.colors.onSurfaceVariant }}>
+                          <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 20 }}>
                             📷
                           </Text>
                         </View>
@@ -658,18 +414,27 @@ export default function AddWorkout() {
         </View>
       </TouchableWithoutFeedback>
     </Modal>
-  );
+    );
+  }, [showExerciseModal, databaseExercises, loadingExercises, selectedExerciseIndex, theme, exercises, t, selectExerciseFromDatabase, imageErrors, handleImageError]);
 
   const validate = () => {
     if (!workoutName.trim()) {
-      Alert.alert("Please enter a workout name");
+      Alert.alert(t("error", { ns: "common" }), t("pleaseEnterWorkoutName", { ns: "workouts" }) || "Por favor, insira um nome para o treino");
       return false;
     }
-    const hasNamed = exercises.some((e) => e.name && e.name.trim().length > 0);
-    if (!hasNamed) {
-      Alert.alert("Add at least one exercise with a name");
+    
+    const validExercises = exercises.filter(e => 
+      e.name && e.name.trim().length > 0 && e.sets > 0
+    );
+    
+    if (validExercises.length === 0) {
+      Alert.alert(
+        t("error", { ns: "common" }), 
+        t("addValidExercise", { ns: "workouts" }) || "Adicione pelo menos um exercício válido com nome e séries"
+      );
       return false;
     }
+    
     return true;
   };
 
@@ -699,23 +464,28 @@ export default function AddWorkout() {
     setLoading(true);
 
     try {
-      // ☁️ Save online ONLY if user agreed
       if (saveOnline) {
+        // ☁️ Save online ONLY - não salvar na memória
         const userResp = await supabase.auth.getUser();
         const userId = userResp.data.user?.id;
 
-        if (userId) {
-          await insertWorkout(workout, userId);
+        if (!userId) {
+          Alert.alert(t("error"), "Utilizador não autenticado");
+          setLoading(false);
+          return;
         }
 
-        console.log("Create workout id= ", workout.createdAt);
+        await insertWorkout(workout, userId);
+        console.log("Workout salvo na DB, id= ", workout.createdAt);
+      } else {
+        // 💾 Save local ONLY - não salvar na DB
+        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        const list: Workout[] = raw ? JSON.parse(raw) : [];
+
+        list.unshift(workout);
+        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+        console.log("Workout salvo localmente");
       }
-
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      const list: Workout[] = raw ? JSON.parse(raw) : [];
-
-      list.unshift(workout);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(list));
 
       router.back();
     } catch (err) {
@@ -727,6 +497,7 @@ export default function AddWorkout() {
   };
 
   return (
+    <>
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
       style={{ flex: 1 }}
@@ -1119,16 +890,17 @@ export default function AddWorkout() {
         </View>
 
         {/* Modais */}
-        <ExerciseSelectionModal />
-        
-        {/* ✅ MODAL ISOLADO - NÃO CAUSA RE-RENDERS NO PAI */}
-        <AddExerciseModal 
-          visible={showAddExerciseModal}
-          onClose={() => setShowAddExerciseModal(false)}
-          onExerciseAdded={handleExerciseAdded}
-        />
+        {ExerciseSelectionModal()}
       </ScrollView>
     </KeyboardAvoidingView>
+    
+    {/* ✅ MODAL ISOLADO - FORA DO SCROLLVIEW PARA FUNCIONAR CORRETAMENTE */}
+    <AddExerciseModal 
+      visible={showAddExerciseModal}
+      onClose={() => setShowAddExerciseModal(false)}
+      onExerciseAdded={handleExerciseAdded}
+    />
+    </>
   );
 }
 
@@ -1452,14 +1224,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     flex: 1,
+    height: 80,
   },
-  exerciseImage: {
-    width: 50,
-    height: 50,
+  exerciseImageContainer: {
+    width: 70,
+    height: 70,
     borderRadius: 8,
     marginRight: 12,
+    overflow: "hidden",
+    backgroundColor: "#f0f0f0",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
     alignItems: "center",
     justifyContent: "center",
+  },
+  exerciseImage: {
+    width: "100%",
+    height: "100%",
+    // Garante que a imagem se ajuste ao container mantendo proporção
+    resizeMode: "cover",
   },
   exerciseListInfo: {
     flex: 1,

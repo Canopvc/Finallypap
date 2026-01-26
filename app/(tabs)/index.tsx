@@ -91,11 +91,6 @@ export default function HomeScreen() {
     registerForPushNotifications();
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadWorkouts();
-    }, [])
-  );
 
   // Step Tracking Functions (mantidas iguais)
   const requestActivityPermission = async () => {
@@ -219,9 +214,42 @@ export default function HomeScreen() {
           style: "destructive",
           onPress: async () => {
             try {
+              // 1. Apagar do AsyncStorage
               await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+              
+              // 2. Apagar todos os workouts da base de dados do utilizador atual
+              try {
+                const userResp = await supabase.auth.getUser();
+                const userId = userResp.data.user?.id;
+                
+                if (userId) {
+                  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+                  const isUuid = uuidRegex.test(userId);
+                  
+                  let query = supabase.from('workouts').delete();
+                  
+                  if (isUuid) {
+                    query = query.eq('user_uuid', userId);
+                  } else {
+                    query = query.eq('user_id', userId);
+                  }
+                  
+                  const { error: deleteError } = await query;
+                  
+                  if (deleteError) {
+                    console.error('Erro ao apagar workouts da DB:', deleteError);
+                  } else {
+                    console.log('Todos os workouts apagados da DB com sucesso');
+                  }
+                }
+              } catch (dbError) {
+                console.error('Erro ao apagar workouts da base de dados:', dbError);
+                // Continuar mesmo se houver erro na DB
+              }
+              
               setWorkouts([]);
             } catch (e) {
+              console.error(e);
               Alert.alert("Erro", "Não foi possível apagar os treinos.");
             }
           }
@@ -313,17 +341,90 @@ export default function HomeScreen() {
     }
   };
 
-  // Workout Functions (mantidas iguais)
+  // Workout Functions
   const loadWorkouts = useCallback(async () => {
     try {
+      // 1. Carregar workouts locais (AsyncStorage)
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      const parsed = raw ? JSON.parse(raw) : [];
-      setWorkouts(Array.isArray(parsed) ? parsed : []);
+      const localWorkouts: Workout[] = raw ? JSON.parse(raw) : [];
+      
+      // 2. Buscar workouts da base de dados do utilizador atual
+      let dbWorkouts: Workout[] = [];
+      try {
+        const userResp = await supabase.auth.getUser();
+        const userId = userResp.data.user?.id;
+        
+        if (userId) {
+          // Verificar se userId é UUID ou número
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const isUuid = uuidRegex.test(userId);
+          
+          // Buscar workouts do utilizador
+          let query = supabase
+            .from('workouts')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          // Filtrar por user_uuid ou user_id dependendo do tipo
+          if (isUuid) {
+            query = query.eq('user_uuid', userId);
+          } else {
+            query = query.eq('user_id', userId);
+          }
+          
+          const { data, error } = await query;
+          
+          if (error) {
+            console.error('Erro ao buscar workouts da DB:', error);
+          } else if (data) {
+            // Converter workouts da DB para o formato local
+            dbWorkouts = data.map((w: any) => ({
+              name: w.name,
+              createdAt: w.created_at || w.createdAt,
+              exercises: w.exercises || [],
+            }));
+          }
+        }
+      } catch (dbError) {
+        console.error('Erro ao buscar workouts da base de dados:', dbError);
+      }
+      
+      // 3. Combinar workouts locais e da DB (remover duplicados baseado em name + createdAt)
+      const allWorkouts = [...localWorkouts, ...dbWorkouts];
+      const uniqueWorkouts = allWorkouts.filter((workout, index, self) =>
+        index === self.findIndex((w) => 
+          w.name === workout.name && w.createdAt === workout.createdAt
+        )
+      );
+      
+      // Ordenar por data (mais recentes primeiro)
+      uniqueWorkouts.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      
+      setWorkouts(uniqueWorkouts);
     } catch (e) {
-      console.error(e);
+      console.error('Erro ao carregar workouts:', e);
       setWorkouts([]);
     }
   }, []);
+
+  // Atualizar workouts a cada 5 segundos
+  useEffect(() => {
+    loadWorkouts(); // Carregar imediatamente
+    
+    const intervalId = setInterval(() => {
+      loadWorkouts();
+    }, 5000); // 5 segundos
+
+    return () => clearInterval(intervalId);
+  }, [loadWorkouts]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadWorkouts();
+    }, [loadWorkouts])
+  );
 
   const handleLogout = useCallback(async () => {
     try {

@@ -27,7 +27,9 @@ import { COHERE_API_KEY } from '@env';
 // ⭐️ COHERE API
 const WORKOUTS_STORAGE_KEY = 'workouts';
 
-const cohere = new CohereClientV2({ token: COHERE_API_KEY });
+// Usa variável de ambiente do EAS Build ou fallback para @env
+const cohereApiKey = Constants.expoConfig?.extra?.cohereApiKey || COHERE_API_KEY || '';
+const cohere = new CohereClientV2({ token: cohereApiKey });
 
 
 type ExerciseType = 'calisthenics' | 'cardio' | 'weightlifting';

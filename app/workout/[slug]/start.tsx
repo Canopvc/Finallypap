@@ -6,6 +6,7 @@ import { Alert, AppState, ScrollView, StyleSheet, Text, TextInput, TouchableOpac
 import { useTheme } from 'react-native-paper';
 import { ChevronLeft, Play, Pause, Check, Trophy, Flame, Timer, Target, Weight, Volume2, VolumeX } from 'lucide-react-native';
 import * as Notifications from 'expo-notifications';
+import { supabase } from '../../../lib/supabase';
 
 // Types mirrored from detail screen
 type Exercise = {
@@ -258,17 +259,91 @@ export default function StartWorkoutScreen() {
   const loadWorkout = useCallback(async () => {
     try {
       setLoading(true);
+      
+      // 1. Primeiro tentar buscar no AsyncStorage
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const parsed: Workout[] = raw ? JSON.parse(raw) : [];
-      const found = parsed.find(w => workoutSlugFromFields(w.name, w.createdAt) === slug);
+      let found = parsed.find(w => workoutSlugFromFields(w.name, w.createdAt) === slug);
+      
+      if (found) {
+        // Encontrado no AsyncStorage
+        setWorkout(found);
+      } else {
+        // 2. Se não encontrou no AsyncStorage, buscar na DB
+        console.log('Workout não encontrado localmente, buscando na DB...');
+        try {
+          const userResp = await supabase.auth.getUser();
+          const userId = userResp.data.user?.id;
+          
+          if (!userId) {
+            Alert.alert('Not found', 'Workout not found and user not authenticated.');
+            router.back();
+            return;
+          }
+          
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+          const isUuid = uuidRegex.test(userId);
+          
+          // Buscar todos os workouts do utilizador
+          let query = supabase
+            .from('workouts')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (isUuid) {
+            query = query.eq('user_uuid', userId);
+          } else {
+            query = query.eq('user_id', userId);
+          }
+          
+          const { data, error } = await query;
+          
+          if (error) {
+            console.error('Erro ao buscar workouts da DB:', error);
+            Alert.alert('Error', 'Failed to load workout from database.');
+            router.back();
+            return;
+          }
+          
+          if (data && data.length > 0) {
+            // Converter workouts da DB para o formato local
+            const dbWorkouts: Workout[] = data.map((w: any) => ({
+              name: w.name,
+              createdAt: w.created_at || w.createdAt,
+              exercises: w.exercises || [],
+            }));
+            
+            // Procurar pelo slug nos workouts da DB
+            found = dbWorkouts.find(w => workoutSlugFromFields(w.name, w.createdAt) === slug);
+            
+            if (found) {
+              console.log('Workout encontrado na DB!');
+              setWorkout(found);
+            } else {
+              Alert.alert('Not found', 'Workout not found.');
+              router.back();
+              return;
+            }
+          } else {
+            Alert.alert('Not found', 'Workout not found.');
+            router.back();
+            return;
+          }
+        } catch (dbError) {
+          console.error('Erro ao buscar workout da DB:', dbError);
+          Alert.alert('Error', 'Failed to load workout from database.');
+          router.back();
+          return;
+        }
+      }
+      
       if (!found) {
         Alert.alert('Not found', 'Workout not found.');
         router.back();
         return;
       }
-      setWorkout(found);
 
-      // Initialize session data
+      // Initialize session data (para workouts encontrados tanto localmente quanto na DB)
       const w: Record<number, Record<number, string>> = {};
       const r: Record<number, Record<number, string>> = {};
       const c: Record<number, Record<number, boolean>> = {};

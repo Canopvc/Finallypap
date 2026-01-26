@@ -22,23 +22,29 @@ export async function insertWorkout(
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (userId) {
     if (uuidRegex.test(userId)) {
-      // prefer user_uuid column (add this column in DB) to store auth.user.id
+      // Usar user_uuid para UUIDs (auth.users.id é sempre UUID)
       payload.user_uuid = userId;
-    } else if (!Number.isNaN(Number(userId))) {
-      payload.user_id = Number(userId);
-    } else {
-      // fallback: don't send user_id to avoid DB type error
+      // Também tentar user_id caso a coluna exista
       payload.user_id = null;
+    } else if (!Number.isNaN(Number(userId))) {
+      // Se for número, usar user_id
+      payload.user_id = Number(userId);
+      payload.user_uuid = null;
+    } else {
+      // fallback: não enviar para evitar erro
+      payload.user_id = null;
+      payload.user_uuid = null;
     }
   } else {
     payload.user_id = null;
+    payload.user_uuid = null;
   }
 
   console.log('[insertWorkout] payload:', payload);
 
   const { data, error } = await supabase
     .from('workouts')
-    .insert([payload, {user_id: userId}]);
+    .insert([payload]);
     
 
    

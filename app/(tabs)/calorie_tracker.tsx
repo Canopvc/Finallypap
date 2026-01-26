@@ -17,6 +17,7 @@ import { useTheme } from 'react-native-paper';
 import Svg, { Circle as SvgCircle, Path } from 'react-native-svg';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 import { COHERE_API_KEY } from '@env';
 
 // Definir tipos
@@ -120,7 +121,8 @@ const CalorieCounter: React.FC = () => {
 
   // Função para analisar alimentos usando Groq API
   const analyzeFoodWithGroq = async (foodDescription: string): Promise<FoodAnalysis> => {
-    const API_KEY = COHERE_API_KEY;
+    // Usa variável de ambiente do EAS Build ou fallback para @env
+    const API_KEY = Constants.expoConfig?.extra?.cohereApiKey || COHERE_API_KEY || '';
 
     try {
       const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
