@@ -43,9 +43,25 @@ export const AddExerciseModal: React.FC<AddExerciseModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<number | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   
   const nameInputRef = useRef<TextInput>(null);
   const imageInputRef = useRef<TextInput>(null);
+
+  // Detectar quando o teclado está visível
+  useEffect(() => {
+    const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+      setKeyboardVisible(true);
+    });
+    const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
 
   const resetForm = () => {
     setExerciseName('');
@@ -187,16 +203,19 @@ export const AddExerciseModal: React.FC<AddExerciseModalProps> = ({
           />
         </View>
         <KeyboardAvoidingView
+          style={{ flex: 1 }}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardView}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-        >
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+>
           <View 
             style={[
               styles.modalContainer,
               { 
                 backgroundColor: theme.colors.surface,
                 borderColor: theme.colors.outline,
+                maxHeight: keyboardVisible 
+                  ? (Platform.OS === 'ios' ? '90%' : '95%')
+                  : (Platform.OS === 'ios' ? '85%' : '90%'),
               }
             ]}
           >
@@ -221,9 +240,11 @@ export const AddExerciseModal: React.FC<AddExerciseModalProps> = ({
           {/* Conteúdo */}
           <ScrollView 
             style={styles.content}
+            contentContainerStyle={styles.contentContainer}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled={true}
+            bounces={false}
           >
             {/* 1. Nome do Exercício */}
             <Text style={[styles.label, { color: theme.colors.onSurface }]}>
@@ -414,27 +435,29 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
     padding: 20,
+    paddingTop: 40,
   },
   keyboardView: {
+    flex: 1,
     width: '100%',
-    maxWidth: 500,
+    justifyContent: 'flex-end', // 🔥 chave do truque
   },
   modalContainer: {
     borderRadius: 20,
     borderWidth: 1,
-    padding: 20,
-    paddingTop: 10,
+    padding: 24,
+    paddingTop: 16,
     width: '100%',
-    maxWidth: 500,
-    maxHeight: Platform.OS === 'ios' ? '80%' : '85%',
+    maxWidth: 600,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    elevation: 5,
+    elevation: 6,
+    flexShrink: 1,
+    flexGrow: 1,
+    maxHeight: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -451,7 +474,12 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   content: {
-    maxHeight: 400,
+    flexGrow: 0,
+    flexShrink: 1,
+  },
+  contentContainer: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   label: {
     fontSize: 17,
