@@ -443,12 +443,35 @@ export default function HomeScreen() {
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
               {t('steps', { ns: 'common' })} {t('today', { ns: 'common' })}
             </Text>
-            <Text style={[styles.sectionSubtitle, { color: theme.colors.onSurfaceVariant }]}>
-              {t('keepMoving', { ns: 'common' })}
-            </Text>
+
           </View>
 
           <View style={styles.stepsContainer}>
+
+          <View style={styles.caloriesBurned}>
+          <Svg
+          width={24}
+                        height={24}
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke={theme.colors.onSurface}
+                        strokeWidth={1.5}
+                        >
+                        <Path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M14.5 10.0003C14.5 9.20875 15.5528 8.99895 15.8321 9.73957C16.5077 11.5311 17 13.1337 17 14.0002C17 16.7616 14.7614 19.0002 12 19.0002C9.23858 19.0002 7 16.7616 7 14.0002C7 13.0693 7.56822 11.2887 8.32156 9.33698C9.29743 6.80879 9.78536 5.54469 10.3877 5.4766C10.5804 5.45482 10.7907 5.49399 10.9626 5.58371C11.5 5.86413 11.5 7.24285 11.5 10.0003C11.5 10.8287 12.1716 11.5003 13 11.5003C13.8284 11.5003 14.5 10.8287 14.5 10.0003Z"
+                                      />
+                                      <Path
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        d="M11 19L10.7372 18.343C10.2816 17.204 10.4737 15.9079 11.24 14.95V14.95C11.6296 14.463 12.3704 14.463 12.76 14.95V14.95C13.5263 15.9079 13.7184 17.204 13.2628 18.343L13 19"
+                                      />
+                                    </Svg>
+          <Text style={[styles.statLabel, {color: theme.colors.primary}]}>
+            {caloriesBurned}
+          </Text>
+          </View>
             <View style={styles.stepsCount}>
               <Text style={[styles.stepsNumber, { color: theme.colors.primary }]}>
                 {currentStepCount.toLocaleString()}
@@ -460,9 +483,6 @@ export default function HomeScreen() {
                 {STEP_TARGET.toLocaleString()}
               </Text>
             </View>
-            <Text style={[styles.stepsRemaining, { color: theme.colors.onSurface }]}>
-              {remainingSteps.toLocaleString()} {t('steps', { ns: 'common' })} {t('toGo', { ns: 'common' })}
-            </Text>
           </View>
 
           {/* Progress Bar */}
@@ -478,38 +498,9 @@ export default function HomeScreen() {
             />
           </View>
 
-          {!isPedometerAvailable && (
-            <Text style={[styles.pedometerWarning, { color: theme.colors.error }]}>
-              Pedometer not available
-            </Text>
-          )}
+
         </View>
 
-        {/* Stats Grid */}
-        <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
-            <Text style={[styles.statValue, { color: theme.colors.primary }]}>
-              {caloriesBurned}
-            </Text>
-            <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>
-              {t('Calories Burned', { ns: 'common' })}
-            </Text>
-            <Text style={[styles.statSubtext, { color: theme.colors.onSurfaceVariant }]}>
-              {t('from', { ns: 'common' })} {currentStepCount.toLocaleString()} {t('steps', { ns: 'common' })}
-            </Text>
-          </View>
-
-          <View style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
-            <Text style={[styles.statValue, { color: theme.colors.primary }]}>
-              {activeMinutes}
-            </Text>
-            <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>
-              {t('Active Minutes', { ns: 'common' })}
-            </Text>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
 
         {/* Workouts Section */}
         <View style={styles.workoutsSection}>
@@ -549,7 +540,7 @@ export default function HomeScreen() {
             renderItem={renderWorkoutItem}
             showsVerticalScrollIndicator={false}
           />
-          
+
         </View>
       </View>
 
@@ -590,6 +581,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginBottom: 4,
   },
+  caloriesBurned: {
+      flexDirection: 'row',
+      alignItems: 'flex-end',
+      textAlign: 'right',
+      position: 'absolute',
+      right: 0,
+  },
   subtitle: {
     fontSize: 16,
     opacity: 0.7,
@@ -610,6 +608,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
     marginTop: 12,
+    position: 'relative',
   },
   progressHeader: {
     marginBottom: 16,
@@ -617,23 +616,22 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: -4,
   },
   sectionSubtitle: {
     fontSize: 14,
     opacity: 0.7,
   },
   stepsContainer: {
-    alignItems: 'center',
     marginBottom: 16,
   },
   stepsCount: {
     flexDirection: 'row',
-    alignItems: 'baseline',
-    marginBottom: 8,
+    alignItems: 'center',
+    marginBottom: 12,
   },
   stepsNumber: {
-    fontSize: 32,
+    fontSize: 23,
     fontWeight: '700',
   },
   stepsDivider: {
@@ -810,10 +808,10 @@ const styles = StyleSheet.create({
     zIndex: 999, // garante que fica por cima do conteúdo
   },
   fabText: {
-    fontSize: 36,
-    fontWeight: 'bold',
+    fontSize: 30,
+    fontWeight: 400,
     lineHeight: 38,
   },
 
 },
-); 
+);
