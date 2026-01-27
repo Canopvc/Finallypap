@@ -27,6 +27,17 @@
   "dropset": "Dropset",
   "failure": "Failure",
   "warmup": "Warmup",
-  "exampleWorkoutName": "e.g. Push Day"
+  "exampleWorkoutName": "e.g. Push Day",
+  "Bench Press": "Bench Press",
+  "pleaseEnterWorkoutName": "Please enter a name for the workout",
+  "addValidExercise": "Add at least one valid exercise with name and sets",
+  "addNewExercise": "Add New Exercise",
+  "exerciseName": "Exercise Name",
+  "exerciseNameRequired": "Please enter an exercise name",
+  "pleaseEnterExerciseName": "Please enter a name for the exercise",
+  "pleaseEnterValidImageUrl": "Please enter a valid image URL (http/https) or a valid base64 image",
+  "exerciseAddedToDatabase": "Exercise added to the database!",
+  "couldNotAddExercise": "Could not add exercise.",
+  "imageUrlOptional": "Image URL (optional)",
+  "preview": "Preview"
 }
-

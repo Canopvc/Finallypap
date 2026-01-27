@@ -28,7 +28,16 @@
   "failure": "Falha",
   "warmup": "Aquecimento",
   "exampleWorkoutName": "ex: Dia de Peito",
-  "Bench Press" : "Supino"
+  "Bench Press" : "Supino",
+  "pleaseEnterWorkoutName": "Por favor, insira um nome para o treino",
+  "addValidExercise": "Adicione pelo menos um exercício válido com nome e séries",
+  "addNewExercise": "Adicionar Novo Exercício",
+  "exerciseName": "Nome do Exercício",
+  "exerciseNameRequired": "Por favor, insira um nome para o exercício",
+  "pleaseEnterExerciseName": "Por favor, insira um nome para o exercício",
+  "pleaseEnterValidImageUrl": "Por favor, insira uma URL de imagem válida (http/https) ou uma imagem em base64 válida",
+  "exerciseAddedToDatabase": "Exercício adicionado à base de dados!",
+  "couldNotAddExercise": "Não foi possível adicionar o exercício.",
+  "imageUrlOptional": "URL da Imagem (Opcional)",
+  "preview": "Pré-visualização"
 }
-  
-

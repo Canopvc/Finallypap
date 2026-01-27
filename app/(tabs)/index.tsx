@@ -100,11 +100,11 @@ export default function HomeScreen() {
           const granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.ACTIVITY_RECOGNITION,
             {
-              title: "Permissão para Contagem de Passos",
-              message: "Esta aplicação precisa de acesso aos sensores de atividade física para contar os seus passos.",
-              buttonNeutral: "Perguntar Depois",
-              buttonNegative: "Cancelar",
-              buttonPositive: "Permitir",
+              title: t('permissionActivityTitle', { ns: 'common' }),
+              message: t('permissionActivityMessage', { ns: 'common' }),
+              buttonNeutral: t('permissionAskLater', { ns: 'common' }),
+              buttonNegative: t('permissionCancel', { ns: 'common' }),
+              buttonPositive: t('permissionAllow', { ns: 'common' }),
             }
           );
           return granted === PermissionsAndroid.RESULTS.GRANTED;
@@ -112,11 +112,11 @@ export default function HomeScreen() {
           const granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.BODY_SENSORS,
             {
-              title: "Permissão para Sensores",
-              message: "Esta aplicação precisa de acesso aos sensores para contar os seus passos.",
-              buttonNeutral: "Perguntar Depois",
-              buttonNegative: "Cancelar",
-              buttonPositive: "Permitir",
+              title: t('permissionSensorsTitle', { ns: 'common' }),
+              message: t('permissionSensorsMessage', { ns: 'common' }),
+              buttonNeutral: t('permissionAskLater', { ns: 'common' }),
+              buttonNegative: t('permissionCancel', { ns: 'common' }),
+              buttonPositive: t('permissionAllow', { ns: 'common' }),
             }
           );
           return granted === PermissionsAndroid.RESULTS.GRANTED;
@@ -132,7 +132,10 @@ export default function HomeScreen() {
   const initSteps = async () => {
     const hasPermission = await requestActivityPermission();
     if (!hasPermission) {
-      Alert.alert("Permissão necessária", "Ative a permissão de atividade física nas configurações para contar os passos.");
+      Alert.alert(
+        t('permissionRequiredTitle', { ns: 'common' }),
+        t('permissionRequiredMessage', { ns: 'common' }),
+      );
       await loadStoredSteps();
       return;
     }
@@ -173,7 +176,7 @@ export default function HomeScreen() {
 
         return () => subscription && subscription.remove();
       } else {
-        console.log('Pedómetro não disponível - usando modo manual');
+        console.log(t('pedometerNotAvailable', { ns: 'common' }));
         await loadStoredSteps();
       }
     } catch (error) {
@@ -205,12 +208,12 @@ export default function HomeScreen() {
 
   const clearAllWorkouts = useCallback(() => {
     Alert.alert(
-      "Delete All Workouts",
-      "Are you sure you want to DELETE all workouts? This action cannot be undone.",
+      t('deleteAllWorkouts', { ns: 'common' }),
+      t('deleteAllWorkoutsConfirm', { ns: 'common' }),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: t('cancel', { ns: 'common' }), style: "cancel" },
         {
-          text: "Delete",
+          text: t('delete', { ns: 'common' }),
           style: "destructive",
           onPress: async () => {
             try {
@@ -250,7 +253,7 @@ export default function HomeScreen() {
               setWorkouts([]);
             } catch (e) {
               console.error(e);
-              Alert.alert("Erro", "Não foi possível apagar os treinos.");
+              Alert.alert(t('error', { ns: 'common' }), t('couldNotSave', { ns: 'common' }));
             }
           }
         }
@@ -507,12 +510,7 @@ export default function HomeScreen() {
             <Text style={[styles.title, { color: theme.colors.onSurface }]}>
               Zedith
             </Text>
-            <Text style={[
-              styles.subtitle,
-              { color: theme.colors.onSurfaceVariant }
-            ]}>
-              {t('Track your daily activity and progress', { ns: 'common' })}
-            </Text>
+            
           </View>
           <Pressable style={[styles.settingsIcon]} onPress={handleLogout} hitSlop={20}>
             <Svg

@@ -252,7 +252,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="calorie_tracker"
         options={{
-          title: t('Calories'),
+          title: t('caloriesTab', { ns: 'common' }),
           tabBarIcon: ({ color, size, focused }) =>
             focused ? (
               <NutritiveFilledIcon color={color} size={size} />

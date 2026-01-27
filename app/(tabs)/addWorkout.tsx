@@ -447,14 +447,17 @@ export default function AddWorkout() {
       exercises,
     };
 
-    Alert.alert("Save workout", "Do you want to save this workout online?", [
+    Alert.alert(
+      t('saveWorkoutTitle', { ns: 'common' }),
+      t('saveWorkoutQuestion', { ns: 'common' }),
+      [
       {
-        text: "No",
+        text: t('no', { ns: 'common' }),
         style: "cancel",
         onPress: () => saveWorkout(newWorkout, false),
       },
       {
-        text: "Yes",
+        text: t('yes', { ns: 'common' }),
         onPress: () => saveWorkout(newWorkout, true),
       },
     ]);
@@ -470,7 +473,7 @@ export default function AddWorkout() {
         const userId = userResp.data.user?.id;
 
         if (!userId) {
-          Alert.alert(t("error"), "Utilizador não autenticado");
+          Alert.alert(t("error", { ns: 'common' }), t('userNotAuthenticated', { ns: 'common' }));
           setLoading(false);
           return;
         }

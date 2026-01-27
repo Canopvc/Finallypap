@@ -1,8 +1,8 @@
 // app.config.js - Permite usar variáveis de ambiente do EAS Build
 export default {
   expo: {
-    name: "FitnessHUB",
-    slug: "FitnessHUB",
+    name: "Zedith",
+    slug: "Zedith",
     version: "1.0.0",
     icon: "./assets/images/Icon.png",
     orientation: "portrait",

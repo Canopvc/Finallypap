@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useTheme } from 'react-native-paper';
+import { useTranslation } from '../../hooks/useTranslation';
 import Svg, { Circle as SvgCircle, Path } from 'react-native-svg';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -59,6 +60,7 @@ interface ProgressCircleProps {
 const CalorieCounter: React.FC = () => {
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
   const [meals, setMeals] = useState<Meal[]>([]);
   const [foodInput, setFoodInput] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
@@ -97,10 +99,16 @@ const CalorieCounter: React.FC = () => {
     try {
       await AsyncStorage.setItem('@nutrition_goals', JSON.stringify(goals));
       setDailyGoals(goals);
-      Alert.alert('Sucesso', 'Metas atualizadas!');
+      Alert.alert(
+        t('success', { ns: 'common' }),
+        t('goalsSaveSuccess', { ns: 'common' })
+      );
     } catch (error) {
       console.error('Erro ao salvar metas:', error);
-      Alert.alert('Erro', 'Não foi possível salvar as metas');
+      Alert.alert(
+        t('error', { ns: 'common' }),
+        t('goalsSaveError', { ns: 'common' })
+      );
     }
   };
 
@@ -239,7 +247,10 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
 
   const addMeal = async (): Promise<void> => {
     if (!foodInput.trim()) {
-      Alert.alert('Erro', 'Por favor, descreva o que você comeu');
+      Alert.alert(
+        t('error', { ns: 'common' }),
+        t('fillFoodDescriptionError', { ns: 'common' })
+      );
       return;
     }
 
@@ -274,10 +285,16 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
       }));
 
       setFoodInput('');
-      Alert.alert('Sucesso', `${foodData.foodName} adicionado!`);
+      Alert.alert(
+        t('success', { ns: 'common' }),
+        t('mealAddedSuccess', { ns: 'common', foodName: foodData.foodName })
+      );
 
     } catch (error) {
-      Alert.alert('Erro', 'Não foi possível analisar o alimento');
+      Alert.alert(
+        t('error', { ns: 'common' }),
+        t('nutritionGenericError', { ns: 'common' })
+      );
     } finally {
       setLoading(false);
     }
@@ -399,10 +416,10 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
 
           <View style={styles.titleContainer}>
             <Text style={[styles.mainTitle, { color: theme.colors.onSurface }]}>
-              Nutric
+              {t('nutritionAppTitle', { ns: 'common' })}
             </Text>
             <Text style={[styles.subTitle, { color: theme.colors.onSurfaceVariant }]}>
-              Calorie Counter
+              {t('nutritionAppSubtitle', { ns: 'common' })}
             </Text>
           </View>
 
@@ -432,7 +449,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
         {/* Progress Section Container */}
         <View style={[styles.progressSectionContainer, { backgroundColor: theme.colors.background }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            Progresso Hoje
+            {t('progressToday', { ns: 'common' })}
           </Text>
           <View style={styles.circlesContainer}>
             <ProgressCircle type="calories" color={theme.colors.primary} />
@@ -444,7 +461,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
         {/* Add Food Section Container */}
         <View style={[styles.addFoodSectionContainer, { backgroundColor: theme.colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            Adicionar Refeição
+            {t('addMealSectionTitle', { ns: 'common' })}
           </Text>
           <View style={styles.inputContainer}>
             <TextInput
@@ -453,7 +470,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
                 borderColor: theme.colors.outline,
                 color: theme.colors.onSurface
               }]}
-              placeholder="Descreva o que você comeu (ex: 2 ovos cozidos, 1 pão integral)"
+              placeholder={t('addMealPlaceholder', { ns: 'common' })}
               placeholderTextColor={theme.colors.onSurfaceVariant}
               value={foodInput}
               onChangeText={setFoodInput}
@@ -468,7 +485,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
                 <ActivityIndicator color={theme.colors.onPrimary} />
               ) : (
                 <Text style={[styles.addButtonText, { color: theme.colors.onPrimary }]}>
-                  Adicionar Refeição
+                  {t('addMealButton', { ns: 'common' })}
                 </Text>
               )}
             </TouchableOpacity>
@@ -478,13 +495,13 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
         {/* Summary Section Container */}
         <View style={[styles.summarySectionContainer, { backgroundColor: theme.colors.background }]}>
           <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            Resumo do Dia
+            {t('daySummary', { ns: 'common' })}
           </Text>
           <View style={[styles.summaryContainer, { backgroundColor: theme.colors.surface }]}>
             <View style={styles.summaryRow}>
               <View style={styles.summaryItem}>
                 <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  Calorias
+                  {t('calories', { ns: 'common' })}
                 </Text>
                 <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>
                   {todayTotals.calories || 0} / {dailyGoals.calories} kcal
@@ -492,7 +509,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
               </View>
               <View style={styles.summaryItem}>
                 <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  Proteína
+                  {t('proteinLabel', { ns: 'common' })}
                 </Text>
                 <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>
                   {safeToFixed(todayTotals.protein)} / {dailyGoals.protein} g
@@ -502,7 +519,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
             <View style={styles.summaryRow}>
               <View style={styles.summaryItem}>
                 <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  Carboidratos
+                  {t('carbsLabel', { ns: 'common' })}
                 </Text>
                 <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>
                   {safeToFixed(todayTotals.carbs)} / {dailyGoals.carbs} g
@@ -510,7 +527,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
               </View>
               <View style={styles.summaryItem}>
                 <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  Restante
+                  {t('remaining', { ns: 'common' })}
                 </Text>
                 <Text style={[styles.summaryValue, { color: theme.colors.primary }]}>
                   {calculateRemaining('calories').remaining} kcal
@@ -524,10 +541,10 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
         <View style={[styles.mealsSectionContainer, { backgroundColor: theme.colors.surface }]}>
           <View style={styles.mealsHeader}>
             <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              Refeições de Hoje
+              {t('todayMeals', { ns: 'common' })}
             </Text>
             <Text style={[styles.mealsCount, { color: theme.colors.onSurfaceVariant }]}>
-              {meals.length} refeições
+              {t('mealsCount', { ns: 'common', count: meals.length })}
             </Text>
           </View>
 
@@ -537,10 +554,10 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
                 🍽️
               </Text>
               <Text style={[styles.emptyStateText, { color: theme.colors.onSurfaceVariant }]}>
-                Nenhuma refeição adicionada hoje
+                {t('noMealsTitle', { ns: 'common' })}
               </Text>
               <Text style={[styles.emptyStateSubtext, { color: theme.colors.onSurfaceVariant }]}>
-                Adicione sua primeira refeição acima
+                {t('noMealsSubtitle', { ns: 'common' })}
               </Text>
             </View>
           ) : (
@@ -613,7 +630,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
 
             <View style={styles.settingItem}>
               <Text style={[styles.settingLabel, { color: theme.colors.onSurface }]}>
-                Calorias (kcal)
+                {t('caloriesKcal', { ns: 'common' })}
               </Text>
               <TextInput
                 style={[styles.settingInput, {
@@ -632,7 +649,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
 
             <View style={styles.settingItem}>
               <Text style={[styles.settingLabel, { color: theme.colors.onSurface }]}>
-                Proteína (g)
+                {t('proteinGrams', { ns: 'common' })}
               </Text>
               <TextInput
                 style={[styles.settingInput, {
@@ -651,7 +668,7 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
 
             <View style={styles.settingItem}>
               <Text style={[styles.settingLabel, { color: theme.colors.onSurface }]}>
-                Carboidratos (g)
+                {t('carbsGrams', { ns: 'common' })}
               </Text>
               <TextInput
                 style={[styles.settingInput, {
@@ -673,14 +690,16 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
                 style={[styles.modalButton, styles.cancelButton, { backgroundColor: theme.colors.surfaceVariant }]}
                 onPress={() => setSettingsModalVisible(false)}
               >
-                <Text style={[styles.cancelButtonText, { color: theme.colors.onSurfaceVariant }]}>Cancelar</Text>
+                <Text style={[styles.cancelButtonText, { color: theme.colors.onSurfaceVariant }]}>
+                  {t('cancelSettings', { ns: 'common' })}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
                 onPress={applySettings}
               >
                 <Text style={[styles.modalButtonText, { color: theme.colors.onPrimary }]}>
-                  Salvar
+                  {t('saveSettings', { ns: 'common' })}
                 </Text>
               </TouchableOpacity>
             </View>
