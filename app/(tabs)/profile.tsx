@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Animated,
-  Dimensions,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -19,18 +18,22 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { supabase } from '../../lib/supabase';
-import { getAppTheme } from '../../lib/theme';
 import * as Notifications from 'expo-notifications';
 import { useTranslation } from '../../hooks/useTranslation';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import Svg, { Path } from "react-native-svg";
+import * as ImagePicker from 'expo-image-picker';
+// Corrigir import - usar só o supabase do client.ts
+import { supabase } from '../../lib/client';
+// Adicione este import junto com os outros imports
+import { getAppTheme } from '../../lib/theme';
+import { useCallback } from 'react';
+import * as FileSystem from 'expo-file-system';
 
-const { width } = Dimensions.get('window');
 const WEIGHT_GOALS_KEY = 'weightGoals';
 const WEIGHT_HISTORY_KEY = 'weightHistory';
 const NOTIFICATION_SETTINGS_KEY = 'notificationSettings';
-const ALARM_SETTINGS_KEY = 'alarmSettings'; // Nova chave
+const ALARM_SETTINGS_KEY = 'alarmSettings';
 
 // Configurar notificações corrigido
 Notifications.setNotificationHandler({
@@ -64,7 +67,10 @@ export default function ProfileScreen() {
   const [tempDate, setTempDate] = useState(new Date());
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
-  const [useDeviceAlarm, setUseDeviceAlarm] = useState(false); // Novo estado
+  const [useDeviceAlarm, setUseDeviceAlarm] = useState(false); 
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [showChangeImageDialog, setShowChangeImageDialog] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   const progressAnim = useState(new Animated.Value(0))[0];
   const fadeAnim = useState(new Animated.Value(0))[0];
@@ -85,7 +91,7 @@ export default function ProfileScreen() {
         useNativeDriver: true,
       })
     ]).start();
-  }, []);
+  }, [fadeAnim, progressAnim]);
 
   const getUserData = async () => {
     try {
@@ -114,7 +120,8 @@ export default function ProfileScreen() {
       await loadWeightGoals();
       await loadWeightHistory();
       await loadNotificationSettings();
-      await loadAlarmSettings(); // Carregar configurações do alarme
+      await loadAlarmSettings();
+      await loadProfileImage();
 
     } catch (error) {
       console.error('Unexpected error in getUserData:', error);
@@ -157,6 +164,26 @@ export default function ProfileScreen() {
     }
   };
 
+  const clearWeightHistory = async () => {
+    Alert.alert(
+      t('delete', { ns: 'common' }),
+      t('clearHistoryConfirm', { ns: 'common' }),
+      [
+        { text: t('cancel', { ns: 'common' }), style: 'cancel' },
+        {
+          text: t('delete', { ns: 'common' }),
+          style: 'destructive',
+          onPress: async () => {
+            setWeightHistory([]);
+            await AsyncStorage.removeItem(WEIGHT_HISTORY_KEY);
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            Alert.alert(t('success', { ns: 'common' }), t('historyCleared', { ns: 'common' }));
+          }
+        }
+      ]
+    );
+  };
+
   const loadNotificationSettings = async () => {
     try {
       const settings = await AsyncStorage.getItem(NOTIFICATION_SETTINGS_KEY);
@@ -169,7 +196,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // Nova função para carregar configurações do alarme
   const loadAlarmSettings = async () => {
     try {
       const settings = await AsyncStorage.getItem(ALARM_SETTINGS_KEY);
@@ -182,7 +208,6 @@ export default function ProfileScreen() {
     }
   };
 
-  // Nova função para salvar configurações do alarme
   const toggleDeviceAlarm = async () => {
     try {
       const newSetting = !useDeviceAlarm;
@@ -216,7 +241,6 @@ export default function ProfileScreen() {
       }
 
       const weightNum = parseFloat(weight);
-      const weightGoalNum = parseFloat(weightGoal);
       const bmiNum = calculateBMI();
 
       // Adicionar ao histórico
@@ -259,55 +283,55 @@ export default function ProfileScreen() {
   };
 
   const sendUserDataToSupabase = async (goals: any, history: any[], bmi: string) => {
-    try {
-      console.log('🚀 Enviando dados para Supabase...');
+  try {
+    console.log('🚀 Enviando dados para Supabase...');
 
-      if (!email) {
-        console.error('❌ Email não disponível');
-        return;
-      }
+    if (!email) {
+      console.error('❌ Email não disponível');
+      return;
+    }
 
-      // Inserir/Atualizar informações do usuário na tabela userinfo
-      const { data: userData, error: userError } = await supabase
-        .from('UserInfo')
-        .upsert([{
+    // Atualizar informações do usuário diretamente
+    const { error: userError } = await supabase
+      .from('UserInfo')
+      .upsert({
+        user_email: email,
+        Weight: parseFloat(goals.weight) || null,
+        BMI: parseFloat(bmi) || null,
+        height: parseFloat(goals.height) || null,
+        age: parseInt(goals.age) || null,
+      }, {
+        onConflict: 'user_email'
+      });
+
+    if (userError) {
+      console.error('❌ Erro ao salvar userinfo:', userError);
+      return;
+    }
+
+    // Salvar histórico de peso
+    if (history.length > 0) {
+      const latestEntry = history[0];
+      const { error: historyError } = await supabase
+        .from('weight_history')
+        .insert({
           user_email: email,
-          Weight: parseFloat(goals.weight),
-          BMI: parseFloat(bmi) || null,
-        }], {
-          onConflict: 'user_email',
-          ignoreDuplicates: false
+          weight: latestEntry.weight,
+          date: latestEntry.date,
+          created_at: new Date().toISOString(),
         });
 
-      if (userError) {
-        console.error('❌ Erro ao salvar userinfo:', userError);
-        return;
+      if (historyError) {
+        console.log('ℹ️ Tabela weight_history não existe ou erro ao salvar:', historyError);
       }
-
-      // Inserir histórico de pesos (se tiver uma tabela para isso)
-      if (history.length > 0) {
-        const latestEntry = history[0];
-        const { error: historyError } = await supabase
-          .from('weight_history')
-          .insert([{
-            user_email: email,
-            weight: latestEntry.weight,
-            date: latestEntry.date,
-            created_at: new Date().toISOString(),
-          }]);
-
-        if (historyError) {
-          console.log('ℹ️ Tabela weight_history não existe ou erro ao salvar:', historyError);
-        }
-      }
-
-      console.log('✅ Dados enviados com sucesso para Supabase');
-
-    } catch (error) {
-      console.error('❌ Erro inesperado no envio para Supabase:', error);
     }
-  };
 
+    console.log('✅ Dados enviados com sucesso para Supabase');
+
+  } catch (error) {
+    console.error('❌ Erro inesperado no envio para Supabase:', error);
+  }
+};
   const toggleNotifications = async () => {
     try {
       const newNotificationEnabled = !notificationEnabled;
@@ -390,7 +414,7 @@ export default function ProfileScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
-      const { data, error } = await supabase.auth.updateUser({
+      const { error } = await supabase.auth.updateUser({
         email: trimmedEmail
       });
 
@@ -451,7 +475,7 @@ export default function ProfileScreen() {
     const heightInMeters = heightNum / 100;
     return (weightNum / (heightInMeters * heightInMeters)).toFixed(1);
   };
-
+  
   const getBMICategory = (bmi: string) => {
     const bmiNum = parseFloat(bmi);
     if (bmiNum < 18.5) return { category: 'Underweight', color: '#FF6B6B' };
@@ -480,23 +504,383 @@ export default function ProfileScreen() {
     );
   };
 
-  const clearWeightHistory = async () => {
-    Alert.alert(
-      t('delete', { ns: 'common' }),
-      t('clearHistoryConfirm', { ns: 'common' }),
-      [
-        { text: t('cancel', { ns: 'common' }), style: 'cancel' },
-        {
-          text: t('delete', { ns: 'common' }),
-          style: 'destructive',
-          onPress: async () => {
-            setWeightHistory([]);
-            await AsyncStorage.removeItem(WEIGHT_HISTORY_KEY);
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            Alert.alert(t('success', { ns: 'common' }), t('historyCleared', { ns: 'common' }));
-          }
+  const handleChooseImage = async () => {
+    try {
+      // Solicitar permissões
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Por favor, permita o acesso à galeria nas configurações.');
+        return;
+      }
+  
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+  
+      if (!result.canceled && result.assets[0]) {
+        await handleUploadProfileImage(result.assets[0]);
+      }
+      
+    } catch (error) {
+      console.error('Erro ao escolher imagem:', error);
+      Alert.alert('Erro', 'Não foi possível escolher a imagem.');
+    } finally {
+      setShowChangeImageDialog(false);
+    }
+  };
+
+  const takePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Por favor, permita o acesso à câmera nas configurações.');
+        return;
+      }
+  
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+        base64: true,
+      });
+  
+      if (!result.canceled && result.assets[0]) {
+        await handleUploadProfileImage(result.assets[0]);
+      }
+      
+    } catch (error) {
+      console.error('Erro ao tirar foto:', error);
+      Alert.alert('Erro', 'Não foi possível tirar a foto.');
+    } finally {
+      setShowChangeImageDialog(false);
+    }
+  };
+  
+
+  // Adicione esta função no profile.tsx
+const testSupabaseConnection = async () => {
+  try {
+    console.log('🔄 Iniciando teste de conexão...');
+    
+    // Teste 1: Verificar auth
+    console.log('1. Testando autenticação...');
+    const { data: authData, error: authError } = await supabase.auth.getSession();
+    
+    if (authError) {
+      console.error('❌ Erro na autenticação:', authError);
+      return { success: false, step: 'auth', error: authError };
+    }
+    
+    console.log('✅ Autenticação OK:', authData.session?.user?.email);
+    
+    // Teste 2: Verificar se o bucket existe
+    console.log('2. Testando bucket USER_IMAGE...');
+    const { data: bucketData, error: bucketError } = await supabase.storage
+      .from('USER_IMAGE')
+      .list('', { limit: 1 });
+    
+    if (bucketError) {
+      console.error('❌ Erro no bucket:', bucketError);
+      
+      // Tentar criar se não existir
+      console.log('🔄 Tentando criar bucket...');
+      try {
+        // Nota: Criar bucket requer permissões admin
+        const { error: createError } = await supabase.storage.createBucket('USER_IMAGE', {
+          public: true,
+          fileSizeLimit: 5242880, // 5MB
+        });
+        
+        if (createError) {
+          console.error('❌ Não foi possível criar bucket:', createError);
+        } else {
+          console.log('✅ Bucket criado com sucesso!');
         }
-      ]
+      } catch (createError) {
+        console.error('❌ Exceção ao criar bucket:', createError);
+      }
+      
+      return { success: false, step: 'bucket', error: bucketError };
+    }
+    
+    console.log('✅ Bucket OK. Arquivos:', bucketData?.length || 0);
+    
+    // Teste 3: Testar upload simples
+    console.log('3. Testando upload de arquivo de teste...');
+    const testBlob = new Blob(['test'], { type: 'text/plain' });
+    const testFileName = `test_${Date.now()}.txt`;
+    
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('USER_IMAGE')
+      .upload(testFileName, testBlob);
+    
+    if (uploadError) {
+      console.error('❌ Erro no upload de teste:', uploadError);
+      return { success: false, step: 'upload', error: uploadError };
+    }
+    
+    console.log('✅ Upload de teste OK:', uploadData);
+    
+    // Limpar arquivo de teste
+    await supabase.storage.from('USER_IMAGE').remove([testFileName]);
+    
+    return { success: true, message: 'Todos os testes passaram!' };
+    
+  } catch (error) {
+    console.error('💥 ERRO CRÍTICO no teste:', error);
+    return { success: false, step: 'exception', error };
+  }
+};
+
+// Modifique a função handleUploadProfileImage
+const handleUploadProfileImage = async (imageAsset: any) => {
+  try {
+    setUploading(true);
+    setShowChangeImageDialog(false);
+    
+    console.log('📸 Iniciando upload de imagem...');
+    console.log('URI da imagem:', imageAsset.uri.substring(0, 50) + '...');
+    console.log('Tamanho:', imageAsset.fileSize || 'desconhecido');
+    console.log('Tipo MIME:', imageAsset.mimeType || 'image/jpeg');
+    
+    // 1. Testar conexão antes
+    console.log('🔍 Testando conexão antes do upload...');
+    const connectionTest = await testSupabaseConnection();
+    
+    if (!connectionTest.success) {
+      Alert.alert(
+        'Erro de Conexão', 
+        `Falha no teste de conexão (${connectionTest.step}). Verifique:\n\n1. Sua conexão com internet\n2. As credenciais do Supabase\n3. Se o bucket USER_IMAGE existe`
+      );
+      return;
+    }
+    
+    console.log('✅ Teste de conexão passou!');
+    
+    // 2. Converter imagem para blob de forma mais robusta
+    let blob: Blob;
+    
+    try {
+      // Método 1: Usando expo-file-system para React Native
+      const fileInfo = await FileSystem.getInfoAsync(imageAsset.uri);
+      console.log('📄 Info do arquivo:', fileInfo);
+      
+      if (fileInfo.exists) {
+  // Usar fetch direto (mais confiável)
+  const response = await fetch(imageAsset.uri);
+  blob = await response.blob();
+} else {
+  throw new Error('Arquivo não encontrado');
+}
+    } catch (fsError) {
+      console.log('⚠️ Fallback para fetch:', fsError);
+      
+      // Método 2: Usando fetch (fallback)
+      const response = await fetch(imageAsset.uri);
+      blob = await response.blob();
+    }
+    
+    console.log('📦 Blob criado:', {
+      size: blob.size,
+      type: blob.type,
+      sizeKB: Math.round(blob.size / 1024)
+    });
+    
+    // Verificar se o blob não está vazio
+    if (blob.size === 0) {
+      throw new Error('Arquivo de imagem está vazio ou corrompido');
+    }
+    
+    // 3. Preparar nome do arquivo
+    const fileExt = imageAsset.uri.split('.').pop()?.toLowerCase() || 'jpg';
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+    
+    if (!allowedExtensions.includes(fileExt)) {
+      Alert.alert('Formato Inválido', 'Use apenas imagens JPG, PNG ou GIF');
+      return;
+    }
+    
+    const fileName = `profile_${userId}_${Date.now()}.${fileExt}`;
+    console.log('📝 Nome do arquivo:', fileName);
+    
+    // 4. Fazer upload
+    console.log('🚀 Iniciando upload para USER_IMAGE...');
+    
+    const { data: uploadResult, error: uploadError } = await supabase.storage
+      .from('USER_IMAGE')
+      .upload(fileName, blob, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: blob.type
+      });
+    
+    if (uploadError) {
+      console.error('❌ ERRO NO UPLOAD:', {
+        message: uploadError.message,
+        name: uploadError.name,
+        details: uploadError
+      });
+      
+      // Análise específica do erro
+      if (uploadError.message.includes('JWT')) {
+        Alert.alert('Sessão Expirada', 'Sua sessão expirou. Faça login novamente.');
+        await supabase.auth.signOut();
+        router.replace('/login');
+        return;
+      }
+      
+      if (uploadError.message.includes('bucket')) {
+        Alert.alert('Bucket Não Encontrado', 'O bucket USER_IMAGE não existe. Crie-o no painel do Supabase.');
+        return;
+      }
+      
+      throw uploadError;
+    }
+    
+    console.log('✅ Upload concluído:', uploadResult);
+    
+    // 5. Obter URL pública
+    const { data: urlData } = supabase.storage
+      .from('USER_IMAGE')
+      .getPublicUrl(fileName);
+    
+    console.log('🔗 URL pública:', urlData.publicUrl);
+    
+    // 6. Salvar no banco de dados
+    const { error: dbError } = await supabase
+      .from('UserInfo')
+      .upsert({
+        user_email: email,
+        profile_image_url: urlData.publicUrl,
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_email'
+      });
+    
+    if (dbError) {
+      console.error('❌ Erro ao salvar no banco:', dbError);
+      throw dbError;
+    }
+    
+    // 7. Atualizar estado local
+    setProfileImage(urlData.publicUrl);
+    await AsyncStorage.setItem('profile_image', urlData.publicUrl);
+    
+    console.log('🎉 Processo completo com sucesso!');
+    Alert.alert('Sucesso!', 'Foto de perfil atualizada.');
+    
+  } catch (error: any) {
+    console.error('💥 ERRO COMPLETO:', {
+      name: error?.name,
+      message: error?.message,
+      stack: error?.stack,
+      fullError: error
+    });
+    
+    // Mensagem amigável baseada no erro
+    let userMessage = 'Não foi possível atualizar a foto.';
+    
+    if (error?.message?.includes('Network request failed')) {
+      userMessage = 'Erro de rede. Verifique sua conexão com a internet.';
+    } else if (error?.message?.includes('permission') || error?.message?.includes('403')) {
+      userMessage = 'Sem permissão. Verifique se o bucket USER_IMAGE existe e está configurado corretamente.';
+    } else if (error?.message?.includes('JWT')) {
+      userMessage = 'Sessão expirada. Faça login novamente.';
+    } else if (error?.message?.includes('file size')) {
+      userMessage = 'Imagem muito grande. Use uma imagem menor que 5MB.';
+    }
+    
+    Alert.alert('Erro', userMessage);
+    
+  } finally {
+    setUploading(false);
+  }
+};
+  const loadProfileImage = async () => {
+    try {
+      // Tentar carregar do AsyncStorage primeiro
+      const cachedImage = await AsyncStorage.getItem('profile_image');
+      if (cachedImage) {
+        setProfileImage(cachedImage);
+      }
+  
+      // Buscar do Supabase
+      if (email) {
+        const { data } = await supabase
+          .from('UserInfo')
+          .select('profile_image_url')
+          .eq('user_email', email)
+          .single();
+
+        if (data && data.profile_image_url) {
+          setProfileImage(data.profile_image_url);
+          await AsyncStorage.setItem('profile_image', data.profile_image_url);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao carregar imagem:', error);
+    }
+  };
+
+  const renderChangeImageDialog = () => {
+    return (
+      showChangeImageDialog && (
+        <View style={styles.dialogOverlay}>
+          <View style={[styles.dialogContainer, { backgroundColor: theme.colors.surface }]}>
+            <Text style={[styles.dialogTitle, { color: theme.colors.onSurface }]}>
+              Alterar foto de perfil
+            </Text>
+            <Text style={[styles.dialogMessage, { color: theme.colors.onSurfaceVariant }]}>
+              Como deseja alterar sua foto de perfil?
+            </Text>
+            
+            <View style={styles.dialogButtons}>
+              <Pressable
+                style={[styles.dialogButton, styles.cancelButton]}
+                onPress={() => setShowChangeImageDialog(false)}
+              >
+                <Text style={[styles.dialogButtonText, { color: theme.colors.onSurfaceVariant }]}>
+                  Cancelar
+                </Text>
+              </Pressable>
+              
+              <Pressable
+                style={[styles.dialogButton, styles.actionButton]}
+                onPress={takePhoto}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="camera" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Tirar foto</Text>
+                  </>
+                )}
+              </Pressable>
+              
+              <Pressable
+                style={[styles.dialogButton, styles.actionButton]}
+                onPress={handleChooseImage}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="image" size={20} color="#fff" />
+                    <Text style={styles.actionButtonText}>Escolher da galeria</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      )
     );
   };
 
@@ -567,14 +951,24 @@ export default function ProfileScreen() {
             <View style={styles.avatarContainer}>
               <View style={[styles.avatarRing, { backgroundColor: theme.colors.primary }]}>
                 <View style={styles.avatarInnerRing}>
-                  <Image
-                    source={require('../../assets/images/LoginImage.jpg')}
-                    style={styles.avatar}
-                    contentFit="cover"
-                  />
+                  <Pressable
+                    onPress={() => setShowChangeImageDialog(true)}
+                    style={styles.imagePressable}
+                  >
+                    <Image
+                      source={
+                        profileImage ? { uri: profileImage } : require('../../assets/images/LoginImage.jpg')
+                      }
+                      style={styles.avatar}
+                      contentFit="cover"
+                    />
+                  </Pressable> 
                 </View>
               </View>
-              <Pressable style={[styles.editAvatarButton, { backgroundColor: theme.colors.primary }]}>
+              <Pressable 
+                style={[styles.editAvatarButton, { backgroundColor: theme.colors.primary }]}
+                onPress={() => setShowChangeImageDialog(true)}
+              >
                 <Ionicons name="camera" size={16} color="#fff" />
               </Pressable>
             </View>
@@ -745,7 +1139,7 @@ export default function ProfileScreen() {
                         const maxWeight = Math.max(...chartData.map(d => d.weight));
                         const minWeight = Math.min(...chartData.map(d => d.weight));
                         const range = maxWeight - minWeight;
-                        const barHeight = ((item.weight - minWeight) / range) * 80 + 20; // 20-100% height
+                        const barHeight = ((item.weight - minWeight) / range) * 80 + 20;
 
                         return (
                           <View key={index} style={styles.barContainer}>
@@ -1033,11 +1427,12 @@ export default function ProfileScreen() {
           )}
         </Animated.View>
       </ScrollView>
+      {renderChangeImageDialog()}
     </KeyboardAvoidingView>
   );
 }
 
-// Styles
+// Styles (mantenha o mesmo objeto de estilos que você já tem)
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -1405,6 +1800,75 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  // Adicione ao final do objeto de estilos
+dialogOverlay: {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 1000,
+},
+dialogContainer: {
+  width: '85%',
+  borderRadius: 20,
+  padding: 24,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.3,
+  shadowRadius: 20,
+  elevation: 10,
+},
+dialogTitle: {
+  fontSize: 20,
+  fontWeight: '700',
+  marginBottom: 8,
+  textAlign: 'center',
+},
+dialogMessage: {
+  fontSize: 16,
+  textAlign: 'center',
+  marginBottom: 24,
+  lineHeight: 22,
+},
+dialogButtons: {
+  flexDirection: 'column',
+  gap: 12,
+},
+dialogButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 16,
+  borderRadius: 12,
+  gap: 10,
+},
+cancelButton: {
+  backgroundColor: 'transparent',
+  borderWidth: 2,
+  borderColor: '#e5e5e5',
+},
+actionButton: {
+  backgroundColor: '#007AFF',
+},
+dialogButtonText: {
+  fontSize: 16,
+  fontWeight: '600',
+},
+actionButtonText: {
+  color: '#fff',
+  fontSize: 16,
+  fontWeight: '600',
+},
+imagePressable: {
+  width: '100%',
+  height: '100%',
+  borderRadius: 52,
+  overflow: 'hidden',
+},
   notificationDescription: {
     fontSize: 14,
     lineHeight: 20,

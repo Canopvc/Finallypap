@@ -19,6 +19,9 @@ import {
 import { useTheme } from 'react-native-paper';
 import { supabase } from '../lib/supabase';
 import { useTranslation } from '../hooks/useTranslation';
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
+
 
 type AddExerciseModalProps = {
   visible: boolean;

@@ -914,3 +914,16 @@ const styles = StyleSheet.create({
 
 },
 );
+
+
+
+import * as ImagePicker from 'expo-image-picker';
+
+async function requestGalleryPermission() {
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') {
+    alert('Precisamos de acesso à galeria');
+    return false;
+  }
+  return true;
+}
