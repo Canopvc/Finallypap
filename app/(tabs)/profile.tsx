@@ -534,57 +534,66 @@ export default function ProfileScreen() {
     }
   };
 
-  // Função auxiliar para converter URI para Blob
-  const uriToBlob = async (uri: string): Promise<Blob> => {
-    const response = await fetch(uri);
-    return await response.blob();
-  };
-
-  const uploadViaRestAPI = async (blob: Blob, fileName: string, accessToken: string) => {
+  // Função auxiliar para converter URI para base64 (usando fetch - compatível com todas as versões)
+  const uriToBase64 = async (uri: string): Promise<string> => {
     try {
-      console.log('🔄 Upload via API REST...');
+      // Usar fetch para obter o arquivo como blob e converter para base64
+      const response = await fetch(uri);
+      const blob = await response.blob();
       
-      // Converter blob para base64
-      const base64 = await new Promise<string>((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result as string;
-          resolve(result.split(',')[1]);
+          // Remove o prefixo data:image/...;base64,
+          const base64 = result.split(',')[1];
+          resolve(base64);
         };
         reader.onerror = reject;
         reader.readAsDataURL(blob);
       });
+    } catch (error) {
+      console.error('Erro ao converter URI para base64:', error);
+      throw error;
+    }
+  };
 
-      const formData = new FormData();
-      formData.append('file', {
-        uri: `data:image/jpeg;base64,${base64}`,
-        type: 'image/jpeg',
-        name: fileName,
-      } as any);
-      
-      const uploadUrl = `https://qocrpcfrhkoritoomgzx.supabase.co/storage/v1/object/USER_IMAGE/${fileName}`;
-      
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvY3JwY2ZyaGtvcml0b29tZ3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5OTMwNTAsImV4cCI6MjA2NzU2OTA1MH0.ghC4kqLz1cvB4Oz2olFRyudCLxr__I1-v3_n35V8SbE',
-        },
-        body: formData,
-      });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(result.message || `HTTP ${response.status}`);
+  // Função auxiliar para converter base64 para ArrayBuffer (compatível com React Native)
+  const base64ToArrayBuffer = (base64: string): Uint8Array => {
+    try {
+      // Implementação manual de atob para React Native (caso não esteja disponível)
+      const atobPolyfill = (str: string): string => {
+        if (typeof atob !== 'undefined') {
+          return atob(str);
+        }
+        // Implementação manual de base64 decode
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+        let output = '';
+        str = str.replace(/[^A-Za-z0-9\+\/\=]/g, '');
+        for (let i = 0; i < str.length; i += 4) {
+          const enc1 = chars.indexOf(str.charAt(i));
+          const enc2 = chars.indexOf(str.charAt(i + 1));
+          const enc3 = chars.indexOf(str.charAt(i + 2));
+          const enc4 = chars.indexOf(str.charAt(i + 3));
+          const chr1 = (enc1 << 2) | (enc2 >> 4);
+          const chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+          const chr3 = ((enc3 & 3) << 6) | enc4;
+          output += String.fromCharCode(chr1);
+          if (enc3 !== 64) output += String.fromCharCode(chr2);
+          if (enc4 !== 64) output += String.fromCharCode(chr3);
+        }
+        return output;
+      };
+
+      const binaryString = atobPolyfill(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
-      
-      console.log('✅ Upload REST funcionou!', result);
-      return { success: true, data: result };
-      
-    } catch (error: any) {
-      console.error('❌ Upload REST falhou:', error);
-      return { success: false, error: error.message };
+      return bytes;
+    } catch (error) {
+      console.error('Erro ao converter base64 para ArrayBuffer:', error);
+      throw error;
     }
   };
 
@@ -606,26 +615,9 @@ export default function ProfileScreen() {
         return;
       }
       
-      const accessToken = session.access_token;
-      console.log('✅ Token JWT obtido');
+      console.log('✅ Sessão válida');
       
-      // 2. Obter nome da imagem atual (se existir)
-      const oldImageName = await getCurrentImageFilename();
-      console.log('📄 Imagem atual:', oldImageName || 'Nenhuma');
-      
-      // 3. Converter para Blob
-      console.log('Convertendo imagem para Blob...');
-      const blob = await uriToBlob(imageAsset.uri);
-      console.log(`Blob criado: ${Math.round(blob.size / 1024)}KB`);
-      
-      // 4. Verificar tamanho
-      if (blob.size > 5 * 1024 * 1024) {
-        Alert.alert('Arquivo Grande', 'A imagem deve ter menos de 5MB.');
-        setUploading(false);
-        return;
-      }
-      
-      // 5. Preparar nome do arquivo
+      // 2. Preparar nome do arquivo
       const fileExt = imageAsset.uri.split('.').pop()?.toLowerCase() || 'jpg';
       const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
       
@@ -635,53 +627,191 @@ export default function ProfileScreen() {
         return;
       }
       
-      // Usar nome consistente: profile_{userId}.{ext}
-      // Isso substitui a imagem existente
-      const fileName = `profile_${userId}.${fileExt}`;
+      // Usar path baseado no userId para melhor compatibilidade com RLS
+      // Formato: {userId}/profile.{ext}
+      const fileName = `${userId}/profile.${fileExt}`;
       console.log('📝 Nome do arquivo:', fileName);
       
-      // 6. Fazer upload da nova imagem
-      console.log('🚀 Fazendo upload da nova imagem...');
+      // 4. Converter imagem para base64 (necessário para React Native)
+      console.log('🔄 Convertendo imagem para base64...');
+      const base64 = await uriToBase64(imageAsset.uri);
+      console.log(`✅ Base64 criado: ${Math.round(base64.length / 1024)}KB`);
       
-      const uploadResult = await uploadViaRestAPI(blob, fileName, accessToken);
-      
-      if (!uploadResult.success) {
-        throw new Error(uploadResult.error || 'Upload falhou');
+      // 5. Verificar tamanho (aproximado: base64 é ~33% maior que o original)
+      const estimatedSize = (base64.length * 3) / 4;
+      if (estimatedSize > 5 * 1024 * 1024) {
+        Alert.alert('Arquivo Grande', 'A imagem deve ter menos de 5MB.');
+        setUploading(false);
+        return;
       }
       
-      console.log('✅ Upload concluído!');
+      // 6. Deletar arquivo antigo se existir (para evitar problemas com RLS)
+      console.log('🗑️ Verificando e removendo arquivo antigo se existir...');
+      try {
+        // Listar arquivos no diretório do usuário
+        const { data: existingFiles } = await supabase.storage
+          .from('USER_IMAGE')
+          .list(userId);
+        
+        if (existingFiles && existingFiles.length > 0) {
+          // Deletar todos os arquivos de perfil antigos do usuário
+          const filesToDelete = existingFiles
+            .filter(file => file.name.startsWith('profile.'))
+            .map(file => `${userId}/${file.name}`);
+          
+          if (filesToDelete.length > 0) {
+            await supabase.storage
+              .from('USER_IMAGE')
+              .remove(filesToDelete);
+            console.log(`✅ ${filesToDelete.length} arquivo(s) antigo(s) removido(s)`);
+          }
+        }
+      } catch (deleteError) {
+        // Não bloquear se houver erro ao deletar (pode ser que não exista)
+        console.log('ℹ️ Nenhum arquivo antigo encontrado ou erro ao deletar:', deleteError);
+      }
       
-      // 7. Obter URL pública
-      const publicUrl = `https://qocrpcfrhkoritoomgzx.supabase.co/storage/v1/object/public/USER_IMAGE/${fileName}`;
-      console.log('🔗 URL pública:', publicUrl);
+      // 7. Fazer upload usando a API do Supabase Storage
+      console.log('🚀 Fazendo upload usando Supabase Storage API...');
       
-      // 8. Deletar imagem antiga (se existir e for diferente da nova)
-      if (oldImageName && oldImageName !== fileName) {
-        await deleteOldImage(oldImageName);
+      // Converter base64 para ArrayBuffer usando função auxiliar
+      const bytes = base64ToArrayBuffer(base64);
+      
+      // Determinar content type
+      const contentType = fileExt === 'png' ? 'image/png' : 
+                         fileExt === 'gif' ? 'image/gif' : 
+                         fileExt === 'webp' ? 'image/webp' : 'image/jpeg';
+      
+      // Upload usando a API do Supabase Storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('USER_IMAGE')
+        .upload(fileName, bytes, {
+          contentType: contentType,
+          upsert: true, // Substitui o arquivo se já existir
+          cacheControl: '3600',
+        });
+      
+      if (uploadError) {
+        console.error('❌ Erro no upload:', uploadError);
+        console.error('📋 Detalhes do erro:', JSON.stringify(uploadError, null, 2));
+        
+        // Se o erro for RLS, fornecer mensagem mais útil
+        if (uploadError.message?.includes('row-level security') || 
+            uploadError.message?.includes('RLS') ||
+            uploadError.message?.includes('permission denied') ||
+            uploadError.message?.includes('new row violates')) {
+          throw new Error(
+            'Permissão negada no Storage.\n\n' +
+            'Configure as políticas RLS do bucket USER_IMAGE no Supabase Dashboard:\n' +
+            '1. Vá para Storage → USER_IMAGE → Policies\n' +
+            '2. Crie políticas para INSERT, UPDATE, DELETE e SELECT\n' +
+            '3. Use: (storage.foldername(name))[1] = (auth.uid())::text\n\n' +
+            'Veja o arquivo SUPABASE_STORAGE_SETUP.md para instruções detalhadas.'
+          );
+        }
+        throw new Error(uploadError.message || 'Erro ao fazer upload da imagem');
+      }
+      
+      console.log('✅ Upload concluído!', uploadData);
+      
+      // 8. Obter URL pública
+      const { data: urlData } = supabase.storage
+        .from('USER_IMAGE')
+        .getPublicUrl(fileName);
+      
+      if (!urlData || !urlData.publicUrl) {
+        console.error('❌ URL pública não gerada corretamente');
+        throw new Error('URL pública não foi gerada');
+      }
+      
+      // Adicionar timestamp para forçar atualização do cache
+      const timestamp = new Date().getTime();
+      const publicUrl = `${urlData.publicUrl}?t=${timestamp}`;
+      console.log('🔗 URL pública (com timestamp):', publicUrl);
+      console.log('📸 URL sem timestamp:', urlData.publicUrl);
+      console.log('📁 Nome do arquivo:', fileName);
+      
+      // Verificar se a URL está acessível (opcional - pode ser lento)
+      try {
+        const testResponse = await fetch(urlData.publicUrl, { method: 'HEAD' });
+        console.log('✅ URL acessível, status:', testResponse.status);
+        if (!testResponse.ok) {
+          console.warn('⚠️ URL retornou status não-OK:', testResponse.status);
+        }
+      } catch (fetchError) {
+        console.warn('⚠️ Não foi possível verificar acessibilidade da URL:', fetchError);
       }
       
       // 9. Atualizar banco de dados
       console.log('💾 Atualizando CONTASREGISTRADAS...');
-      const { error: dbError } = await supabase
+      
+      // Estratégia: tentar update primeiro, se falhar com erro de "não encontrado", fazer insert
+      let dbError = null;
+      
+      // Tentar update primeiro (mais comum)
+      const { error: updateError } = await supabase
         .from('ContasRegistradas')
-        .upsert({
-          user_email: email,
-          username: username,
+        .update({
           profile_image_url: publicUrl,
           updated_at: new Date().toISOString(),
-        }, {
-          onConflict: 'user_email'
-        });
+        })
+        .eq('user_email', email);
+      
+      // Se o update falhou e não foi por RLS, tentar insert
+      if (updateError) {
+        // Verificar se é erro de "nenhum registro encontrado" ou RLS
+        const isNotFoundError = updateError.code === 'PGRST116' || 
+                                updateError.message?.includes('No rows') ||
+                                updateError.message?.includes('not found');
+        
+        if (isNotFoundError) {
+          // Registro não existe, tentar insert
+          console.log('➕ Registro não encontrado, tentando insert...');
+          const { error: insertError } = await supabase
+            .from('ContasRegistradas')
+            .insert({
+              user_email: email,
+              username: username,
+              profile_image_url: publicUrl,
+              updated_at: new Date().toISOString(),
+            });
+          
+          dbError = insertError;
+        } else {
+          // Outro tipo de erro (provavelmente RLS)
+          dbError = updateError;
+        }
+      }
       
       if (dbError) {
         console.error('❌ Erro ao atualizar CONTASREGISTRADAS:', dbError);
+        // Não lançar erro fatal - a imagem já foi enviada com sucesso
+        // Apenas logar o erro e continuar
+        console.warn('⚠️ Aviso: Não foi possível atualizar a URL da imagem no banco de dados, mas o upload foi concluído.');
       } else {
         console.log('✅ Dados atualizados na CONTASREGISTRADAS');
       }
       
-      // 10. Atualizar estado local
+      // 10. Atualizar estado local com força de atualização
+      console.log('🔄 Atualizando estado local da imagem...');
+      console.log('📸 Nova URL da imagem:', publicUrl);
+      
+      // Limpar estado primeiro para forçar re-render
+      setProfileImage(null);
+      
+      // Aguardar um pouco e então atualizar com a nova URL
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       setProfileImage(publicUrl);
       await AsyncStorage.setItem('profile_image', publicUrl);
+      
+      console.log('✅ Estado local atualizado');
+      console.log('📸 ProfileImage state:', publicUrl);
+      
+      // Recarregar a imagem do banco para garantir sincronização
+      setTimeout(() => {
+        loadProfileImage().catch(console.error);
+      }, 500);
       
       Alert.alert('Sucesso!', 'Foto de perfil atualizada com sucesso.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -692,12 +822,14 @@ export default function ProfileScreen() {
       // Mensagens de erro mais específicas
       let errorMessage = 'Não foi possível completar o upload. Tente novamente.';
       
-      if (error.message.includes('409') || error.message.includes('Duplicate')) {
+      if (error.message?.includes('409') || error.message?.includes('Duplicate')) {
         errorMessage = 'Já existe uma imagem com este nome. Tente novamente.';
-      } else if (error.message.includes('413')) {
+      } else if (error.message?.includes('413') || error.message?.includes('too large')) {
         errorMessage = 'A imagem é muito grande. Use uma foto menor.';
-      } else if (error.message.includes('403')) {
+      } else if (error.message?.includes('403') || error.message?.includes('permission')) {
         errorMessage = 'Permissão negada. Verifique as configurações do bucket.';
+      } else if (error.message) {
+        errorMessage = error.message;
       }
       
       Alert.alert('Erro', errorMessage);
@@ -1138,6 +1270,8 @@ export default function ProfileScreen() {
                       }
                       style={styles.avatar}
                       contentFit="cover"
+                      key={profileImage || 'default'} // Força re-render quando a URL muda
+                      cachePolicy="none" // Desabilita cache para forçar atualização
                     />
                   </Pressable> 
                 </View>
