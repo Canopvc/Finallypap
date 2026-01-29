@@ -25,8 +25,14 @@
       },
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",
-        "android.permission.FOREGROUND_SERVICE"
-      ]
+        "android.permission.FOREGROUND_SERVICE",
+         "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA"
+      ],
+      "usesCleartextTraffic": true
     },
     "plugins": [
       "expo-router",

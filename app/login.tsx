@@ -5,15 +5,18 @@ import {
   Text,
   TextInput,
   StyleSheet,
-  Pressable,
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from '../hooks/useTranslation';
+import { LinearGradient } from 'expo-linear-gradient';
+
+const { height } = Dimensions.get('window');
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -40,7 +43,6 @@ export default function LoginScreen() {
       });
 
       if (error) throw error;
-
     } catch (error: any) {
       console.error('Erro no login:', error);
       setError(error.message || t('couldNotSave', { ns: 'common' }));
@@ -53,130 +55,161 @@ export default function LoginScreen() {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <Image
-          source={require('../assets/images/LOGO.png')} // Ajuste o caminho conforme necessário
-          style={styles.logo}
-          resizeMode="contain"
-        />
+  <LinearGradient
+    colors={['#020917', '#020024', '#000000']}
+    start={{ x: 0, y: 0 }}
+    end={{ x: 1, y: 1 }}
+    style={styles.gradientContainer}
+  >
+    <View style={styles.overlay}>
+      <View style={styles.content}>
+        {/* Logo */}
+        <View style={styles.header}>
+          <Image
+            source={require('../assets/images/LOGO.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+        </View>
+
+        {/* Título LOGIN FORA DA CAIXA */}
+        <Text style={styles.screenTitle}>
+          {t('login', { ns: 'common' })}
+        </Text>
+
+        {/* Caixa só com inputs */}
+        <View style={styles.card}>
+          <TextInput
+            placeholder={t('email', { ns: 'common' })}
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            style={styles.input}
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            keyboardType="email-address"
+          />
+
+          <TextInput
+            placeholder={t('password', { ns: 'common' })}
+            placeholderTextColor="rgba(255,255,255,0.6)"
+            style={styles.input}
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
+
+        {/* Botão + texto */}
+        <View style={styles.bottomArea}>
+          <TouchableOpacity
+            onPress={handleLogin}
+            disabled={isLoading}
+            style={[styles.primaryBtn, { opacity: isLoading ? 0.7 : 1 }]}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryBtnTxt}>
+                {t('enter', { ns: 'common' })}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={handleRegister} style={styles.footer}>
+            <Text style={styles.footerText}>
+              {t('noAccount', { ns: 'common' })}
+            </Text>
+          </TouchableOpacity>
+
+          {!!error && <Text style={styles.errorText}>{error}</Text>}
+        </View>
       </View>
-
-      <Text style={[styles.title, { color: theme.colors.onBackground }]}>{t('login', { ns: 'common' })}</Text>
-
-      <TextInput
-        placeholder={t('email', { ns: 'common' })}
-        placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
-        style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-        keyboardType="email-address"
-      />
-
-      <TextInput
-        placeholder={t('password', { ns: 'common' })}
-        placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
-        style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-
-      <TouchableOpacity
-        onPress={handleLogin}
-        disabled={isLoading}
-        style={[styles.primaryBtn, { backgroundColor: theme.colors.primary, opacity: isLoading ? 0.7 : 1 }]}
-      >
-        {isLoading ? (
-          <ActivityIndicator color={theme.colors.onPrimary} />
-        ) : (
-          <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>{t('enter', { ns: 'common' })}</Text>
-        )}
-      </TouchableOpacity>
-
-      <Pressable onPress={handleRegister} style={{ marginTop: 16 }}>
-        <Text style={[styles.registerText, { color: theme.colors.primary }]}>{t('noAccount', { ns: 'common' })}</Text>
-      </Pressable>
-
-      {!!error && <Text style={[styles.errorText, { color: theme.colors.error }]}>{error}</Text>}
     </View>
-  );
+  </LinearGradient>
+);
+
+
 }
 
 const styles = StyleSheet.create({
-  container: {
+  gradientContainer: {
     flex: 1,
-    paddingTop: 60, // Reduzido para acomodar a logo
-    paddingHorizontal: 20,
-    justifyContent: 'center',
   },
-  logoContainer: {
+  overlay: {
+    flex: 1,
+    paddingHorizontal: 24,
+    justifyContent: 'center',   // centro vertical
+  },
+  content: {
+    alignItems: 'center',       // centro horizontal
+  },
+  header: {
     alignItems: 'center',
-    marginBottom: 27,
-    paddingLeft: 4.7,
+    marginBottom: 12,           // espaço entre logo e título
   },
   logo: {
-    width: 240,
-    height: 180,
+    width: 150,
+    height: 110,
   },
-  title: {
-    fontSize: 28,
-    marginBottom: 30,
+  // TÍTULO PRINCIPAL (fora da caixa)
+  screenTitle: {
+    fontSize: 28,               // maior
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 16,           // espaçamento entre título e card
     textAlign: 'center',
-    fontWeight: 'bold',
+  },
+  // Card apenas com inputs
+  card: {
+    width: '100%',
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderRadius: 24,
+    backgroundColor: 'rgba(5, 10, 25, 0.9)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 18,           // espaço entre card e botão
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    fontSize: 16,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 11,
+    marginBottom: 12,           // mais espaço entre os inputs
+    fontSize: 16,               // maior
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  bottomArea: {
+    width: '100%',
+    alignItems: 'center',
+    marginTop: 4,
   },
   primaryBtn: {
-    paddingVertical: 16,
-    borderRadius: 12,
+    width: '100%',
+    paddingVertical: 13,
+    borderRadius: 999,
     alignItems: 'center',
-    marginTop: 10,
+    backgroundColor: '#0EA5E9',
   },
   primaryBtnTxt: {
-    fontSize: 16,
-    fontWeight: '700'
+    fontSize: 17,               // texto do botão maior
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
-  registerText: {
-    marginTop: 18,
-    fontSize: 15,
-    textAlign: 'center',
-    textDecorationLine: 'underline'
+  footer: {
+    marginTop: 8,               // pouco espaço entre botão e texto
   },
-  separatorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 25,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-  },
-  separatorText: {
-    marginHorizontal: 15,
-    fontSize: 14,
-  },
-  googleButton: {
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  googleButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  footerText: {
+    color: '#E5E7EB',
+    fontSize: 15,               // maior
+    textDecorationLine: 'underline',
   },
   errorText: {
-    marginTop: 10,
+    color: '#fecaca',
     textAlign: 'center',
     fontSize: 14,
+    marginTop: 6,
   },
 });

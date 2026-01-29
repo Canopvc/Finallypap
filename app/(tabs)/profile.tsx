@@ -1,3 +1,4 @@
+/* eslint-disable import/namespace */
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -23,11 +24,8 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { useThemeContext } from '../../contexts/ThemeContext';
 import Svg, { Path } from "react-native-svg";
 import * as ImagePicker from 'expo-image-picker';
-// Corrigir import - usar só o supabase do client.ts
 import { supabase } from '../../lib/client';
-// Adicione este import junto com os outros imports
 import { getAppTheme } from '../../lib/theme';
-import { useCallback } from 'react';
 import * as FileSystem from 'expo-file-system';
 
 const WEIGHT_GOALS_KEY = 'weightGoals';
@@ -35,7 +33,6 @@ const WEIGHT_HISTORY_KEY = 'weightHistory';
 const NOTIFICATION_SETTINGS_KEY = 'notificationSettings';
 const ALARM_SETTINGS_KEY = 'alarmSettings';
 
-// Configurar notificações corrigido
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -243,7 +240,6 @@ export default function ProfileScreen() {
       const weightNum = parseFloat(weight);
       const bmiNum = calculateBMI();
 
-      // Adicionar ao histórico
       const newWeightEntry = {
         weight: weightNum,
         date: new Date().toISOString(),
@@ -256,7 +252,6 @@ export default function ProfileScreen() {
 
       setWeightHistory(updatedHistory);
 
-      // Salvar localmente
       const goals = {
         weight,
         weightGoal,
@@ -270,7 +265,6 @@ export default function ProfileScreen() {
       await AsyncStorage.setItem(WEIGHT_GOALS_KEY, JSON.stringify(goals));
       await AsyncStorage.setItem(WEIGHT_HISTORY_KEY, JSON.stringify(updatedHistory));
 
-      // Enviar para Supabase
       await sendUserDataToSupabase(goals, updatedHistory, bmiNum);
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -283,55 +277,39 @@ export default function ProfileScreen() {
   };
 
   const sendUserDataToSupabase = async (goals: any, history: any[], bmi: string) => {
-  try {
-    console.log('🚀 Enviando dados para Supabase...');
+    try {
+      console.log('🚀 Enviando dados para Supabase...');
 
-    if (!email) {
-      console.error('❌ Email não disponível');
-      return;
-    }
+      if (!email) {
+        console.error('❌ Email não disponível');
+        return;
+      }
 
-    // Atualizar informações do usuário diretamente
-    const { error: userError } = await supabase
-      .from('UserInfo')
-      .upsert({
-        user_email: email,
-        Weight: parseFloat(goals.weight) || null,
-        BMI: parseFloat(bmi) || null,
-        height: parseFloat(goals.height) || null,
-        age: parseInt(goals.age) || null,
-      }, {
-        onConflict: 'user_email'
-      });
-
-    if (userError) {
-      console.error('❌ Erro ao salvar userinfo:', userError);
-      return;
-    }
-
-    // Salvar histórico de peso
-    if (history.length > 0) {
-      const latestEntry = history[0];
-      const { error: historyError } = await supabase
-        .from('weight_history')
-        .insert({
+      const { error: userError } = await supabase
+        .from('ContasRegistradas')
+        .upsert({
           user_email: email,
-          weight: latestEntry.weight,
-          date: latestEntry.date,
-          created_at: new Date().toISOString(),
+          username: username,
+          Weight: parseFloat(goals.weight) || null,
+          BMI: parseFloat(bmi) || null,
+          height: parseFloat(goals.height) || null,
+          age: parseInt(goals.age) || null,
+        }, {
+          onConflict: 'user_email'
         });
 
-      if (historyError) {
-        console.log('ℹ️ Tabela weight_history não existe ou erro ao salvar:', historyError);
+      if (userError) {
+        console.error('❌ Erro ao salvar dados:', userError);
+        return;
       }
+
+      console.log('✅ Dados enviados com sucesso para CONTASREGISTRADAS');
+
+    } catch (error) {
+      console.error('❌ Erro inesperado:', error);
     }
+  };
 
-    console.log('✅ Dados enviados com sucesso para Supabase');
-
-  } catch (error) {
-    console.error('❌ Erro inesperado no envio para Supabase:', error);
-  }
-};
   const toggleNotifications = async () => {
     try {
       const newNotificationEnabled = !notificationEnabled;
@@ -345,7 +323,6 @@ export default function ProfileScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       if (newNotificationEnabled) {
-        // Solicitar permissões
         const { status } = await Notifications.requestPermissionsAsync();
         if (status === 'granted') {
           Alert.alert('Success', 'Monthly reminders enabled!');
@@ -506,7 +483,6 @@ export default function ProfileScreen() {
 
   const handleChooseImage = async () => {
     try {
-      // Solicitar permissões
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permissão necessária', 'Por favor, permita o acesso à galeria nas configurações.');
@@ -518,7 +494,6 @@ export default function ProfileScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        base64: true,
       });
   
       if (!result.canceled && result.assets[0]) {
@@ -545,7 +520,6 @@ export default function ProfileScreen() {
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
-        base64: true,
       });
   
       if (!result.canceled && result.assets[0]) {
@@ -559,259 +533,241 @@ export default function ProfileScreen() {
       setShowChangeImageDialog(false);
     }
   };
-  
 
-  // Adicione esta função no profile.tsx
-const testSupabaseConnection = async () => {
-  try {
-    console.log('🔄 Iniciando teste de conexão...');
-    
-    // Teste 1: Verificar auth
-    console.log('1. Testando autenticação...');
-    const { data: authData, error: authError } = await supabase.auth.getSession();
-    
-    if (authError) {
-      console.error('❌ Erro na autenticação:', authError);
-      return { success: false, step: 'auth', error: authError };
-    }
-    
-    console.log('✅ Autenticação OK:', authData.session?.user?.email);
-    
-    // Teste 2: Verificar se o bucket existe
-    console.log('2. Testando bucket USER_IMAGE...');
-    const { data: bucketData, error: bucketError } = await supabase.storage
-      .from('USER_IMAGE')
-      .list('', { limit: 1 });
-    
-    if (bucketError) {
-      console.error('❌ Erro no bucket:', bucketError);
+  // Função auxiliar para converter URI para Blob
+  const uriToBlob = async (uri: string): Promise<Blob> => {
+    const response = await fetch(uri);
+    return await response.blob();
+  };
+
+  const uploadViaRestAPI = async (blob: Blob, fileName: string, accessToken: string) => {
+    try {
+      console.log('🔄 Upload via API REST...');
       
-      // Tentar criar se não existir
-      console.log('🔄 Tentando criar bucket...');
-      try {
-        // Nota: Criar bucket requer permissões admin
-        const { error: createError } = await supabase.storage.createBucket('USER_IMAGE', {
-          public: true,
-          fileSizeLimit: 5242880, // 5MB
-        });
-        
-        if (createError) {
-          console.error('❌ Não foi possível criar bucket:', createError);
-        } else {
-          console.log('✅ Bucket criado com sucesso!');
-        }
-      } catch (createError) {
-        console.error('❌ Exceção ao criar bucket:', createError);
+      // Converter blob para base64
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const result = reader.result as string;
+          resolve(result.split(',')[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+
+      const formData = new FormData();
+      formData.append('file', {
+        uri: `data:image/jpeg;base64,${base64}`,
+        type: 'image/jpeg',
+        name: fileName,
+      } as any);
+      
+      const uploadUrl = `https://qocrpcfrhkoritoomgzx.supabase.co/storage/v1/object/USER_IMAGE/${fileName}`;
+      
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFvY3JwY2ZyaGtvcml0b29tZ3p4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE5OTMwNTAsImV4cCI6MjA2NzU2OTA1MH0.ghC4kqLz1cvB4Oz2olFRyudCLxr__I1-v3_n35V8SbE',
+        },
+        body: formData,
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || `HTTP ${response.status}`);
       }
       
-      return { success: false, step: 'bucket', error: bucketError };
+      console.log('✅ Upload REST funcionou!', result);
+      return { success: true, data: result };
+      
+    } catch (error: any) {
+      console.error('❌ Upload REST falhou:', error);
+      return { success: false, error: error.message };
     }
-    
-    console.log('✅ Bucket OK. Arquivos:', bucketData?.length || 0);
-    
-    // Teste 3: Testar upload simples
-    console.log('3. Testando upload de arquivo de teste...');
-    const testBlob = new Blob(['test'], { type: 'text/plain' });
-    const testFileName = `test_${Date.now()}.txt`;
-    
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('USER_IMAGE')
-      .upload(testFileName, testBlob);
-    
-    if (uploadError) {
-      console.error('❌ Erro no upload de teste:', uploadError);
-      return { success: false, step: 'upload', error: uploadError };
-    }
-    
-    console.log('✅ Upload de teste OK:', uploadData);
-    
-    // Limpar arquivo de teste
-    await supabase.storage.from('USER_IMAGE').remove([testFileName]);
-    
-    return { success: true, message: 'Todos os testes passaram!' };
-    
-  } catch (error) {
-    console.error('💥 ERRO CRÍTICO no teste:', error);
-    return { success: false, step: 'exception', error };
-  }
-};
+  };
 
-// Modifique a função handleUploadProfileImage
-const handleUploadProfileImage = async (imageAsset: any) => {
-  try {
-    setUploading(true);
-    setShowChangeImageDialog(false);
-    
-    console.log('📸 Iniciando upload de imagem...');
-    console.log('URI da imagem:', imageAsset.uri.substring(0, 50) + '...');
-    console.log('Tamanho:', imageAsset.fileSize || 'desconhecido');
-    console.log('Tipo MIME:', imageAsset.mimeType || 'image/jpeg');
-    
-    // 1. Testar conexão antes
-    console.log('🔍 Testando conexão antes do upload...');
-    const connectionTest = await testSupabaseConnection();
-    
-    if (!connectionTest.success) {
-      Alert.alert(
-        'Erro de Conexão', 
-        `Falha no teste de conexão (${connectionTest.step}). Verifique:\n\n1. Sua conexão com internet\n2. As credenciais do Supabase\n3. Se o bucket USER_IMAGE existe`
-      );
-      return;
-    }
-    
-    console.log('✅ Teste de conexão passou!');
-    
-    // 2. Converter imagem para blob de forma mais robusta
-    let blob: Blob;
-    
+  // FUNÇÃO PRINCIPAL DE UPLOAD
+  const handleUploadProfileImage = async (imageAsset: any) => {
     try {
-      // Método 1: Usando expo-file-system para React Native
-      const fileInfo = await FileSystem.getInfoAsync(imageAsset.uri);
-      console.log('📄 Info do arquivo:', fileInfo);
+      setUploading(true);
+      setShowChangeImageDialog(false);
       
-      if (fileInfo.exists) {
-  // Usar fetch direto (mais confiável)
-  const response = await fetch(imageAsset.uri);
-  blob = await response.blob();
-} else {
-  throw new Error('Arquivo não encontrado');
-}
-    } catch (fsError) {
-      console.log('⚠️ Fallback para fetch:', fsError);
+      console.log('📱 Iniciando upload...');
       
-      // Método 2: Usando fetch (fallback)
-      const response = await fetch(imageAsset.uri);
-      blob = await response.blob();
-    }
-    
-    console.log('📦 Blob criado:', {
-      size: blob.size,
-      type: blob.type,
-      sizeKB: Math.round(blob.size / 1024)
-    });
-    
-    // Verificar se o blob não está vazio
-    if (blob.size === 0) {
-      throw new Error('Arquivo de imagem está vazio ou corrompido');
-    }
-    
-    // 3. Preparar nome do arquivo
-    const fileExt = imageAsset.uri.split('.').pop()?.toLowerCase() || 'jpg';
-    const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-    
-    if (!allowedExtensions.includes(fileExt)) {
-      Alert.alert('Formato Inválido', 'Use apenas imagens JPG, PNG ou GIF');
-      return;
-    }
-    
-    const fileName = `profile_${userId}_${Date.now()}.${fileExt}`;
-    console.log('📝 Nome do arquivo:', fileName);
-    
-    // 4. Fazer upload
-    console.log('🚀 Iniciando upload para USER_IMAGE...');
-    
-    const { data: uploadResult, error: uploadError } = await supabase.storage
-      .from('USER_IMAGE')
-      .upload(fileName, blob, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: blob.type
-      });
-    
-    if (uploadError) {
-      console.error('❌ ERRO NO UPLOAD:', {
-        message: uploadError.message,
-        name: uploadError.name,
-        details: uploadError
-      });
+      // 1. OBTER SESSÃO ATUAL
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
-      // Análise específica do erro
-      if (uploadError.message.includes('JWT')) {
-        Alert.alert('Sessão Expirada', 'Sua sessão expirou. Faça login novamente.');
+      if (sessionError || !session) {
+        Alert.alert('Sessão Expirada', 'Faça login novamente.');
         await supabase.auth.signOut();
         router.replace('/login');
         return;
       }
       
-      if (uploadError.message.includes('bucket')) {
-        Alert.alert('Bucket Não Encontrado', 'O bucket USER_IMAGE não existe. Crie-o no painel do Supabase.');
+      const accessToken = session.access_token;
+      console.log('✅ Token JWT obtido');
+      
+      // 2. Obter nome da imagem atual (se existir)
+      const oldImageName = await getCurrentImageFilename();
+      console.log('📄 Imagem atual:', oldImageName || 'Nenhuma');
+      
+      // 3. Converter para Blob
+      console.log('Convertendo imagem para Blob...');
+      const blob = await uriToBlob(imageAsset.uri);
+      console.log(`Blob criado: ${Math.round(blob.size / 1024)}KB`);
+      
+      // 4. Verificar tamanho
+      if (blob.size > 5 * 1024 * 1024) {
+        Alert.alert('Arquivo Grande', 'A imagem deve ter menos de 5MB.');
+        setUploading(false);
         return;
       }
       
-      throw uploadError;
+      // 5. Preparar nome do arquivo
+      const fileExt = imageAsset.uri.split('.').pop()?.toLowerCase() || 'jpg';
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+      
+      if (!allowedExtensions.includes(fileExt)) {
+        Alert.alert('Formato Inválido', 'Use apenas imagens JPG, PNG ou GIF.');
+        setUploading(false);
+        return;
+      }
+      
+      // Usar nome consistente: profile_{userId}.{ext}
+      // Isso substitui a imagem existente
+      const fileName = `profile_${userId}.${fileExt}`;
+      console.log('📝 Nome do arquivo:', fileName);
+      
+      // 6. Fazer upload da nova imagem
+      console.log('🚀 Fazendo upload da nova imagem...');
+      
+      const uploadResult = await uploadViaRestAPI(blob, fileName, accessToken);
+      
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Upload falhou');
+      }
+      
+      console.log('✅ Upload concluído!');
+      
+      // 7. Obter URL pública
+      const publicUrl = `https://qocrpcfrhkoritoomgzx.supabase.co/storage/v1/object/public/USER_IMAGE/${fileName}`;
+      console.log('🔗 URL pública:', publicUrl);
+      
+      // 8. Deletar imagem antiga (se existir e for diferente da nova)
+      if (oldImageName && oldImageName !== fileName) {
+        await deleteOldImage(oldImageName);
+      }
+      
+      // 9. Atualizar banco de dados
+      console.log('💾 Atualizando CONTASREGISTRADAS...');
+      const { error: dbError } = await supabase
+        .from('ContasRegistradas')
+        .upsert({
+          user_email: email,
+          username: username,
+          profile_image_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_email'
+        });
+      
+      if (dbError) {
+        console.error('❌ Erro ao atualizar CONTASREGISTRADAS:', dbError);
+      } else {
+        console.log('✅ Dados atualizados na CONTASREGISTRADAS');
+      }
+      
+      // 10. Atualizar estado local
+      setProfileImage(publicUrl);
+      await AsyncStorage.setItem('profile_image', publicUrl);
+      
+      Alert.alert('Sucesso!', 'Foto de perfil atualizada com sucesso.');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+    } catch (error: any) {
+      console.error('💥 ERRO NO PROCESSO DE UPLOAD:', error?.message || error);
+      
+      // Mensagens de erro mais específicas
+      let errorMessage = 'Não foi possível completar o upload. Tente novamente.';
+      
+      if (error.message.includes('409') || error.message.includes('Duplicate')) {
+        errorMessage = 'Já existe uma imagem com este nome. Tente novamente.';
+      } else if (error.message.includes('413')) {
+        errorMessage = 'A imagem é muito grande. Use uma foto menor.';
+      } else if (error.message.includes('403')) {
+        errorMessage = 'Permissão negada. Verifique as configurações do bucket.';
+      }
+      
+      Alert.alert('Erro', errorMessage);
+      
+    } finally {
+      setUploading(false);
     }
-    
-    console.log('✅ Upload concluído:', uploadResult);
-    
-    // 5. Obter URL pública
-    const { data: urlData } = supabase.storage
-      .from('USER_IMAGE')
-      .getPublicUrl(fileName);
-    
-    console.log('🔗 URL pública:', urlData.publicUrl);
-    
-    // 6. Salvar no banco de dados
-    const { error: dbError } = await supabase
-      .from('UserInfo')
-      .upsert({
-        user_email: email,
-        profile_image_url: urlData.publicUrl,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_email'
-      });
-    
-    if (dbError) {
-      console.error('❌ Erro ao salvar no banco:', dbError);
-      throw dbError;
+  };
+
+  const getCurrentImageFilename = async (): Promise<string | null> => {
+    try {
+      if (!email) return null;
+      
+      const { data } = await supabase
+        .from('ContasRegistradas')
+        .select('profile_image_url')
+        .eq('user_email', email)
+        .single();
+      
+      if (data?.profile_image_url) {
+        // Extrai o nome do arquivo da URL
+        const url = data.profile_image_url;
+        const fileName = url.split('/').pop(); // Pega a última parte da URL
+        return fileName || null;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Erro ao obter nome do arquivo atual:', error);
+      return null;
     }
-    
-    // 7. Atualizar estado local
-    setProfileImage(urlData.publicUrl);
-    await AsyncStorage.setItem('profile_image', urlData.publicUrl);
-    
-    console.log('🎉 Processo completo com sucesso!');
-    Alert.alert('Sucesso!', 'Foto de perfil atualizada.');
-    
-  } catch (error: any) {
-    console.error('💥 ERRO COMPLETO:', {
-      name: error?.name,
-      message: error?.message,
-      stack: error?.stack,
-      fullError: error
-    });
-    
-    // Mensagem amigável baseada no erro
-    let userMessage = 'Não foi possível atualizar a foto.';
-    
-    if (error?.message?.includes('Network request failed')) {
-      userMessage = 'Erro de rede. Verifique sua conexão com a internet.';
-    } else if (error?.message?.includes('permission') || error?.message?.includes('403')) {
-      userMessage = 'Sem permissão. Verifique se o bucket USER_IMAGE existe e está configurado corretamente.';
-    } else if (error?.message?.includes('JWT')) {
-      userMessage = 'Sessão expirada. Faça login novamente.';
-    } else if (error?.message?.includes('file size')) {
-      userMessage = 'Imagem muito grande. Use uma imagem menor que 5MB.';
+  };
+
+  const deleteOldImage = async (fileName: string): Promise<boolean> => {
+    try {
+      console.log(`🗑️ Tentando deletar imagem antiga: ${fileName}`);
+      
+      // Obter sessão atual
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return false;
+      
+      // Usar o storage API do Supabase
+      const { error } = await supabase
+        .storage
+        .from('USER_IMAGE')
+        .remove([fileName]);
+      
+      if (error) {
+        console.error('❌ Erro ao deletar imagem antiga:', error);
+        return false;
+      }
+      
+      console.log('✅ Imagem antiga deletada com sucesso');
+      return true;
+    } catch (error) {
+      console.error('❌ Erro inesperado ao deletar:', error);
+      return false;
     }
-    
-    Alert.alert('Erro', userMessage);
-    
-  } finally {
-    setUploading(false);
-  }
-};
+  };
+
   const loadProfileImage = async () => {
     try {
-      // Tentar carregar do AsyncStorage primeiro
       const cachedImage = await AsyncStorage.getItem('profile_image');
       if (cachedImage) {
         setProfileImage(cachedImage);
       }
-  
-      // Buscar do Supabase
+    
       if (email) {
         const { data } = await supabase
-          .from('UserInfo')
+          .from('ContasRegistradas')
           .select('profile_image_url')
           .eq('user_email', email)
           .single();
@@ -823,6 +779,227 @@ const handleUploadProfileImage = async (imageAsset: any) => {
       }
     } catch (error) {
       console.error('Erro ao carregar imagem:', error);
+    }
+  };
+
+  const deleteAllProfileImagesFromBucket = async (): Promise<{ success: boolean; deletedCount: number; error?: string }> => {
+    try {
+      console.log('🧹 Iniciando limpeza completa do bucket...');
+      
+      // 1. Obter sessão
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        return { success: false, deletedCount: 0, error: 'Sessão não encontrada' };
+      }
+      
+      // 2. Listar TODOS os arquivos do bucket USER_IMAGE
+      const { data: files, error: listError } = await supabase
+        .storage
+        .from('USER_IMAGE')
+        .list();
+      
+      if (listError) {
+        console.error('❌ Erro ao listar arquivos:', listError);
+        return { success: false, deletedCount: 0, error: listError.message };
+      }
+      
+      if (!files || files.length === 0) {
+        console.log('📭 Bucket já está vazio');
+        return { success: true, deletedCount: 0 };
+      }
+      
+      console.log(`📁 Total de arquivos no bucket: ${files.length}`);
+      
+      // 4. Deletar todos os arquivos (em lotes de 100)
+      const allFileNames = files.map(file => file.name);
+      const batches = [];
+      
+      for (let i = 0; i < allFileNames.length; i += 100) {
+        batches.push(allFileNames.slice(i, i + 100));
+      }
+      
+      let totalDeleted = 0;
+      
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        console.log(`🔄 Deletando lote ${i + 1}/${batches.length} (${batch.length} arquivos)...`);
+        
+        const { error: deleteError } = await supabase
+          .storage
+          .from('USER_IMAGE')
+          .remove(batch);
+        
+        if (deleteError) {
+          console.error(`❌ Erro ao deletar lote ${i + 1}:`, deleteError);
+          return { success: false, deletedCount: totalDeleted, error: deleteError.message };
+        }
+        
+        totalDeleted += batch.length;
+      }
+      
+      console.log(`✅ ${totalDeleted} arquivos deletados do bucket`);
+      
+      // 5. Verificar se o bucket está vazio
+      const { data: remainingFiles } = await supabase
+        .storage
+        .from('USER_IMAGE')
+        .list();
+      
+      if (remainingFiles && remainingFiles.length > 0) {
+        console.warn(`⚠️ Ainda restam ${remainingFiles.length} arquivos no bucket`);
+      }
+      
+      return { success: true, deletedCount: totalDeleted };
+      
+    } catch (error: any) {
+      console.error('💥 Erro inesperado na limpeza do bucket:', error);
+      return { success: false, deletedCount: 0, error: error.message };
+    }
+  };
+
+  const deleteAllLocalImages = async (): Promise<{ success: boolean; deletedCount: number }> => {
+  try {
+    console.log('📱 Limpando imagens locais do dispositivo...');
+    
+    let deletedCount = 0;
+    
+    // 1. Limpar todas as chaves relacionadas a imagens no AsyncStorage
+    try {
+      const allKeys = await AsyncStorage.getAllKeys();
+      console.log(`📁 Total de chaves no AsyncStorage: ${allKeys.length}`);
+      
+      // Filtrar chaves relacionadas a imagens
+      const imageRelatedKeys = allKeys.filter(key => {
+        const keyLower = key.toLowerCase();
+        return (
+          keyLower.includes('image') || 
+          keyLower.includes('avatar') || 
+          keyLower.includes('profile') ||
+          keyLower.includes('photo') ||
+          keyLower.includes('picture') ||
+          key === 'profile_image' // chave específica que você usa
+        );
+      });
+      
+      console.log(`🔑 Chaves de imagem encontradas: ${imageRelatedKeys.length}`);
+      
+      if (imageRelatedKeys.length > 0) {
+        await AsyncStorage.multiRemove(imageRelatedKeys);
+        console.log(`✅ ${imageRelatedKeys.length} chaves de imagem removidas do AsyncStorage`);
+        deletedCount = imageRelatedKeys.length;
+      } else {
+        console.log('📭 Nenhuma chave de imagem encontrada no AsyncStorage');
+      }
+      
+    } catch (storageError) {
+      console.error('❌ Erro ao limpar AsyncStorage:', storageError);
+      return { success: false, deletedCount: 0 };
+    }
+    
+    // 2. Limpar estado local
+    setProfileImage(null);
+    
+    // 3. Forçar atualização do componente
+    setTimeout(() => {
+      loadProfileImage().catch(console.error);
+    }, 100);
+    
+    console.log(`✅ ${deletedCount} itens locais removidos com sucesso`);
+    
+    return { success: true, deletedCount };
+    
+  } catch (error: any) {
+    console.error('💥 Erro inesperado ao limpar imagens locais:', error);
+    return { success: false, deletedCount: 0 };
+  }
+};
+
+  const cleanupAllImages = async (): Promise<void> => {
+    try {
+      // 1. Confirmar com o usuário (IMPORTANTE!)
+      Alert.alert(
+        '⚠️ Limpeza Total',
+        'Tem certeza que deseja apagar TODAS as imagens?\n\nEsta ação irá:'
+        + '\n• Apagar todas as imagens do servidor'
+        + '\n• Remover imagens locais do dispositivo'
+        + '\n• Resetar sua foto de perfil',
+        [
+          {
+            text: 'Cancelar',
+            style: 'cancel',
+            onPress: () => console.log('Limpeza cancelada pelo usuário')
+          },
+          {
+            text: 'LIMPAR TUDO',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                // Mostrar loading
+                setBusy(true);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                
+                // 2. Apagar do bucket (servidor)
+                console.log('🚀 Iniciando limpeza do servidor...');
+                const bucketResult = await deleteAllProfileImagesFromBucket();
+                
+                if (!bucketResult.success) {
+                  Alert.alert(
+                    'Atenção',
+                    `Não foi possível limpar todas as imagens do servidor.\n\nErro: ${bucketResult.error}`
+                  );
+                }
+                
+                // 3. Apagar locais
+                console.log('📱 Iniciando limpeza local...');
+                const localResult = await deleteAllLocalImages();
+                
+                // 4. Atualizar banco de dados para remover referências
+                console.log('🗄️ Atualizando banco de dados...');
+                if (email) {
+                  const { error: updateError } = await supabase
+                    .from('ContasRegistradas')
+                    .update({
+                      profile_image_url: null,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('user_email', email);
+                  
+                  if (updateError) {
+                    console.error('❌ Erro ao atualizar banco:', updateError);
+                  } else {
+                    console.log('✅ Banco de dados atualizado');
+                  }
+                }
+                
+                // 5. Feedback para o usuário
+                let message = 'Limpeza concluída!';
+                
+                if (bucketResult.deletedCount > 0 || localResult.deletedCount > 0) {
+                  message = `✅ Limpeza concluída com sucesso!\n\n` +
+                            `• ${bucketResult.deletedCount} imagens removidas do servidor\n` +
+                            `• ${localResult.deletedCount} itens removidos localmente`;
+                } else {
+                  message = '✅ Não havia imagens para remover.';
+                }
+                
+                Alert.alert('Sucesso', message);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                
+              } catch (error: any) {
+                console.error('💥 Erro durante a limpeza completa:', error);
+                Alert.alert('Erro', 'Ocorreu um erro durante a limpeza: ' + error.message);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                
+              } finally {
+                setBusy(false);
+              }
+            }
+          }
+        ]
+      );
+      
+    } catch (error) {
+      console.error('❌ Erro ao iniciar limpeza:', error);
     }
   };
 
@@ -1118,6 +1295,15 @@ const handleUploadProfileImage = async (imageAsset: any) => {
               >
                 <Text style={styles.buttonTxt}>{t('saveGoals', { ns: 'common' })}</Text>
               </Pressable>
+
+              {/* Botão para limpar imagens */}
+              <Pressable
+                style={[styles.button, { backgroundColor: '#FF6B6B', marginTop: 20 }]}
+                onPress={cleanupAllImages}
+              >
+                <Ionicons name="trash-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.buttonTxt}>Limpar Todas as Imagens</Text>
+              </Pressable>
             </View>
           )}
 
@@ -1128,7 +1314,6 @@ const handleUploadProfileImage = async (imageAsset: any) => {
 
               {weightHistory.length > 0 ? (
                 <>
-                  {/* Gráfico Simples de Barras */}
                   <View style={[styles.chartContainer, { backgroundColor: theme.colors.surface }]}>
                     <Text style={[styles.chartTitle, { color: theme.colors.onSurface }]}>
                       {t('weightHistory', { ns: 'common' })}
@@ -1260,7 +1445,6 @@ const handleUploadProfileImage = async (imageAsset: any) => {
                 </Pressable>
               </View>
 
-              {/* Nova Seção: Configurações do Alarme do Timer */}
               <View style={[styles.notificationSection, { backgroundColor: theme.colors.surface }]}>
                 <View style={styles.notificationHeader}>
                   <View style={styles.notificationInfo}>
@@ -1289,7 +1473,6 @@ const handleUploadProfileImage = async (imageAsset: any) => {
                 </Text>
               </View>
 
-              {/* Seção Original: Notificações Mensais */}
               <View style={[styles.notificationSection, { backgroundColor: theme.colors.surface }]}>
                 <View style={styles.notificationHeader}>
                   <View style={styles.notificationInfo}>
@@ -1315,7 +1498,6 @@ const handleUploadProfileImage = async (imageAsset: any) => {
                 </Text>
               </View>
 
-              {/* Seção: Tema do App */}
               <View style={[styles.notificationSection, { backgroundColor: theme.colors.surface }]}>
                 <View style={styles.notificationHeader}>
                   <View style={styles.notificationInfo}>
@@ -1333,7 +1515,6 @@ const handleUploadProfileImage = async (imageAsset: any) => {
                   Choose how the app theme should behave
                 </Text>
 
-                {/* Opções de tema */}
                 <View style={styles.themeOptions}>
                   <Pressable
                     onPress={() => {
@@ -1432,7 +1613,6 @@ const handleUploadProfileImage = async (imageAsset: any) => {
   );
 }
 
-// Styles (mantenha o mesmo objeto de estilos que você já tem)
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
@@ -1800,75 +1980,74 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  // Adicione ao final do objeto de estilos
-dialogOverlay: {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 1000,
-},
-dialogContainer: {
-  width: '85%',
-  borderRadius: 20,
-  padding: 24,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 10 },
-  shadowOpacity: 0.3,
-  shadowRadius: 20,
-  elevation: 10,
-},
-dialogTitle: {
-  fontSize: 20,
-  fontWeight: '700',
-  marginBottom: 8,
-  textAlign: 'center',
-},
-dialogMessage: {
-  fontSize: 16,
-  textAlign: 'center',
-  marginBottom: 24,
-  lineHeight: 22,
-},
-dialogButtons: {
-  flexDirection: 'column',
-  gap: 12,
-},
-dialogButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  paddingVertical: 16,
-  borderRadius: 12,
-  gap: 10,
-},
-cancelButton: {
-  backgroundColor: 'transparent',
-  borderWidth: 2,
-  borderColor: '#e5e5e5',
-},
-actionButton: {
-  backgroundColor: '#007AFF',
-},
-dialogButtonText: {
-  fontSize: 16,
-  fontWeight: '600',
-},
-actionButtonText: {
-  color: '#fff',
-  fontSize: 16,
-  fontWeight: '600',
-},
-imagePressable: {
-  width: '100%',
-  height: '100%',
-  borderRadius: 52,
-  overflow: 'hidden',
-},
+  dialogOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  dialogContainer: {
+    width: '85%',
+    borderRadius: 20,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  dialogTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  dialogMessage: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  dialogButtons: {
+    flexDirection: 'column',
+    gap: 12,
+  },
+  dialogButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    gap: 10,
+  },
+  cancelButton: {
+    backgroundColor: 'transparent',
+    borderWidth: 2,
+    borderColor: '#e5e5e5',
+  },
+  actionButton: {
+    backgroundColor: '#007AFF',
+  },
+  dialogButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  imagePressable: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 52,
+    overflow: 'hidden',
+  },
   notificationDescription: {
     fontSize: 14,
     lineHeight: 20,
