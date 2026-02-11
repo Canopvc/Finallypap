@@ -1798,10 +1798,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
   avatar: {
-    width: 104,
-    height: 104,
+    width: 111.99999999999,
+    height: 111.9999999999,
     borderRadius: 52,
   },
   editAvatarButton: {

@@ -2,7 +2,7 @@
 export default {
   expo: {
     name: "Zedith",
-    slug: "Zedith",
+    slug: "FitnessHUB",
     version: "1.0.0",
     icon: "./assets/images/Icon.png",
     orientation: "portrait",
@@ -55,7 +55,7 @@ export default {
       },
       // Variáveis de ambiente injetadas pelo EAS Build
       // Durante o build, o EAS substitui essas variáveis pelos valores dos secrets
-      cohereApiKey: process.env.COHERE_API_KEY || "",
+      cohereApiKey: process.env.COHERE_API_KEY || "DhmTjY26uuFSYHJHsFLxmM7KRpSX7srJasxahzeya",
       supabaseUrl: process.env.SUPABASE_URL || "",
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ""
     }

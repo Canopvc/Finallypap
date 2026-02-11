@@ -8,11 +8,11 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
-  useColorScheme,
   Vibration,
   LogBox,
   PermissionsAndroid,
   ScrollView,
+  Animated,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -22,8 +22,7 @@ import { useTheme } from 'react-native-paper';
 import { Pedometer } from 'expo-sensors';
 import { useTranslation } from '../../hooks/useTranslation';
 import Svg, { Path } from "react-native-svg";
-import {supabase} from '../../lib/supabase';
-
+import { supabase } from '../../lib/supabase';
 
 LogBox.ignoreLogs(['expo-notifications']);
 LogBox.ignoreLogs(['VirtualizedLists should never be nested inside plain ScrollViews with tje same orientation']);
@@ -58,29 +57,74 @@ const workoutSlugFromFields = (name: string, createdAt: string) =>
   `${slugify(name)}-${new Date(createdAt).getTime()}`;
 
 export default function HomeScreen() {
-  // Hooks
   const router = useRouter();
   const theme = useTheme();
   const { t } = useTranslation();
 
-  // State (mantido igual)
+  // State
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [currentStepCount, setCurrentStepCount] = useState(0);
   const [isPedometerAvailable, setIsPedometerAvailable] = useState(false);
   const [progress, setProgress] = useState(0);
 
-  // Refs (mantido igual)
+  // Animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
+  // Refs
   const notificationsSentRef = useRef({
     half: false,
     target: false,
     double: false
   });
 
-  // Effects (mantidos iguais)
+  // Effects
   useEffect(() => {
     const newProgress = Math.min(1, currentStepCount / STEP_TARGET);
     setProgress(newProgress);
   }, [currentStepCount]);
+
+  useEffect(() => {
+    const checkForDailyReset = async () => {
+      try {
+        const now = new Date();
+        const today = now.toDateString();
+        const lastReset = await AsyncStorage.getItem('@last_reset_date');
+        
+        if (lastReset !== today && now.getHours() >= 0) {
+          console.log('⏰ É meia-noite! Resetando passos...');
+          await AsyncStorage.setItem('@step_count', '0');
+          await AsyncStorage.setItem('@last_reset_date', today);
+          setCurrentStepCount(0);
+          setProgress(0);
+          
+          notificationsSentRef.current = { half: false, target: false, double: false };
+        }
+      } catch (error) {
+        console.error('Erro ao verificar reset diário:', error);
+      }
+    };
+
+    checkForDailyReset();
+    const intervalId = setInterval(checkForDailyReset, 60000);
+    
+    return () => clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     checkStepMilestones();
@@ -91,8 +135,7 @@ export default function HomeScreen() {
     registerForPushNotifications();
   }, []);
 
-
-  // Step Tracking Functions (mantidas iguais)
+  // Step Tracking Functions
   const requestActivityPermission = async () => {
     if (Platform.OS === 'android') {
       try {
@@ -198,11 +241,24 @@ export default function HomeScreen() {
 
   const saveStepCount = async (steps: number) => {
     try {
+      const now = new Date();
+      const today = now.toDateString();
+      const lastReset = await AsyncStorage.getItem('@last_reset_date');
+      
+      if (lastReset !== today && now.getHours() >= 0) {
+        console.log('📅 Novo dia detectado, resetando contador...');
+        await AsyncStorage.setItem('@step_count', '0');
+        await AsyncStorage.setItem('@last_reset_date', today);
+        setCurrentStepCount(0);
+        setProgress(0);
+        notificationsSentRef.current = { half: false, target: false, double: false };
+        return;
+      }
+      
       await AsyncStorage.setItem('@step_count', steps.toString());
-      const today = new Date().toDateString();
-      await AsyncStorage.setItem('@last_reset_date', today);
+      
     } catch (error) {
-      console.error('Error saving step count:', error);
+      console.error('❌ Erro ao salvar passos:', error);
     }
   };
 
@@ -217,10 +273,8 @@ export default function HomeScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              // 1. Apagar do AsyncStorage
               await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify([]));
               
-              // 2. Apagar todos os workouts da base de dados do utilizador atual
               try {
                 const userResp = await supabase.auth.getUser();
                 const userId = userResp.data.user?.id;
@@ -247,7 +301,6 @@ export default function HomeScreen() {
                 }
               } catch (dbError) {
                 console.error('Erro ao apagar workouts da base de dados:', dbError);
-                // Continuar mesmo se houver erro na DB
               }
               
               setWorkouts([]);
@@ -261,31 +314,37 @@ export default function HomeScreen() {
     );
   }, []);
 
-
   const checkAndResetSteps = async () => {
     try {
-      const today = new Date().toDateString();
-      const lastReset = await AsyncStorage.getItem('@last_reset_date');
-
-      if (lastReset !== today) {
-        await AsyncStorage.setItem('@step_count', '0');
-        await AsyncStorage.setItem('@last_reset_date', today);
-        setCurrentStepCount(0);
-        setProgress(0);
-
-        notificationsSentRef.current = { half: false, target: false, double: false };
-        return 0;
-      } else {
-        const savedSteps = await AsyncStorage.getItem('@step_count');
-        return savedSteps ? parseInt(savedSteps, 10) : 0;
+      const now = new Date();
+      const today = now.toDateString();
+      const lastResetDate = await AsyncStorage.getItem('@last_reset_date');
+      
+      if (lastResetDate !== today) {
+        const lastReset = lastResetDate ? new Date(lastResetDate) : null;
+        const shouldReset = !lastReset || now.getHours() >= 0;
+        
+        if (shouldReset) {
+          console.log('🔄 Resetando passos diários...');
+          await AsyncStorage.setItem('@step_count', '0');
+          await AsyncStorage.setItem('@last_reset_date', today);
+          
+          notificationsSentRef.current = { half: false, target: false, double: false };
+          
+          return 0;
+        }
       }
+      
+      const savedSteps = await AsyncStorage.getItem('@step_count');
+      return savedSteps ? parseInt(savedSteps, 10) : 0;
+      
     } catch (error) {
-      console.error('Error checking/resetting steps:', error);
+      console.error('❌ Erro ao verificar/resetar passos:', error);
       return 0;
     }
   };
 
-  // Notification Functions (mantidas iguais)
+  // Notification Functions
   const checkStepMilestones = async () => {
     if (currentStepCount === 0) return;
 
@@ -316,7 +375,6 @@ export default function HomeScreen() {
       notificationsSentRef.current.double = true;
     }
 
-    // Reset notifications if steps decrease
     if (currentStepCount < halfTarget) notificationsSentRef.current.half = false;
     if (currentStepCount < STEP_TARGET) notificationsSentRef.current.target = false;
     if (currentStepCount < doubleTarget) notificationsSentRef.current.double = false;
@@ -347,28 +405,23 @@ export default function HomeScreen() {
   // Workout Functions
   const loadWorkouts = useCallback(async () => {
     try {
-      // 1. Carregar workouts locais (AsyncStorage)
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const localWorkouts: Workout[] = raw ? JSON.parse(raw) : [];
       
-      // 2. Buscar workouts da base de dados do utilizador atual
       let dbWorkouts: Workout[] = [];
       try {
         const userResp = await supabase.auth.getUser();
         const userId = userResp.data.user?.id;
         
         if (userId) {
-          // Verificar se userId é UUID ou número
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
           const isUuid = uuidRegex.test(userId);
           
-          // Buscar workouts do utilizador
           let query = supabase
             .from('workouts')
             .select('*')
             .order('created_at', { ascending: false });
           
-          // Filtrar por user_uuid ou user_id dependendo do tipo
           if (isUuid) {
             query = query.eq('user_uuid', userId);
           } else {
@@ -380,7 +433,6 @@ export default function HomeScreen() {
           if (error) {
             console.error('Erro ao buscar workouts da DB:', error);
           } else if (data) {
-            // Converter workouts da DB para o formato local
             dbWorkouts = data.map((w: any) => ({
               name: w.name,
               createdAt: w.created_at || w.createdAt,
@@ -392,7 +444,6 @@ export default function HomeScreen() {
         console.error('Erro ao buscar workouts da base de dados:', dbError);
       }
       
-      // 3. Combinar workouts locais e da DB (remover duplicados baseado em name + createdAt)
       const allWorkouts = [...localWorkouts, ...dbWorkouts];
       const uniqueWorkouts = allWorkouts.filter((workout, index, self) =>
         index === self.findIndex((w) => 
@@ -400,7 +451,6 @@ export default function HomeScreen() {
         )
       );
       
-      // Ordenar por data (mais recentes primeiro)
       uniqueWorkouts.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
@@ -412,13 +462,12 @@ export default function HomeScreen() {
     }
   }, []);
 
-  // Atualizar workouts a cada 5 segundos
   useEffect(() => {
-    loadWorkouts(); // Carregar imediatamente
+    loadWorkouts();
     
     const intervalId = setInterval(() => {
       loadWorkouts();
-    }, 5000); // 5 segundos
+    }, 5000);
 
     return () => clearInterval(intervalId);
   }, [loadWorkouts]);
@@ -453,39 +502,30 @@ export default function HomeScreen() {
   const renderWorkoutItem = ({ item }: { item: Workout }) => (
     <View style={styles.itemWrap}>
       <TouchableOpacity
-        style={[
-          styles.workoutItem,
-          {
-            backgroundColor: theme.colors.surface,
-            borderColor: theme.colors.outline,
-          }
-        ]}
+        style={[styles.workoutItem, { 
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outline + '30'
+        }]}
         onPress={() => {
           const slug = workoutSlugFromFields(item.name, item.createdAt);
           router.push(`/workout/${slug}`);
         }}
+        activeOpacity={0.7}
       >
         <View style={styles.workoutContent}>
           <View style={styles.workoutInfo}>
             <Text style={[styles.workoutText, { color: theme.colors.onSurface }]}>
               {item.name}
             </Text>
-            <Text style={[
-              styles.dateText,
-              { color: theme.colors.onSurfaceVariant }
-            ]}>
+            <Text style={[styles.dateText, { color: theme.colors.onSurfaceVariant }]}>
               {new Date(item.createdAt).toLocaleDateString()}
             </Text>
           </View>
-          <View style={[
-            styles.exerciseCount,
-            { backgroundColor: theme.colors.primary + '20' }
-          ]}>
-            <Text style={[
-              styles.countText,
-              { color: theme.colors.primary }
-            ]}>
-              {item.exercises.length} {item.exercises.length === 1 ? 'exercise' : 'exercises'}
+          <View style={[styles.exerciseCount, { 
+            backgroundColor: theme.colors.primary + '30'
+          }]}>
+            <Text style={[styles.countText, { color: theme.colors.primary }]}>
+              {item.exercises.length}
             </Text>
           </View>
         </View>
@@ -494,256 +534,228 @@ export default function HomeScreen() {
   );
 
   // Calculate metrics
-  const remainingSteps = Math.max(0, STEP_TARGET - currentStepCount);
   const caloriesBurned = Math.round(currentStepCount * 0.05);
-  const activeMinutes = Math.round(currentStepCount / 175);
 
   return (
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={styles.gradientBg}>
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Header */}
+          <Animated.View 
+            style={[
+              styles.header,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
+          >
+            <Text style={[styles.title, { color: theme.colors.onSurface }]}>Zedith</Text>
+            <Pressable onPress={handleLogout} hitSlop={20}>
+              <Svg
+                width={24}
+                height={24}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke={theme.colors.onSurface}
+                strokeWidth={2}
+              >
+                <Path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
+                />
+                <Path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+                />
+              </Svg>
+            </Pressable>
+          </Animated.View>
 
-    <ScrollView contentContainerStyle={{ flexGrow: 1 }} style={{ flex: 1 }}>
+          {/* Steps Card */}
+          <Animated.View 
+            style={[
+              styles.stepsCard,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+                backgroundColor: theme.colors.surface,
+                borderColor: theme.colors.outline + '30'
+              }
+            ]}
+          >
+            <View style={styles.cardGradient}>
+              <View style={styles.stepsHeader}>
+                <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                  {t('steps', { ns: 'common' })} {t('today', { ns: 'common' })}
+                </Text>
+                <View style={[styles.caloriesBadge, { backgroundColor: theme.colors.primary + '20' }]}>
+                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={theme.colors.primary} strokeWidth={2}>
+                    <Path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.5 10.0003C14.5 9.20875 15.5528 8.99895 15.8321 9.73957C16.5077 11.5311 17 13.1337 17 14.0002C17 16.7616 14.7614 19.0002 12 19.0002C9.23858 19.0002 7 16.7616 7 14.0002C7 13.0693 7.56822 11.2887 8.32156 9.33698C9.29743 6.80879 9.78536 5.54469 10.3877 5.4766C10.5804 5.45482 10.7907 5.49399 10.9626 5.58371C11.5 5.86413 11.5 7.24285 11.5 10.0003C11.5 10.8287 12.1716 11.5003 13 11.5003C13.8284 11.5003 14.5 10.8287 14.5 10.0003Z"
+                    />
+                  </Svg>
+                  <Text style={[styles.caloriesText, { color: theme.colors.primary }]}>{caloriesBurned}</Text>
+                </View>
+              </View>
 
+              <View style={styles.stepsCount}>
+                <Text style={[styles.stepsNumber, { color: theme.colors.onSurface }]}>
+                  {currentStepCount.toLocaleString()}
+                </Text>
+                <Text style={[styles.stepsDivider, { color: theme.colors.onSurfaceVariant }]}>
+                  /
+                </Text>
+                <Text style={[styles.stepsTarget, { color: theme.colors.onSurfaceVariant }]}>
+                  {STEP_TARGET.toLocaleString()}
+                </Text>
+              </View>
 
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        {/* Header */}
-        <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
-          <View style={styles.headerContent}>
-            <Text style={[styles.title, { color: theme.colors.onSurface }]}>
-              Zedith
-            </Text>
-            
-          </View>
-          <Pressable style={[styles.settingsIcon]} onPress={handleLogout} hitSlop={20}>
-            <Svg
-              width={28}
-              height={28}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={theme.colors.onSurface}
-              strokeWidth={1.5}
-            >
-              <Path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z"
-              />
-              <Path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
-              />
-            </Svg>
-          </Pressable>
-
-        </View>
-
-        {/* Steps Progress Section */}
-        <View style={[styles.progressContainer, { backgroundColor: theme.colors.surface }]}>
-          <View style={styles.progressHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              {t('steps', { ns: 'common' })} {t('today', { ns: 'common' })}
-            </Text>
-
-          </View>
-
-          <View style={styles.stepsContainer}>
-
-          <View style={styles.caloriesBurned}>
-          <Svg
-          width={24}
-                        height={24}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke={theme.colors.onSurface}
-                        strokeWidth={1.5}
-                        >
-                        <Path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M14.5 10.0003C14.5 9.20875 15.5528 8.99895 15.8321 9.73957C16.5077 11.5311 17 13.1337 17 14.0002C17 16.7616 14.7614 19.0002 12 19.0002C9.23858 19.0002 7 16.7616 7 14.0002C7 13.0693 7.56822 11.2887 8.32156 9.33698C9.29743 6.80879 9.78536 5.54469 10.3877 5.4766C10.5804 5.45482 10.7907 5.49399 10.9626 5.58371C11.5 5.86413 11.5 7.24285 11.5 10.0003C11.5 10.8287 12.1716 11.5003 13 11.5003C13.8284 11.5003 14.5 10.8287 14.5 10.0003Z"
-                                      />
-                                      <Path
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        d="M11 19L10.7372 18.343C10.2816 17.204 10.4737 15.9079 11.24 14.95V14.95C11.6296 14.463 12.3704 14.463 12.76 14.95V14.95C13.5263 15.9079 13.7184 17.204 13.2628 18.343L13 19"
-                                      />
-                                    </Svg>
-          <Text style={[styles.statLabel, {color: theme.colors.primary}]}>
-            {caloriesBurned}
-          </Text>
-          </View>
-            <View style={styles.stepsCount}>
-              <Text style={[styles.stepsNumber, { color: theme.colors.primary }]}>
-                {currentStepCount.toLocaleString()}
-              </Text>
-              <Text style={[styles.stepsDivider, { color: theme.colors.onSurfaceVariant }]}>
-                /
-              </Text>
-              <Text style={[styles.stepsTarget, { color: theme.colors.onSurfaceVariant }]}>
-                {STEP_TARGET.toLocaleString()}
-              </Text>
+              <View style={[styles.progressBar, { backgroundColor: theme.colors.surfaceVariant }]}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    { 
+                      width: `${Math.min(100, progress * 100)}%`,
+                      backgroundColor: theme.colors.primary
+                    }
+                  ]}
+                />
+              </View>
             </View>
-          </View>
+          </Animated.View>
 
-          {/* Progress Bar */}
-          <View style={[styles.progressBar, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <View
-              style={[
-                styles.progressFill,
-                {
-                  backgroundColor: theme.colors.primary,
-                  width: `${Math.min(100, progress * 100)}%`,
-                }
-              ]}
-            />
-          </View>
-
-
-        </View>
-
-
-        {/* Workouts Section */}
-        <View style={styles.workoutsSection}>
-          <View style={{
-            flexDirection: 'row',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 10
-          }}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-              {t('workouts', { ns: 'common' })}
-            </Text>
-
-            <TouchableOpacity
-              onPress={clearAllWorkouts}
-              style={{
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                backgroundColor: theme.colors.error,
-                borderRadius: 8
-              }}
-            >
-              <Text style={{ color: theme.colors.onError, fontWeight: '600' }}>
-                Apagar tudo
+          {/* Workouts Section */}
+          <Animated.View 
+            style={[
+              styles.workoutsSection,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }]
+              }
+            ]}
+          >
+            <View style={styles.workoutsHeader}>
+              <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+                {t('workouts', { ns: 'common' })}
               </Text>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={clearAllWorkouts} style={[styles.deleteBtn, {
+                backgroundColor: theme.colors.error + '20',
+                borderColor: theme.colors.error + '30'
+              }]}>
+                <Text style={[styles.deleteBtnText, { color: theme.colors.error }]}>Clear All</Text>
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={workouts}
+              keyExtractor={(item: Workout) => workoutSlugFromFields(item.name, item.createdAt)}
+              contentContainerStyle={styles.list}
+              ListEmptyComponent={renderEmpty}
+              renderItem={renderWorkoutItem}
+              showsVerticalScrollIndicator={false}
+              scrollEnabled={false}
+            />
+          </Animated.View>
+        </ScrollView>
+
+        {/* FAB */}
+        <TouchableOpacity
+          style={[styles.fab, {
+            shadowColor: theme.colors.primary,
+          }]}
+          onPress={() => router.push('/addWorkout')}
+          activeOpacity={0.85}
+        >
+          <View style={[styles.fabGradient, { backgroundColor: theme.colors.primary }]}>
+            <Text style={[styles.fabText, { color: theme.colors.onPrimary }]}>+</Text>
           </View>
-
-
-
-
-          <FlatList
-            data={workouts}
-            keyExtractor={(item: Workout) => workoutSlugFromFields(item.name, item.createdAt)}
-            contentContainerStyle={styles.list}
-            ListEmptyComponent={renderEmpty}
-            renderItem={renderWorkoutItem}
-            showsVerticalScrollIndicator={false}
-          />
-
-        </View>
+        </TouchableOpacity>
       </View>
-
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: theme.colors.primary }]}
-        onPress={() => router.push('/addWorkout')}
-      >
-        <Text style={[styles.fabText, { color: theme.colors.surface }]}>+</Text>
-      </TouchableOpacity>
-
-
-    </ScrollView>
-
-
-
+    </View>
   );
-
-
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
-  headerContent: {
+  gradientBg: {
     flex: 1,
   },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 100,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
+    paddingHorizontal: 24,
+    paddingBottom: 20,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: '700',
-    marginBottom: 4,
   },
-  caloriesBurned: {
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      textAlign: 'right',
-      position: 'absolute',
-      right: 0,
+  stepsCard: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+    borderRadius: 24,
+    overflow: 'hidden',
+    borderWidth: 1,
   },
-  subtitle: {
-    fontSize: 16,
-    opacity: 0.7,
+  cardGradient: {
+    padding: 24,
   },
-  settingsIcon: {
-    width: 24,
-    height: 24,
-    marginTop: 12,
-  },
-  progressContainer: {
-    padding: 20,
-    marginHorizontal: 20,
-    marginBottom: 16,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 3,
-    marginTop: 12,
-    position: 'relative',
-  },
-  progressHeader: {
+  stepsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: -4,
   },
-  sectionSubtitle: {
+  caloriesBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 6,
+  },
+  caloriesText: {
     fontSize: 14,
-    opacity: 0.7,
-  },
-  stepsContainer: {
-    marginBottom: 16,
+    fontWeight: '600',
   },
   stepsCount: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   stepsNumber: {
-    fontSize: 23,
+    fontSize: 36,
     fontWeight: '700',
   },
   stepsDivider: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
     marginHorizontal: 8,
+    opacity: 0.6,
   },
   stepsTarget: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '600',
-  },
-  stepsRemaining: {
-    fontSize: 14,
     opacity: 0.8,
   },
   progressBar: {
@@ -755,99 +767,36 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
-  pedometerWarning: {
-    fontSize: 12,
-    marginTop: 8,
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  statSubtext: {
-    fontSize: 12,
-    opacity: 0.7,
-  },
-  actionsRow: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-    gap: 12,
-  },
-  addButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  nutritionButton: {
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  nutritionButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
   workoutsSection: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    marginBottom: 25,
+    paddingHorizontal: 24,
+  },
+  workoutsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  deleteBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  deleteBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
   list: {
     paddingBottom: 20,
   },
   itemWrap: {
-    marginBottom: 20,
+    marginBottom: 12,
   },
   workoutItem: {
-    padding: 24,
     borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#ddd',
+    padding: 20,
   },
   workoutContent: {
     flexDirection: 'row',
@@ -858,22 +807,23 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   workoutText: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 6,
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 4,
   },
   dateText: {
     fontSize: 14,
-    opacity: 0.7,
   },
   exerciseCount: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   countText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
   emptyContainer: {
     alignItems: 'center',
@@ -883,38 +833,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
-    textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.7,
   },
   fab: {
     position: 'absolute',
-    bottom: 83,
-    right: 30,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    bottom: 90,
+    right: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  fabGradient: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    zIndex: 999, // garante que fica por cima do conteúdo
   },
   fabText: {
-    fontSize: 30,
-    fontWeight: 400,
-    lineHeight: 38,
+    fontSize: 32,
+    fontWeight: '300',
   },
-
-},
-);
-
-
-
-
+});

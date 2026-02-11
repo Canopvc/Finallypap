@@ -5,10 +5,17 @@ export const lightTheme: MD3Theme = {
   ...MD3LightTheme,
   colors: {
     ...MD3LightTheme.colors,
-    primary: '#2C8EC9',
-    background: '#f8fafc',
-    surface: '#fff',
-    onSurface: '#1e293b',
+    primary: '#5B5FEF',
+    background: '#F5F5F7',
+    surface: '#FFFFFF',
+    onSurface: '#1C1C1E',
+    onSurfaceVariant: '#6B6B70',
+    surfaceVariant: '#E5E5EA',
+    outline: '#D1D1D6',
+    error: '#EF4444',
+    onPrimary: '#FFFFFF',
+    primaryContainer: '#5B5FEF20',
+    onPrimaryContainer: '#5B5FEF',
   },
 };
 
@@ -16,15 +23,18 @@ export const darkTheme: MD3Theme = {
   ...MD3DarkTheme,
   colors: {
     ...MD3DarkTheme.colors,
-    primary: '#64aef3ff',
-    background: '#0f172a',
+    primary: '#5B5FEF',
+    background: '#0f0c29', // Dark gradient base
     surface: '#1e293b',
-    onSurface: '#f9fafb',
-    onPrimary: '#000000',
-    primaryContainer: '#2C8EC9',
-    onPrimaryContainer: '#72c6faff',
-    secondary: '#eff0b0ff',
-    onSurfaceVariant: '#d1d5db',
+    onSurface: '#F9FAFB',
+    onPrimary: '#FFFFFF',
+    primaryContainer: '#5B5FEF',
+    onPrimaryContainer: '#FFFFFF',
+    secondary: '#8B5CF6',
+    onSurfaceVariant: '#D1D5DB',
+    surfaceVariant: '#2D3748',
+    outline: '#4A5568',
+    error: '#EF4444',
   },
 };
 

@@ -1,20 +1,31 @@
+import 'react-native-url-polyfill/auto';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
-  Alert,
-  ActivityIndicator,
+  StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
   Image,
+  Dimensions,
+  Animated,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from '../hooks/useTranslation';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+
+const { height, width } = Dimensions.get('window');
 
 export default function RegisterScreen() {
+  const router = useRouter();
   const theme = useTheme();
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
@@ -24,12 +35,54 @@ export default function RegisterScreen() {
   const [confirmpassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const router = useRouter();
+  // Animações
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const scaleAnim = useRef(new Animated.Value(0.9)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    // Animação de entrada
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Animação de pulso contínua
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
 
   async function handleRegister() {
     setLoading(true);
     try {
-      console.log('Attempting to register...')
+      console.log('Attempting to register...');
       if (password !== confirmpassword) {
         console.log('Passwords do not match:', { password, confirmpassword });
         Alert.alert(t('error', { ns: 'common' }), 'Passwords do not match.');
@@ -55,12 +108,10 @@ export default function RegisterScreen() {
         return;
       }
 
-      // Se o usuário já existe, pode retornar erro, mas tentamos inserir na tabela personalizada mesmo assim
-      console.log('Auth account created, inserting into ContasRegistradas (no password saved)...');
+      console.log('Auth account created, inserting into ContasRegistradas...');
       console.log('Data for insert:', { username, user_email: email, phone_number });
 
       // 2. Inserir na tabela personalizada
-      // IMPORTANT: do NOT store plaintext passwords. We only save non-sensitive profile fields here.
       const { data: dbData, error: dbError } = await supabase.from('ContasRegistradas').insert([
         {
           username: username,
@@ -90,108 +141,339 @@ export default function RegisterScreen() {
   }
 
   return (
-
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <View style={styles.logoContainer}>
-        <Image
-          source={require('../assets/images/LOGO.png')} 
-          style={styles.logo}
-          resizeMode="contain"/>
+    <LinearGradient
+      colors={[theme.colors.background, '#302b63', '#24243e']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.gradientContainer}
+    >
+      {/* Efeito de partículas/círculos de fundo */}
+      <View style={styles.backgroundEffects}>
+        <Animated.View style={[styles.circle1, { 
+          transform: [{ scale: pulseAnim }],
+          backgroundColor: theme.colors.primary + '26',
+          shadowColor: theme.colors.primary
+        }]} />
+        <Animated.View style={[styles.circle2, { 
+          transform: [{ scale: pulseAnim }],
+          backgroundColor: theme.colors.secondary + '26',
+          shadowColor: theme.colors.secondary
+        }]} />
+        <Animated.View style={[styles.circle3, {
+          backgroundColor: theme.colors.primary + '1A'
+        }]} />
       </View>
-      <Text style={[styles.title, { color: theme.colors.onBackground }]}>{t('register', { ns: 'common' })}</Text>
 
-      <TextInput
-        style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, color: theme.colors.onSurface }]}
-        placeholder={t('name', { ns: 'common' })}
-        placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
-        value={username}
-        onChangeText={setUsername}
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, color: theme.colors.onSurface }]}
-        placeholder={t('email', { ns: 'common' })}
-        placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, color: theme.colors.onSurface }]}
-        placeholder="Phone number"
-        placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
-        value={phone_number}
-        onChangeText={setPhoneNumber}
-        autoCapitalize="none"
-      />
-      <TextInput
-        style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, color: theme.colors.onSurface }]}
-        placeholder={t('password', { ns: 'common' })}
-        placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
-      <TextInput
-        style={[styles.input, { backgroundColor: theme.colors.surface, borderColor: theme.colors.outline, color: theme.colors.onSurface }]}
-        placeholder={`${t('confirm', { ns: 'common' })} ${t('password', { ns: 'common' })}`}
-        placeholderTextColor={theme.colors.onSurfaceVariant ?? theme.colors.onSurface}
-        value={confirmpassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry
-      />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View
+            style={[
+              styles.content,
+              {
+                opacity: fadeAnim,
+                transform: [
+                  { translateY: slideAnim },
+                  { scale: scaleAnim }
+                ],
+              },
+            ]}
+          >
+            {/* Logo */}
+            <View style={styles.header}>
+              <Image
+                source={require('../assets/images/LOGO.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+            </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" style={{ marginTop: 20 }} />
-      ) : (
-        <TouchableOpacity onPress={handleRegister} style={[styles.primaryBtn, { backgroundColor: theme.colors.primary }]}>
-          <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>{t('register', { ns: 'common' })}</Text>
-        </TouchableOpacity>
-        
-      )}
+            {/* Título simples */}
+            <Text style={[styles.screenTitle, { color: theme.colors.onSurface }]}>
+              {t('register', { ns: 'common' })}
+            </Text>
 
-      
-          <Text style={styles.loginText} onPress={() => router.replace('/login')}>
-            If you already have an account, Login
-          </Text>
-    </View>
+            {/* Card com blur e glassmorphism */}
+            <BlurView intensity={20} tint="dark" style={styles.blurContainer}>
+              <View style={[styles.card, { 
+                backgroundColor: theme.colors.surface + 'CC',
+                borderColor: theme.colors.outline + '30'
+              }]}>
+                <View style={styles.inputContainer}>
+                  <LinearGradient
+                    colors={[theme.colors.primary + '1A', 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.inputGradient}
+                  >
+                    <TextInput
+                      placeholder={t('name', { ns: 'common' })}
+                      placeholderTextColor={theme.colors.onSurfaceVariant + '80'}
+                      style={[styles.input, { 
+                        color: theme.colors.onSurface,
+                        backgroundColor: theme.colors.surface + 'CC',
+                        borderColor: theme.colors.outline + '40'
+                      }]}
+                      value={username}
+                      onChangeText={setUsername}
+                      autoCapitalize="words"
+                    />
+                  </LinearGradient>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <LinearGradient
+                    colors={[theme.colors.primary + '1A', 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.inputGradient}
+                  >
+                    <TextInput
+                      placeholder={t('email', { ns: 'common' })}
+                      placeholderTextColor={theme.colors.onSurfaceVariant + '80'}
+                      style={[styles.input, { 
+                        color: theme.colors.onSurface,
+                        backgroundColor: theme.colors.surface + 'CC',
+                        borderColor: theme.colors.outline + '40'
+                      }]}
+                      value={email}
+                      onChangeText={setEmail}
+                      autoCapitalize="none"
+                      keyboardType="email-address"
+                    />
+                  </LinearGradient>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <LinearGradient
+                    colors={[theme.colors.primary + '1A', 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.inputGradient}
+                  >
+                    <TextInput
+                      placeholder="Phone number"
+                      placeholderTextColor={theme.colors.onSurfaceVariant + '80'}
+                      style={[styles.input, { 
+                        color: theme.colors.onSurface,
+                        backgroundColor: theme.colors.surface + 'CC',
+                        borderColor: theme.colors.outline + '40'
+                      }]}
+                      value={phone_number}
+                      onChangeText={setPhoneNumber}
+                      keyboardType="phone-pad"
+                    />
+                  </LinearGradient>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <LinearGradient
+                    colors={[theme.colors.primary + '1A', 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.inputGradient}
+                  >
+                    <TextInput
+                      placeholder={t('password', { ns: 'common' })}
+                      placeholderTextColor={theme.colors.onSurfaceVariant + '80'}
+                      style={[styles.input, { 
+                        color: theme.colors.onSurface,
+                        backgroundColor: theme.colors.surface + 'CC',
+                        borderColor: theme.colors.outline + '40'
+                      }]}
+                      value={password}
+                      onChangeText={setPassword}
+                      secureTextEntry
+                    />
+                  </LinearGradient>
+                </View>
+
+                <View style={styles.inputContainer}>
+                  <LinearGradient
+                    colors={[theme.colors.primary + '1A', 'transparent']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.inputGradient}
+                  >
+                    <TextInput
+                      placeholder={`${t('confirm', { ns: 'common' })} ${t('password', { ns: 'common' })}`}
+                      placeholderTextColor={theme.colors.onSurfaceVariant + '80'}
+                      style={[styles.input, { 
+                        color: theme.colors.onSurface,
+                        backgroundColor: theme.colors.surface + 'CC',
+                        borderColor: theme.colors.outline + '40'
+                      }]}
+                      value={confirmpassword}
+                      onChangeText={setConfirmPassword}
+                      secureTextEntry
+                    />
+                  </LinearGradient>
+                </View>
+              </View>
+            </BlurView>
+
+            {/* Botão moderno e limpo */}
+            <View style={styles.bottomArea}>
+              <TouchableOpacity
+                onPress={handleRegister}
+                disabled={loading}
+                activeOpacity={0.85}
+                style={[styles.primaryBtn, { 
+                  opacity: loading ? 0.7 : 1,
+                  backgroundColor: theme.colors.primary,
+                  shadowColor: theme.colors.primary
+                }]}
+              >
+                {loading ? (
+                  <ActivityIndicator color={theme.colors.onPrimary} />
+                ) : (
+                  <Text style={[styles.primaryBtnTxt, { color: theme.colors.onPrimary }]}>
+                    {t('register', { ns: 'common' })}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={() => router.replace('/login')} style={styles.footer}>
+                <Text style={[styles.footerText, { color: theme.colors.onSurface }]}>
+                  If you already have an account, Login
+                </Text>
+                <View style={[styles.underline, { backgroundColor: theme.colors.primary + '80' }]} />
+              </TouchableOpacity>
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  text: {
-    fontSize: 13,
-    paddingTop: 10,
-    paddingLeft: 5,
-    color: '#2AACF5',
+  gradientContainer: {
+    flex: 1,
   },
-  loginText: { 
-    marginTop: 18, 
-    fontSize: 15, 
-    textAlign: 'center', 
-    textDecorationLine: 'underline' ,
-    color: '#2AACF5',
+  backgroundEffects: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
   },
-  container: { flex: 1, paddingTop: 215, paddingHorizontal: 20 },
-  title: {
-    fontSize: 28,
+  circle1: {
+    position: 'absolute',
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    top: -100,
+    right: -100,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 50,
+  },
+  circle2: {
+    position: 'absolute',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    bottom: -50,
+    left: -50,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 50,
+  },
+  circle3: {
+    position: 'absolute',
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    top: '50%',
+    right: '10%',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 40,
+  },
+  content: {
+    alignItems: 'center',
+  },
+  header: {
+    alignItems: 'center',
     marginBottom: 20,
-    textAlign: 'left',
+  },
+  logo: {
+    width: 150,
+    height: 110,
+  },
+  screenTitle: {
+    fontSize: 28,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  blurContainer: {
+    width: '100%',
+    borderRadius: 28,
+    overflow: 'hidden',
+    marginBottom: 24,
+  },
+  card: {
+    width: '100%',
+    paddingHorizontal: 24,
+    paddingVertical: 28,
+    borderWidth: 1,
+  },
+  inputContainer: {
+    marginBottom: 16,
+  },
+  inputGradient: {
+    borderRadius: 999,
+    padding: 1,
   },
   input: {
     borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
+    borderRadius: 999,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    fontSize: 16,
   },
-  logoContainer: {
+  bottomArea: {
+    width: '100%',
     alignItems: 'center',
-    marginBottom: 27,
   },
-   logo: {
-    width: 160,
-    height: 120,
+  primaryBtn: {
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  primaryBtn: { marginTop: 8, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  primaryBtnTxt: { fontWeight: '700', fontSize: 16 },
+  primaryBtnTxt: {
+    fontSize: 17,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  footer: {
+    marginTop: 20,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  underline: {
+    width: '100%',
+    height: 1,
+    marginTop: 2,
+  },
 });
