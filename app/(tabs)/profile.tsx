@@ -25,6 +25,11 @@ import { useThemeContext } from '../../contexts/ThemeContext';
 import Svg, { Path } from "react-native-svg";
 import * as ImagePicker from 'expo-image-picker';
 import { supabase } from '../../lib/client';
+import { User as SupabaseUser } from '@supabase/supabase-js';
+
+interface User extends SupabaseUser {
+  username?: string; // Add the username property
+}
 import { getAppTheme } from '../../lib/theme';
 import * as FileSystem from 'expo-file-system';
 
@@ -42,6 +47,8 @@ Notifications.setNotificationHandler({
     shouldShowList: true,
   }),
 });
+
+
 
 export default function ProfileScreen() {
   const { themeMode, setThemeMode, colorScheme } = useThemeContext();
@@ -109,10 +116,18 @@ export default function ProfileScreen() {
         return;
       }
 
-      const user = data.user;
+      const user: User = data.user; // Cast the user to the extended User type
       setUserId(user.id);
       setEmail(user.email ?? '');
-      setUsername(user.email?.split('@')[0] ?? 'User');
+
+      // Fetch username from database
+      const { data: userData } = await supabase
+        .from('ContasRegistradas')
+        .select('username')
+        .eq('user_email', user.email)
+        .single();
+
+      setUsername(userData?.username || '');
 
       await loadWeightGoals();
       await loadWeightHistory();
