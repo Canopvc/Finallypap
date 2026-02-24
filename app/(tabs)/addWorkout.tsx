@@ -26,6 +26,7 @@ import { useTheme } from "react-native-paper";
 import { useTranslation } from "../../hooks/useTranslation";
 import Svg, { Path } from "react-native-svg";
 import { AddExerciseModal } from "../../components/addExerciseModal";
+import * as Haptics from 'expo-haptics'
 
 type Exercise = {
   id: string;
@@ -497,7 +498,7 @@ export default function AddWorkout() {
                   </Text>
                 </View>
                 <TouchableOpacity
-                  onPress={() => removeExercise(ex.id)}
+                  onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);  removeExercise(ex.id)}}
                   disabled={exercises.length === 1}
                   style={[styles.removeButton, { opacity: exercises.length === 1 ? 0.4 : 1 }]}
                 >
@@ -724,7 +725,7 @@ export default function AddWorkout() {
                   backgroundColor: theme.colors.surface,
                 },
               ]}
-              onPress={addExercise}
+              onPress={() => {Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); addExercise()}}
             >
               <Text style={[styles.secondaryBtnTxt, { color: theme.colors.onSurface }]}>
                 + {t("addExercise", { ns: "workouts" })}
@@ -738,8 +739,10 @@ export default function AddWorkout() {
                   opacity: loading ? 0.7 : 1,
                 },
               ]}
-              onPress={handleSave}
-              disabled={loading}
+              onPress={() => {Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); handleSave()
+                
+              }}
+            
             >
               {loading ? (
                 <ActivityIndicator color={theme.colors.onPrimary} size="small" />

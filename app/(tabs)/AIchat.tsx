@@ -22,9 +22,9 @@ import { useTheme } from 'react-native-paper';
 import { useTranslation } from '../../hooks/useTranslation';
 import { CohereClientV2 } from 'cohere-ai';
 import Constants from 'expo-constants';
-import { COHERE_API_KEY } from '@env';
+//import { COHERE_API_KEY } from '@env';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import * as Haptics from 'expo-haptics';
 // ⭐️ COHERE API
 const WORKOUTS_STORAGE_KEY = 'workouts';
 
@@ -780,7 +780,7 @@ Respond in the same language as the user's query.`
             }}
           />
           <TouchableOpacity
-            onPress={handleGenerateResponse}
+            onPress={() => {Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); handleGenerateResponse()}}
             style={[
               styles.sendButton,
               {
