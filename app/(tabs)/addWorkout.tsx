@@ -343,7 +343,7 @@ export default function AddWorkout() {
                       setShowAddExerciseModal(true);
                     }}
                     style={[
-                      styles.addMoreButton,
+                      styles.addMoreButton, 
                       { 
                         backgroundColor: theme.colors.surfaceVariant,
                         borderColor: theme.colors.outline + '30'
@@ -870,6 +870,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     minWidth: 70,
+    padding: Platform.OS === "ios" ? 12 : 15,
   },
   switchLabel: {
     fontSize: 14,

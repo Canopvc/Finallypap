@@ -28,10 +28,10 @@ import { supabase } from '../../lib/client';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface User extends SupabaseUser {
-  username?: string; // Add the username property
+  username?: string;
 }
+
 import { getAppTheme } from '../../lib/theme';
-import * as FileSystem from 'expo-file-system';
 
 const WEIGHT_GOALS_KEY = 'weightGoals';
 const WEIGHT_HISTORY_KEY = 'weightHistory';
@@ -71,7 +71,7 @@ export default function ProfileScreen() {
   const [tempDate, setTempDate] = useState(new Date());
   const [weightHistory, setWeightHistory] = useState<any[]>([]);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
-  const [useDeviceAlarm, setUseDeviceAlarm] = useState(false); 
+  const [useDeviceAlarm, setUseDeviceAlarm] = useState(false);
   const [profileImage, setProfileImage] = useState<string | null>(null);
   const [showChangeImageDialog, setShowChangeImageDialog] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -97,6 +97,57 @@ export default function ProfileScreen() {
     ]).start();
   }, [fadeAnim, progressAnim]);
 
+  // ─── AUTO-SAVE BMI when weight, height, or age change ───────────────────────
+  // Only runs when all three fields are filled and email is available
+  useEffect(() => {
+    const weightNum = parseFloat(weight);
+    const heightNum = parseFloat(height);
+    const ageNum = parseInt(age);
+
+    // Only proceed if all fields have valid numeric values
+    if (!email || !weightNum || !heightNum || !ageNum) return;
+
+    // Debounce: wait 1s after the user stops typing before saving
+    const timer = setTimeout(() => {
+      sendBMIToSupabase(weightNum, heightNum, ageNum);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [weight, height, age, email]);
+
+  // Sends BMI + personal info to Supabase whenever the fields are fully filled
+  const sendBMIToSupabase = async (weightNum: number, heightNum: number, ageNum: number) => {
+    try {
+      const heightInMeters = heightNum / 100;
+      const bmiValue = parseFloat((weightNum / (heightInMeters * heightInMeters)).toFixed(1));
+
+      console.log('📡 Auto-saving BMI to Supabase:', bmiValue);
+
+      const { error } = await supabase
+        .from('ContasRegistradas')
+        .upsert(
+          {
+            user_email: email,
+            username: username,
+            Weight: weightNum,
+            BMI: bmiValue,
+            height: heightNum,
+            age: ageNum,
+          },
+          { onConflict: 'user_email' }
+        );
+
+      if (error) {
+        console.error('❌ Error auto-saving BMI:', error);
+      } else {
+        console.log('✅ BMI auto-saved successfully:', bmiValue);
+      }
+    } catch (error) {
+      console.error('❌ Unexpected error saving BMI:', error);
+    }
+  };
+  // ────────────────────────────────────────────────────────────────────────────
+
   const getUserData = async () => {
     try {
       setBusy(true);
@@ -116,11 +167,10 @@ export default function ProfileScreen() {
         return;
       }
 
-      const user: User = data.user; // Cast the user to the extended User type
+      const user: User = data.user;
       setUserId(user.id);
       setEmail(user.email ?? '');
 
-      // Fetch username from database
       const { data: userData } = await supabase
         .from('ContasRegistradas')
         .select('username')
@@ -467,7 +517,7 @@ export default function ProfileScreen() {
     const heightInMeters = heightNum / 100;
     return (weightNum / (heightInMeters * heightInMeters)).toFixed(1);
   };
-  
+
   const getBMICategory = (bmi: string) => {
     const bmiNum = parseFloat(bmi);
     if (bmiNum < 18.5) return { category: 'Underweight', color: '#FF6B6B' };
@@ -503,18 +553,18 @@ export default function ProfileScreen() {
         Alert.alert('Permissão necessária', 'Por favor, permita o acesso à galeria nas configurações.');
         return;
       }
-  
+
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-  
+
       if (!result.canceled && result.assets[0]) {
         await handleUploadProfileImage(result.assets[0]);
       }
-      
+
     } catch (error) {
       console.error('Erro ao escolher imagem:', error);
       Alert.alert('Erro', 'Não foi possível escolher a imagem.');
@@ -530,17 +580,17 @@ export default function ProfileScreen() {
         Alert.alert('Permissão necessária', 'Por favor, permita o acesso à câmera nas configurações.');
         return;
       }
-  
+
       const result = await ImagePicker.launchCameraAsync({
         allowsEditing: true,
         aspect: [1, 1],
         quality: 0.8,
       });
-  
+
       if (!result.canceled && result.assets[0]) {
         await handleUploadProfileImage(result.assets[0]);
       }
-      
+
     } catch (error) {
       console.error('Erro ao tirar foto:', error);
       Alert.alert('Erro', 'Não foi possível tirar a foto.');
@@ -549,18 +599,15 @@ export default function ProfileScreen() {
     }
   };
 
-  // Função auxiliar para converter URI para base64 (usando fetch - compatível com todas as versões)
   const uriToBase64 = async (uri: string): Promise<string> => {
     try {
-      // Usar fetch para obter o arquivo como blob e converter para base64
       const response = await fetch(uri);
       const blob = await response.blob();
-      
+
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => {
           const result = reader.result as string;
-          // Remove o prefixo data:image/...;base64,
           const base64 = result.split(',')[1];
           resolve(base64);
         };
@@ -573,15 +620,12 @@ export default function ProfileScreen() {
     }
   };
 
-  // Função auxiliar para converter base64 para ArrayBuffer (compatível com React Native)
   const base64ToArrayBuffer = (base64: string): Uint8Array => {
     try {
-      // Implementação manual de atob para React Native (caso não esteja disponível)
       const atobPolyfill = (str: string): string => {
         if (typeof atob !== 'undefined') {
           return atob(str);
         }
-        // Implementação manual de base64 decode
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
         let output = '';
         str = str.replace(/[^A-Za-z0-9\+\/\=]/g, '');
@@ -612,68 +656,58 @@ export default function ProfileScreen() {
     }
   };
 
-  // FUNÇÃO PRINCIPAL DE UPLOAD
   const handleUploadProfileImage = async (imageAsset: any) => {
     try {
       setUploading(true);
       setShowChangeImageDialog(false);
-      
+
       console.log('📱 Iniciando upload...');
-      
-      // 1. OBTER SESSÃO ATUAL
+
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError || !session) {
         Alert.alert('Sessão Expirada', 'Faça login novamente.');
         await supabase.auth.signOut();
         router.replace('/login');
         return;
       }
-      
+
       console.log('✅ Sessão válida');
-      
-      // 2. Preparar nome do arquivo
+
       const fileExt = imageAsset.uri.split('.').pop()?.toLowerCase() || 'jpg';
       const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
-      
+
       if (!allowedExtensions.includes(fileExt)) {
         Alert.alert('Formato Inválido', 'Use apenas imagens JPG, PNG ou GIF.');
         setUploading(false);
         return;
       }
-      
-      // Usar path baseado no userId para melhor compatibilidade com RLS
-      // Formato: {userId}/profile.{ext}
+
       const fileName = `${userId}/profile.${fileExt}`;
       console.log('📝 Nome do arquivo:', fileName);
-      
-      // 4. Converter imagem para base64 (necessário para React Native)
+
       console.log('🔄 Convertendo imagem para base64...');
       const base64 = await uriToBase64(imageAsset.uri);
       console.log(`✅ Base64 criado: ${Math.round(base64.length / 1024)}KB`);
-      
-      // 5. Verificar tamanho (aproximado: base64 é ~33% maior que o original)
+
       const estimatedSize = (base64.length * 3) / 4;
       if (estimatedSize > 5 * 1024 * 1024) {
         Alert.alert('Arquivo Grande', 'A imagem deve ter menos de 5MB.');
         setUploading(false);
         return;
       }
-      
-      // 6. Deletar arquivo antigo se existir (para evitar problemas com RLS)
+
       console.log('🗑️ Verificando e removendo arquivo antigo se existir...');
       try {
-        // Listar arquivos no diretório do usuário
         const { data: existingFiles } = await supabase.storage
           .from('USER_IMAGE')
           .list(userId);
-        
+
         if (existingFiles && existingFiles.length > 0) {
-          // Deletar todos os arquivos de perfil antigos do usuário
           const filesToDelete = existingFiles
             .filter(file => file.name.startsWith('profile.'))
             .map(file => `${userId}/${file.name}`);
-          
+
           if (filesToDelete.length > 0) {
             await supabase.storage
               .from('USER_IMAGE')
@@ -682,36 +716,30 @@ export default function ProfileScreen() {
           }
         }
       } catch (deleteError) {
-        // Não bloquear se houver erro ao deletar (pode ser que não exista)
         console.log('ℹ️ Nenhum arquivo antigo encontrado ou erro ao deletar:', deleteError);
       }
-      
-      // 7. Fazer upload usando a API do Supabase Storage
+
       console.log('🚀 Fazendo upload usando Supabase Storage API...');
-      
-      // Converter base64 para ArrayBuffer usando função auxiliar
+
       const bytes = base64ToArrayBuffer(base64);
-      
-      // Determinar content type
-      const contentType = fileExt === 'png' ? 'image/png' : 
-                         fileExt === 'gif' ? 'image/gif' : 
+
+      const contentType = fileExt === 'png' ? 'image/png' :
+                         fileExt === 'gif' ? 'image/gif' :
                          fileExt === 'webp' ? 'image/webp' : 'image/jpeg';
-      
-      // Upload usando a API do Supabase Storage
+
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('USER_IMAGE')
         .upload(fileName, bytes, {
           contentType: contentType,
-          upsert: true, // Substitui o arquivo se já existir
+          upsert: true,
           cacheControl: '3600',
         });
-      
+
       if (uploadError) {
         console.error('❌ Erro no upload:', uploadError);
         console.error('📋 Detalhes do erro:', JSON.stringify(uploadError, null, 2));
-        
-        // Se o erro for RLS, fornecer mensagem mais útil
-        if (uploadError.message?.includes('row-level security') || 
+
+        if (uploadError.message?.includes('row-level security') ||
             uploadError.message?.includes('RLS') ||
             uploadError.message?.includes('permission denied') ||
             uploadError.message?.includes('new row violates')) {
@@ -726,27 +754,22 @@ export default function ProfileScreen() {
         }
         throw new Error(uploadError.message || 'Erro ao fazer upload da imagem');
       }
-      
+
       console.log('✅ Upload concluído!', uploadData);
-      
-      // 8. Obter URL pública
+
       const { data: urlData } = supabase.storage
         .from('USER_IMAGE')
         .getPublicUrl(fileName);
-      
+
       if (!urlData || !urlData.publicUrl) {
         console.error('❌ URL pública não gerada corretamente');
         throw new Error('URL pública não foi gerada');
       }
-      
-      // Adicionar timestamp para forçar atualização do cache
+
       const timestamp = new Date().getTime();
       const publicUrl = `${urlData.publicUrl}?t=${timestamp}`;
       console.log('🔗 URL pública (com timestamp):', publicUrl);
-      console.log('📸 URL sem timestamp:', urlData.publicUrl);
-      console.log('📁 Nome do arquivo:', fileName);
-      
-      // Verificar se a URL está acessível (opcional - pode ser lento)
+
       try {
         const testResponse = await fetch(urlData.publicUrl, { method: 'HEAD' });
         console.log('✅ URL acessível, status:', testResponse.status);
@@ -756,14 +779,11 @@ export default function ProfileScreen() {
       } catch (fetchError) {
         console.warn('⚠️ Não foi possível verificar acessibilidade da URL:', fetchError);
       }
-      
-      // 9. Atualizar banco de dados
+
       console.log('💾 Atualizando CONTASREGISTRADAS...');
-      
-      // Estratégia: tentar update primeiro, se falhar com erro de "não encontrado", fazer insert
+
       let dbError = null;
-      
-      // Tentar update primeiro (mais comum)
+
       const { error: updateError } = await supabase
         .from('ContasRegistradas')
         .update({
@@ -771,16 +791,13 @@ export default function ProfileScreen() {
           updated_at: new Date().toISOString(),
         })
         .eq('user_email', email);
-      
-      // Se o update falhou e não foi por RLS, tentar insert
+
       if (updateError) {
-        // Verificar se é erro de "nenhum registro encontrado" ou RLS
-        const isNotFoundError = updateError.code === 'PGRST116' || 
+        const isNotFoundError = updateError.code === 'PGRST116' ||
                                 updateError.message?.includes('No rows') ||
                                 updateError.message?.includes('not found');
-        
+
         if (isNotFoundError) {
-          // Registro não existe, tentar insert
           console.log('➕ Registro não encontrado, tentando insert...');
           const { error: insertError } = await supabase
             .from('ContasRegistradas')
@@ -790,53 +807,42 @@ export default function ProfileScreen() {
               profile_image_url: publicUrl,
               updated_at: new Date().toISOString(),
             });
-          
+
           dbError = insertError;
         } else {
-          // Outro tipo de erro (provavelmente RLS)
           dbError = updateError;
         }
       }
-      
+
       if (dbError) {
         console.error('❌ Erro ao atualizar CONTASREGISTRADAS:', dbError);
-        // Não lançar erro fatal - a imagem já foi enviada com sucesso
-        // Apenas logar o erro e continuar
         console.warn('⚠️ Aviso: Não foi possível atualizar a URL da imagem no banco de dados, mas o upload foi concluído.');
       } else {
         console.log('✅ Dados atualizados na CONTASREGISTRADAS');
       }
-      
-      // 10. Atualizar estado local com força de atualização
+
       console.log('🔄 Atualizando estado local da imagem...');
-      console.log('📸 Nova URL da imagem:', publicUrl);
-      
-      // Limpar estado primeiro para forçar re-render
       setProfileImage(null);
-      
-      // Aguardar um pouco e então atualizar com a nova URL
+
       await new Promise(resolve => setTimeout(resolve, 100));
-      
+
       setProfileImage(publicUrl);
       await AsyncStorage.setItem('profile_image', publicUrl);
-      
+
       console.log('✅ Estado local atualizado');
-      console.log('📸 ProfileImage state:', publicUrl);
-      
-      // Recarregar a imagem do banco para garantir sincronização
+
       setTimeout(() => {
         loadProfileImage().catch(console.error);
       }, 500);
-      
+
       Alert.alert('Sucesso!', 'Foto de perfil atualizada com sucesso.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      
+
     } catch (error: any) {
       console.error('💥 ERRO NO PROCESSO DE UPLOAD:', error?.message || error);
-      
-      // Mensagens de erro mais específicas
+
       let errorMessage = 'Não foi possível completar o upload. Tente novamente.';
-      
+
       if (error.message?.includes('409') || error.message?.includes('Duplicate')) {
         errorMessage = 'Já existe uma imagem com este nome. Tente novamente.';
       } else if (error.message?.includes('413') || error.message?.includes('too large')) {
@@ -846,9 +852,9 @@ export default function ProfileScreen() {
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
+
       Alert.alert('Erro', errorMessage);
-      
+
     } finally {
       setUploading(false);
     }
@@ -857,20 +863,19 @@ export default function ProfileScreen() {
   const getCurrentImageFilename = async (): Promise<string | null> => {
     try {
       if (!email) return null;
-      
+
       const { data } = await supabase
         .from('ContasRegistradas')
         .select('profile_image_url')
         .eq('user_email', email)
         .single();
-      
+
       if (data?.profile_image_url) {
-        // Extrai o nome do arquivo da URL
         const url = data.profile_image_url;
-        const fileName = url.split('/').pop(); // Pega a última parte da URL
+        const fileName = url.split('/').pop();
         return fileName || null;
       }
-      
+
       return null;
     } catch (error) {
       console.error('Erro ao obter nome do arquivo atual:', error);
@@ -881,22 +886,20 @@ export default function ProfileScreen() {
   const deleteOldImage = async (fileName: string): Promise<boolean> => {
     try {
       console.log(`🗑️ Tentando deletar imagem antiga: ${fileName}`);
-      
-      // Obter sessão atual
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return false;
-      
-      // Usar o storage API do Supabase
+
       const { error } = await supabase
         .storage
         .from('USER_IMAGE')
         .remove([fileName]);
-      
+
       if (error) {
         console.error('❌ Erro ao deletar imagem antiga:', error);
         return false;
       }
-      
+
       console.log('✅ Imagem antiga deletada com sucesso');
       return true;
     } catch (error) {
@@ -911,7 +914,7 @@ export default function ProfileScreen() {
       if (cachedImage) {
         setProfileImage(cachedImage);
       }
-    
+
       if (email) {
         const { data } = await supabase
           .from('ContasRegistradas')
@@ -932,72 +935,68 @@ export default function ProfileScreen() {
   const deleteAllProfileImagesFromBucket = async (): Promise<{ success: boolean; deletedCount: number; error?: string }> => {
     try {
       console.log('🧹 Iniciando limpeza completa do bucket...');
-      
-      // 1. Obter sessão
+
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         return { success: false, deletedCount: 0, error: 'Sessão não encontrada' };
       }
-      
-      // 2. Listar TODOS os arquivos do bucket USER_IMAGE
+
       const { data: files, error: listError } = await supabase
         .storage
         .from('USER_IMAGE')
         .list();
-      
+
       if (listError) {
         console.error('❌ Erro ao listar arquivos:', listError);
         return { success: false, deletedCount: 0, error: listError.message };
       }
-      
+
       if (!files || files.length === 0) {
         console.log('📭 Bucket já está vazio');
         return { success: true, deletedCount: 0 };
       }
-      
+
       console.log(`📁 Total de arquivos no bucket: ${files.length}`);
-      
-      // 4. Deletar todos os arquivos (em lotes de 100)
+
       const allFileNames = files.map(file => file.name);
       const batches = [];
-      
+
       for (let i = 0; i < allFileNames.length; i += 100) {
         batches.push(allFileNames.slice(i, i + 100));
       }
-      
+
       let totalDeleted = 0;
-      
+
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i];
         console.log(`🔄 Deletando lote ${i + 1}/${batches.length} (${batch.length} arquivos)...`);
-        
+
         const { error: deleteError } = await supabase
           .storage
           .from('USER_IMAGE')
           .remove(batch);
-        
+
         if (deleteError) {
           console.error(`❌ Erro ao deletar lote ${i + 1}:`, deleteError);
           return { success: false, deletedCount: totalDeleted, error: deleteError.message };
         }
-        
+
         totalDeleted += batch.length;
       }
-      
+
       console.log(`✅ ${totalDeleted} arquivos deletados do bucket`);
-      
-      // 5. Verificar se o bucket está vazio
+
       const { data: remainingFiles } = await supabase
         .storage
         .from('USER_IMAGE')
         .list();
-      
+
       if (remainingFiles && remainingFiles.length > 0) {
         console.warn(`⚠️ Ainda restam ${remainingFiles.length} arquivos no bucket`);
       }
-      
+
       return { success: true, deletedCount: totalDeleted };
-      
+
     } catch (error: any) {
       console.error('💥 Erro inesperado na limpeza do bucket:', error);
       return { success: false, deletedCount: 0, error: error.message };
@@ -1005,65 +1004,60 @@ export default function ProfileScreen() {
   };
 
   const deleteAllLocalImages = async (): Promise<{ success: boolean; deletedCount: number }> => {
-  try {
-    console.log('📱 Limpando imagens locais do dispositivo...');
-    
-    let deletedCount = 0;
-    
-    // 1. Limpar todas as chaves relacionadas a imagens no AsyncStorage
     try {
-      const allKeys = await AsyncStorage.getAllKeys();
-      console.log(`📁 Total de chaves no AsyncStorage: ${allKeys.length}`);
-      
-      // Filtrar chaves relacionadas a imagens
-      const imageRelatedKeys = allKeys.filter(key => {
-        const keyLower = key.toLowerCase();
-        return (
-          keyLower.includes('image') || 
-          keyLower.includes('avatar') || 
-          keyLower.includes('profile') ||
-          keyLower.includes('photo') ||
-          keyLower.includes('picture') ||
-          key === 'profile_image' // chave específica que você usa
-        );
-      });
-      
-      console.log(`🔑 Chaves de imagem encontradas: ${imageRelatedKeys.length}`);
-      
-      if (imageRelatedKeys.length > 0) {
-        await AsyncStorage.multiRemove(imageRelatedKeys);
-        console.log(`✅ ${imageRelatedKeys.length} chaves de imagem removidas do AsyncStorage`);
-        deletedCount = imageRelatedKeys.length;
-      } else {
-        console.log('📭 Nenhuma chave de imagem encontrada no AsyncStorage');
+      console.log('📱 Limpando imagens locais do dispositivo...');
+
+      let deletedCount = 0;
+
+      try {
+        const allKeys = await AsyncStorage.getAllKeys();
+        console.log(`📁 Total de chaves no AsyncStorage: ${allKeys.length}`);
+
+        const imageRelatedKeys = allKeys.filter(key => {
+          const keyLower = key.toLowerCase();
+          return (
+            keyLower.includes('image') ||
+            keyLower.includes('avatar') ||
+            keyLower.includes('profile') ||
+            keyLower.includes('photo') ||
+            keyLower.includes('picture') ||
+            key === 'profile_image'
+          );
+        });
+
+        console.log(`🔑 Chaves de imagem encontradas: ${imageRelatedKeys.length}`);
+
+        if (imageRelatedKeys.length > 0) {
+          await AsyncStorage.multiRemove(imageRelatedKeys);
+          console.log(`✅ ${imageRelatedKeys.length} chaves de imagem removidas do AsyncStorage`);
+          deletedCount = imageRelatedKeys.length;
+        } else {
+          console.log('📭 Nenhuma chave de imagem encontrada no AsyncStorage');
+        }
+
+      } catch (storageError) {
+        console.error('❌ Erro ao limpar AsyncStorage:', storageError);
+        return { success: false, deletedCount: 0 };
       }
-      
-    } catch (storageError) {
-      console.error('❌ Erro ao limpar AsyncStorage:', storageError);
+
+      setProfileImage(null);
+
+      setTimeout(() => {
+        loadProfileImage().catch(console.error);
+      }, 100);
+
+      console.log(`✅ ${deletedCount} itens locais removidos com sucesso`);
+
+      return { success: true, deletedCount };
+
+    } catch (error: any) {
+      console.error('💥 Erro inesperado ao limpar imagens locais:', error);
       return { success: false, deletedCount: 0 };
     }
-    
-    // 2. Limpar estado local
-    setProfileImage(null);
-    
-    // 3. Forçar atualização do componente
-    setTimeout(() => {
-      loadProfileImage().catch(console.error);
-    }, 100);
-    
-    console.log(`✅ ${deletedCount} itens locais removidos com sucesso`);
-    
-    return { success: true, deletedCount };
-    
-  } catch (error: any) {
-    console.error('💥 Erro inesperado ao limpar imagens locais:', error);
-    return { success: false, deletedCount: 0 };
-  }
-};
+  };
 
   const cleanupAllImages = async (): Promise<void> => {
     try {
-      // 1. Confirmar com o usuário (IMPORTANTE!)
       Alert.alert(
         '⚠️ Limpeza Total',
         'Tem certeza que deseja apagar TODAS as imagens?\n\nEsta ação irá:'
@@ -1081,26 +1075,22 @@ export default function ProfileScreen() {
             style: 'destructive',
             onPress: async () => {
               try {
-                // Mostrar loading
                 setBusy(true);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                
-                // 2. Apagar do bucket (servidor)
+
                 console.log('🚀 Iniciando limpeza do servidor...');
                 const bucketResult = await deleteAllProfileImagesFromBucket();
-                
+
                 if (!bucketResult.success) {
                   Alert.alert(
                     'Atenção',
                     `Não foi possível limpar todas as imagens do servidor.\n\nErro: ${bucketResult.error}`
                   );
                 }
-                
-                // 3. Apagar locais
+
                 console.log('📱 Iniciando limpeza local...');
                 const localResult = await deleteAllLocalImages();
-                
-                // 4. Atualizar banco de dados para remover referências
+
                 console.log('🗄️ Atualizando banco de dados...');
                 if (email) {
                   const { error: updateError } = await supabase
@@ -1110,17 +1100,16 @@ export default function ProfileScreen() {
                       updated_at: new Date().toISOString()
                     })
                     .eq('user_email', email);
-                  
+
                   if (updateError) {
                     console.error('❌ Erro ao atualizar banco:', updateError);
                   } else {
                     console.log('✅ Banco de dados atualizado');
                   }
                 }
-                
-                // 5. Feedback para o usuário
+
                 let message = 'Limpeza concluída!';
-                
+
                 if (bucketResult.deletedCount > 0 || localResult.deletedCount > 0) {
                   message = `✅ Limpeza concluída com sucesso!\n\n` +
                             `• ${bucketResult.deletedCount} imagens removidas do servidor\n` +
@@ -1128,15 +1117,15 @@ export default function ProfileScreen() {
                 } else {
                   message = '✅ Não havia imagens para remover.';
                 }
-                
+
                 Alert.alert('Sucesso', message);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                
+
               } catch (error: any) {
                 console.error('💥 Erro durante a limpeza completa:', error);
                 Alert.alert('Erro', 'Ocorreu um erro durante a limpeza: ' + error.message);
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-                
+
               } finally {
                 setBusy(false);
               }
@@ -1144,7 +1133,7 @@ export default function ProfileScreen() {
           }
         ]
       );
-      
+
     } catch (error) {
       console.error('❌ Erro ao iniciar limpeza:', error);
     }
@@ -1161,7 +1150,7 @@ export default function ProfileScreen() {
             <Text style={[styles.dialogMessage, { color: theme.colors.onSurfaceVariant }]}>
               Como deseja alterar sua foto de perfil?
             </Text>
-            
+
             <View style={styles.dialogButtons}>
               <Pressable
                 style={[styles.dialogButton, styles.cancelButton]}
@@ -1171,7 +1160,7 @@ export default function ProfileScreen() {
                   Cancelar
                 </Text>
               </Pressable>
-              
+
               <Pressable
                 style={[styles.dialogButton, styles.actionButton]}
                 onPress={takePhoto}
@@ -1186,7 +1175,7 @@ export default function ProfileScreen() {
                   </>
                 )}
               </Pressable>
-              
+
               <Pressable
                 style={[styles.dialogButton, styles.actionButton]}
                 onPress={handleChooseImage}
@@ -1285,13 +1274,13 @@ export default function ProfileScreen() {
                       }
                       style={styles.avatar}
                       contentFit="cover"
-                      key={profileImage || 'default'} // Força re-render quando a URL muda
-                      cachePolicy="none" // Desabilita cache para forçar atualização
+                      key={profileImage || 'default'}
+                      cachePolicy="none"
                     />
-                  </Pressable> 
+                  </Pressable>
                 </View>
               </View>
-              <Pressable 
+              <Pressable
                 style={[styles.editAvatarButton, { backgroundColor: theme.colors.primary }]}
                 onPress={() => setShowChangeImageDialog(true)}
               >
@@ -1445,7 +1434,7 @@ export default function ProfileScreen() {
                 <Text style={styles.buttonTxt}>{t('saveGoals', { ns: 'common' })}</Text>
               </Pressable>
 
-              {/* Botão para limpar imagens */}
+              {/* FIX: added flexDirection: 'row' inline so icon + text align correctly */}
               <Pressable
                 style={[styles.button, { backgroundColor: '#FF6B6B', marginTop: 20 }]}
                 onPress={cleanupAllImages}
@@ -1547,6 +1536,7 @@ export default function ProfileScreen() {
               <View style={styles.inputRow}>
                 <View style={styles.inputGroup}>
                   <Text style={[styles.label, { color: theme.colors.onSurface }]}>{t('height', { ns: 'common' })} (cm)</Text>
+                  {/* FIX: onChangeText now correctly calls setHeight with the new value */}
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                     value={height}
@@ -1559,6 +1549,8 @@ export default function ProfileScreen() {
 
                 <View style={styles.inputGroup}>
                   <Text style={[styles.label, { color: theme.colors.onSurface }]}>{t('age', { ns: 'common' })}</Text>
+                  {/* FIX: onChangeText now correctly calls setAge with the new value.
+                      The useEffect above handles auto-saving to Supabase once all fields are filled. */}
                   <TextInput
                     style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                     value={age}
@@ -1992,7 +1984,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 
-  // Chart Styles
   chartContainer: {
     padding: 20,
     borderRadius: 16,
@@ -2044,7 +2035,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // History Styles
   historySection: {
     marginTop: 20,
   },
@@ -2084,7 +2074,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Empty State
   emptyState: {
     padding: 40,
     borderRadius: 16,
@@ -2104,7 +2093,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 
-  // Notification Styles
   notificationSection: {
     padding: 20,
     borderRadius: 16,
@@ -2258,7 +2246,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // Skeleton styles
   headerSkeleton: {
     height: 120,
     backgroundColor: '#e5e5e5',

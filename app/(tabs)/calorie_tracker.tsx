@@ -11,17 +11,19 @@ import {
   Platform,
   ActivityIndicator,
   Modal,
+  StatusBar,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from '../../hooks/useTranslation';
-import Svg, { Circle as SvgCircle, Path } from 'react-native-svg';
-
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Circle as SvgCircle, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { COHERE_API_KEY } from '@env';
 
-// Definir tipos
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface Meal {
   id: string;
   foodName: string;
@@ -52,562 +54,452 @@ interface FoodAnalysis {
   fat: number;
 }
 
-interface ProgressCircleProps {
-  type: keyof DailyGoals;
+// ─── Progress Ring ─────────────────────────────────────────────────────────
+
+interface RingProps {
+  label: string;
+  current: number;
+  goal: number;
+  unit: string;
   color: string;
+  gradientId: string;
+  gradientFrom: string;
+  gradientTo: string;
+  theme: any;
 }
+
+const ProgressRing: React.FC<RingProps> = ({
+  label, current, goal, unit, color, gradientId, gradientFrom, gradientTo, theme
+}) => {
+  const size = 96;
+  const strokeWidth = 7;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const pct = goal > 0 ? Math.min(1, current / goal) : 0;
+  const offset = circumference * (1 - pct);
+  const over = pct >= 1;
+
+  return (
+    <View style={ringStyles.wrapper}>
+      <Svg width={size} height={size}>
+        <Defs>
+          <LinearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+            <Stop offset="0%" stopColor={gradientFrom} />
+            <Stop offset="100%" stopColor={gradientTo} />
+          </LinearGradient>
+        </Defs>
+        {/* Track */}
+        <SvgCircle
+          cx={size / 2} cy={size / 2} r={radius}
+          stroke={theme.dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}
+          strokeWidth={strokeWidth} fill="none"
+        />
+        {/* Progress */}
+        <SvgCircle
+          cx={size / 2} cy={size / 2} r={radius}
+          stroke={over ? '#FF6B6B' : `url(#${gradientId})`}
+          strokeWidth={strokeWidth} fill="none"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      <View style={ringStyles.inner}>
+        <Text style={[ringStyles.value, { color: over ? '#FF6B6B' : theme.colors.onSurface }]}>
+          {current > 999 ? `${(current / 1000).toFixed(1)}k` : current}
+        </Text>
+        <Text style={[ringStyles.unit, { color: theme.colors.onSurfaceVariant }]}>{unit}</Text>
+      </View>
+      <Text style={[ringStyles.label, { color: theme.colors.onSurfaceVariant }]}>{label}</Text>
+      <Text style={[ringStyles.goal, { color: theme.colors.onSurfaceVariant }]}>
+        de {goal}{unit}
+      </Text>
+    </View>
+  );
+};
+
+const ringStyles = StyleSheet.create({
+  wrapper: { alignItems: 'center', gap: 4 },
+  inner: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 28,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  value: { fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
+  unit: { fontSize: 9, fontWeight: '600', marginTop: 1 },
+  label: { fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+  goal: { fontSize: 10, fontWeight: '500', opacity: 0.7 },
+});
+
+// ─── Main Component ────────────────────────────────────────────────────────
 
 const CalorieCounter: React.FC = () => {
   const router = useRouter();
   const theme = useTheme();
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
+
   const [meals, setMeals] = useState<Meal[]>([]);
-  const [foodInput, setFoodInput] = useState<string>('');
-  const [loading, setLoading] = useState<boolean>(false);
-  const [dailyGoals, setDailyGoals] = useState<DailyGoals>({
-    calories: 2000,
-    protein: 50,
-    carbs: 250
-  });
-  const [todayTotals, setTodayTotals] = useState<TodayTotals>({
-    calories: 0,
-    protein: 0,
-    carbs: 0
-  });
-  const [settingsModalVisible, setSettingsModalVisible] = useState(false);
+  const [foodInput, setFoodInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [dailyGoals, setDailyGoals] = useState<DailyGoals>({ calories: 2000, protein: 50, carbs: 250 });
+  const [todayTotals, setTodayTotals] = useState<TodayTotals>({ calories: 0, protein: 0, carbs: 0 });
+  const [settingsVisible, setSettingsVisible] = useState(false);
   const [tempGoals, setTempGoals] = useState<DailyGoals>(dailyGoals);
 
-  // Carregar metas salvas
-  useEffect(() => {
-    loadSavedGoals();
-  }, []);
+  useEffect(() => { loadSavedGoals(); }, []);
 
   const loadSavedGoals = async () => {
     try {
-      const savedGoals = await AsyncStorage.getItem('@nutrition_goals');
-      if (savedGoals) {
-        const goals = JSON.parse(savedGoals);
-        setDailyGoals(goals);
-        setTempGoals(goals);
+      const saved = await AsyncStorage.getItem('@nutrition_goals');
+      if (saved) {
+        const g = JSON.parse(saved);
+        setDailyGoals(g);
+        setTempGoals(g);
       }
-    } catch (error) {
-      console.error('Erro ao carregar metas:', error);
-    }
+    } catch (e) { console.error(e); }
   };
 
   const saveGoals = async (goals: DailyGoals) => {
     try {
       await AsyncStorage.setItem('@nutrition_goals', JSON.stringify(goals));
       setDailyGoals(goals);
-      Alert.alert(
-        t('success', { ns: 'common' }),
-        t('goalsSaveSuccess', { ns: 'common' })
-      );
-    } catch (error) {
-      console.error('Erro ao salvar metas:', error);
-      Alert.alert(
-        t('error', { ns: 'common' }),
-        t('goalsSaveError', { ns: 'common' })
-      );
+      Alert.alert(t('success', { ns: 'common' }), t('goalsSaveSuccess', { ns: 'common' }));
+    } catch {
+      Alert.alert(t('error', { ns: 'common' }), t('goalsSaveError', { ns: 'common' }));
     }
   };
 
-  const openSettings = () => {
-    setTempGoals(dailyGoals);
-    setSettingsModalVisible(true);
-  };
-
-  const applySettings = () => {
-    saveGoals(tempGoals);
-    setSettingsModalVisible(false);
-  };
-
-  // Função para voltar para a tela inicial
-  const handleBackToHome = (): void => {
-    router.back();
-  };
-
-  // Função para analisar alimentos usando Groq API
-  const analyzeFoodWithGroq = async (foodDescription: string): Promise<FoodAnalysis> => {
-    // Usa variável de ambiente do EAS Build ou fallback para @env
+  const analyzeFoodWithGroq = async (desc: string): Promise<FoodAnalysis> => {
     const API_KEY = Constants.expoConfig?.extra?.cohereApiKey || COHERE_API_KEY || '';
-
-    try {
-      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messages: [
-            {
-              role: "system",
-              content: `Você é um nutricionista profissional especializado em análise de alimentos. 
-
-ANÁLISE DA DESCRIÇÃO DO ALIMENTO:
-- EXTRAIA A QUANTIDADE EXATA da descrição (ex: "3 ovos", "200g de frango", "1 colher de azeite")
-- Se não houver quantidade, assuma uma porção padrão realista
-- Para múltiplas unidades (ex: "20 batatas"), calcule o TOTAL nutricional
-- Considere preparação: cozido, frito, assado, etc.
-- Use valores nutricionais REAIS de bases de dados
-
-CALCULE os valores totais baseados na quantidade especificada:
-- "2 ovos" = nutrientes de 2 ovos
-- "150g de arroz" = nutrientes para 150g
-- "1 colher de azeite" = ~10ml
-
-RETORNE APENAS UM JSON VÁLIDO com esta estrutura exata:
-{
-  "foodName": "string",
-  "calories": number,
-  "protein": number,
-  "carbs": number,
-  "fat": number
-}
-
-Exemplos:
-Descrição: "3 ovos cozidos" → {"foodName": "ovos cozidos", "calories": 210, "protein": 18, "carbs": 1, "fat": 15}
-Descrição: "20 batatas cozidas" → {"foodName": "batatas cozidas", "calories": 1600, "protein": 40, "carbs": 360, "fat": 2}
-Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "protein": 0, "carbs": 0, "fat": 10}`
-            },
-            {
-              role: "user",
-              content: `Analise nutricionalmente: "${foodDescription}"`
-            }
-          ],
-          model: "llama-3.1-8b-instant",
-          temperature: 0.3,
-          max_tokens: 500,
-          response_format: { type: "json_object" }
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.choices && data.choices[0].message.content) {
-        const content = data.choices[0].message.content;
-        console.log('Resposta da API:', content);
-
-        try {
-          const parsedData = JSON.parse(content);
-          return {
-            foodName: parsedData.foodName || foodDescription,
-            calories: parsedData.calories || 0,
-            protein: parsedData.protein || 0,
-            carbs: parsedData.carbs || 0,
-            fat: parsedData.fat || 0
-          };
-        } catch (parseError) {
-          console.error('Erro ao parsear JSON:', parseError);
-          throw new Error('Resposta da API em formato inválido');
-        }
-      }
-
-      throw new Error('Resposta da API inválida');
-
-    } catch (error) {
-      console.error('Erro Groq API:', error);
-      throw error;
-    }
-  };
-
-  // Fallback para quando a API não estiver disponível
-  const analyzeFoodFallback = (foodDescription: string): FoodAnalysis => {
-    const commonFoods: Record<string, Omit<FoodAnalysis, 'foodName'>> = {
-      'arroz': { calories: 130, protein: 2.7, carbs: 28, fat: 0.3 },
-      'feijão': { calories: 115, protein: 7.6, carbs: 20, fat: 0.5 },
-      'frango': { calories: 165, protein: 31, carbs: 0, fat: 3.6 },
-      'carne': { calories: 250, protein: 26, carbs: 0, fat: 15 },
-      'peixe': { calories: 200, protein: 22, carbs: 0, fat: 12 },
-      'ovo': { calories: 78, protein: 6, carbs: 0.6, fat: 5 },
-      'pão': { calories: 80, protein: 3, carbs: 15, fat: 1 },
-      'macarrão': { calories: 158, protein: 5.8, carbs: 30, fat: 0.9 },
-      'batata': { calories: 77, protein: 2, carbs: 17, fat: 0.1 },
-      'salada': { calories: 50, protein: 2, carbs: 10, fat: 0.5 },
-      'queijo': { calories: 113, protein: 7, carbs: 0.9, fat: 9 },
-      'leite': { calories: 61, protein: 3.2, carbs: 4.8, fat: 3.3 }
-    };
-
-    const lowerInput = foodDescription.toLowerCase();
-    let bestMatch: Omit<FoodAnalysis, 'foodName'> = { calories: 150, protein: 10, carbs: 20, fat: 5 };
-
-    for (const [food, nutrients] of Object.entries(commonFoods)) {
-      if (lowerInput.includes(food)) {
-        bestMatch = nutrients;
-        break;
-      }
-    }
-
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          {
+            role: 'system',
+            content: `Você é um nutricionista. Analise o alimento e retorne APENAS JSON válido:
+{"foodName":"string","calories":number,"protein":number,"carbs":number,"fat":number}`,
+          },
+          { role: 'user', content: `Analise: "${desc}"` },
+        ],
+        model: 'llama-3.1-8b-instant',
+        temperature: 0.3,
+        max_tokens: 300,
+        response_format: { type: 'json_object' },
+      }),
+    });
+    const data = await response.json();
+    const parsed = JSON.parse(data.choices[0].message.content);
     return {
-      foodName: foodDescription,
-      ...bestMatch
+      foodName: parsed.foodName || desc,
+      calories: parsed.calories || 0,
+      protein: parsed.protein || 0,
+      carbs: parsed.carbs || 0,
+      fat: parsed.fat || 0,
     };
   };
 
-  const addMeal = async (): Promise<void> => {
+  const analyzeFoodFallback = (desc: string): FoodAnalysis => {
+    const map: Record<string, Omit<FoodAnalysis, 'foodName'>> = {
+      arroz: { calories: 130, protein: 2.7, carbs: 28, fat: 0.3 },
+      feijão: { calories: 115, protein: 7.6, carbs: 20, fat: 0.5 },
+      frango: { calories: 165, protein: 31, carbs: 0, fat: 3.6 },
+      carne: { calories: 250, protein: 26, carbs: 0, fat: 15 },
+      peixe: { calories: 200, protein: 22, carbs: 0, fat: 12 },
+      ovo: { calories: 78, protein: 6, carbs: 0.6, fat: 5 },
+      pão: { calories: 80, protein: 3, carbs: 15, fat: 1 },
+      batata: { calories: 77, protein: 2, carbs: 17, fat: 0.1 },
+    };
+    const lower = desc.toLowerCase();
+    for (const [k, v] of Object.entries(map)) {
+      if (lower.includes(k)) return { foodName: desc, ...v };
+    }
+    return { foodName: desc, calories: 150, protein: 10, carbs: 20, fat: 5 };
+  };
+
+  const addMeal = async () => {
     if (!foodInput.trim()) {
-      Alert.alert(
-        t('error', { ns: 'common' }),
-        t('fillFoodDescriptionError', { ns: 'common' })
-      );
+      Alert.alert(t('error', { ns: 'common' }), t('fillFoodDescriptionError', { ns: 'common' }));
       return;
     }
-
     setLoading(true);
-
     try {
       let foodData: FoodAnalysis;
-
-      // Tenta usar a API do Groq primeiro
-      try {
-        foodData = await analyzeFoodWithGroq(foodInput);
-      } catch (apiError) {
-        console.log('Usando fallback:', apiError);
-        // Se a API falhar, usa o fallback
-        foodData = analyzeFoodFallback(foodInput);
-      }
+      try { foodData = await analyzeFoodWithGroq(foodInput); }
+      catch { foodData = analyzeFoodFallback(foodInput); }
 
       const newMeal: Meal = {
         id: Date.now().toString(),
         ...foodData,
-        timestamp: new Date().toLocaleTimeString('pt-BR', {
-          hour: '2-digit',
-          minute: '2-digit'
-        })
+        timestamp: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       };
-
       setMeals(prev => [newMeal, ...prev]);
       setTodayTotals(prev => ({
-        calories: (prev.calories || 0) + (foodData.calories || 0),
-        protein: (prev.protein || 0) + (foodData.protein || 0),
-        carbs: (prev.carbs || 0) + (foodData.carbs || 0)
+        calories: prev.calories + foodData.calories,
+        protein: prev.protein + foodData.protein,
+        carbs: prev.carbs + foodData.carbs,
       }));
-
       setFoodInput('');
-      Alert.alert(
-        t('success', { ns: 'common' }),
-        t('mealAddedSuccess', { ns: 'common', foodName: foodData.foodName })
-      );
-
-    } catch (error) {
-      Alert.alert(
-        t('error', { ns: 'common' }),
-        t('nutritionGenericError', { ns: 'common' })
-      );
+      Alert.alert(t('success', { ns: 'common' }), t('mealAddedSuccess', { ns: 'common', foodName: foodData.foodName }));
+    } catch {
+      Alert.alert(t('error', { ns: 'common' }), t('nutritionGenericError', { ns: 'common' }));
     } finally {
       setLoading(false);
     }
   };
 
-  const removeMeal = (mealId: string): void => {
-    const mealToRemove = meals.find(meal => meal.id === mealId);
-    if (mealToRemove) {
+  const removeMeal = (id: string) => {
+    const m = meals.find(x => x.id === id);
+    if (m) {
       setTodayTotals(prev => ({
-        calories: Math.max(0, (prev.calories || 0) - (mealToRemove.calories || 0)),
-        protein: Math.max(0, (prev.protein || 0) - (mealToRemove.protein || 0)),
-        carbs: Math.max(0, (prev.carbs || 0) - (mealToRemove.carbs || 0))
+        calories: Math.max(0, prev.calories - m.calories),
+        protein: Math.max(0, prev.protein - m.protein),
+        carbs: Math.max(0, prev.carbs - m.carbs),
       }));
-      setMeals(prev => prev.filter(meal => meal.id !== mealId));
+      setMeals(prev => prev.filter(x => x.id !== id));
     }
   };
 
-  const calculateRemaining = (type: keyof DailyGoals): { remaining: number; percentage: number } => {
-    const goal = dailyGoals[type] || 0;
-    const consumed = todayTotals[type] || 0;
-    const remaining = Math.max(0, goal - consumed);
-    const percentage = goal > 0 ? Math.min(100, (consumed / goal) * 100) : 0;
-
-    return {
-      remaining,
-      percentage
-    };
+  const fmt = (v: any, d = 0) => {
+    const n = Number(v);
+    return isNaN(n) ? '0' : n.toFixed(d);
   };
 
-  // Função segura para formatar números
-  const safeToFixed = (value: any, decimals: number = 1): string => {
-    if (value === undefined || value === null) return '0.0';
-    const num = Number(value);
-    return isNaN(num) ? '0.0' : num.toFixed(decimals);
-  };
+  const calPct = dailyGoals.calories > 0 ? Math.min(100, (todayTotals.calories / dailyGoals.calories) * 100) : 0;
+  const remaining = Math.max(0, dailyGoals.calories - todayTotals.calories);
 
-  const ProgressCircle: React.FC<ProgressCircleProps> = ({ type, color }) => {
-    const { remaining, percentage } = calculateRemaining(type);
-    const radius = 40;
-    const strokeWidth = 8;
-    const circumference = 2 * Math.PI * radius;
-    const strokeDashoffset = circumference - (percentage / 100) * circumference;
-
-    const getTypeLabel = (): string => {
-      switch (type) {
-        case 'calories': return 'Calorias';
-        case 'protein': return 'Proteína';
-        case 'carbs': return 'Carboidratos';
-        default: return '';
-      }
-    };
-
-    const getUnit = (): string => {
-      return type === 'calories' ? 'kcal' : 'g';
-    };
-
-    // Mostrar o consumo atual em vez do restante
-    const currentValue = todayTotals[type] || 0;
-    const goalValue = dailyGoals[type] || 0;
-
-    return (
-      <View style={styles.circleContainer}>
-        <View style={styles.circleWrapper}>
-          <Svg width="100" height="100" style={styles.circleSvg}>
-            <SvgCircle
-              cx="50"
-              cy="50"
-              r={radius}
-              stroke={theme.colors.outline + '40'}
-              strokeWidth={strokeWidth}
-              fill="none"
-            />
-            <SvgCircle
-              cx="50"
-              cy="50"
-              r={radius}
-              stroke={color}
-              strokeWidth={strokeWidth}
-              fill="none"
-              strokeDasharray={circumference}
-              strokeDashoffset={strokeDashoffset}
-              strokeLinecap="round"
-              transform="rotate(-90 50 50)"
-            />
-          </Svg>
-          <View style={styles.circleText}>
-            <Text style={[styles.circleNumber, { color: theme.colors.onSurface }]}>
-              {currentValue}
-            </Text>
-            <Text style={[styles.circleLabel, { color: theme.colors.onSurfaceVariant }]}>
-              / {goalValue} {getUnit()}
-            </Text>
-          </View>
-        </View>
-        <Text style={[styles.circleTitle, { color: theme.colors.onSurface }]}>
-          {getTypeLabel()}
-        </Text>
-      </View>
-    );
-  };
+  // Dynamic status bar color
+  const isDark = theme.dark;
+  const bg = theme.colors.background;
+  const surface = theme.colors.surface;
+  const primary = theme.colors.primary;
 
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[s.root, { backgroundColor: bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor="transparent"
+        translucent
+      />
+
       <ScrollView
-        contentContainerStyle={styles.scrollViewContent}
+        contentContainerStyle={[
+          s.scroll,
+          { paddingTop: insets.top, paddingBottom: insets.bottom + 32 },
+        ]}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header Container */}
-        <View style={[styles.headerContainer, { backgroundColor: theme.colors.surface }]}>
-          <TouchableOpacity
-            style={styles.backButtonContainer}
-            onPress={handleBackToHome}
-          >
-            <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>←</Text>
-          </TouchableOpacity>
-
-          <View style={styles.titleContainer}>
-            <Text style={[styles.mainTitle, { color: theme.colors.onSurface }]}>
-              {t('nutritionAppTitle', { ns: 'common' })}
-            </Text>
-            <Text style={[styles.subTitle, { color: theme.colors.onSurfaceVariant }]}>
-              {t('nutritionAppSubtitle', { ns: 'common' })}
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.settingsButtonContainer}
-            onPress={openSettings}
-          >
-            <Svg
-              width={28}
-              height={28}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke={theme.colors.onSurface}
-              strokeWidth={1.5}
-            >
+        {/* ── Header ── */}
+        <View style={[s.header, { backgroundColor: surface }]}>
+          <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
               <Path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
+                d="M15.75 19.5 8.25 12l7.5-7.5"
+                stroke={primary} strokeWidth={2.2}
+                strokeLinecap="round" strokeLinejoin="round"
               />
             </Svg>
           </TouchableOpacity>
 
+          <View style={s.headerCenter}>
+            <Text style={[s.headerTitle, { color: theme.colors.onSurface }]}>
+              {t('nutritionAppTitle', { ns: 'common' })}
+            </Text>
+            <Text style={[s.headerSub, { color: theme.colors.onSurfaceVariant }]}>
+              {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </Text>
+          </View>
 
+          <TouchableOpacity
+            style={[s.settingsBtn, { backgroundColor: theme.colors.surfaceVariant }]}
+            onPress={() => { setTempGoals(dailyGoals); setSettingsVisible(true); }}
+          >
+            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+              <Path
+                strokeLinecap="round" strokeLinejoin="round"
+                stroke={theme.colors.onSurfaceVariant} strokeWidth={1.8}
+                d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75"
+              />
+            </Svg>
+          </TouchableOpacity>
         </View>
 
-        {/* Progress Section Container */}
-        <View style={[styles.progressSectionContainer, { backgroundColor: theme.colors.background }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            {t('progressToday', { ns: 'common' })}
-          </Text>
-          <View style={styles.circlesContainer}>
-            <ProgressCircle type="calories" color={theme.colors.primary} />
-            <ProgressCircle type="protein" color="#2196F3" />
-            <ProgressCircle type="carbs" color="#FF9800" />
+        {/* ── Calorie Hero Card ── */}
+        <View style={[s.heroCard, { backgroundColor: surface }]}>
+          <View style={s.heroTop}>
+            <View>
+              <Text style={[s.heroLabel, { color: theme.colors.onSurfaceVariant }]}>Consumidas hoje</Text>
+              <View style={s.heroRow}>
+                <Text style={[s.heroCalories, { color: theme.colors.onSurface }]}>
+                  {todayTotals.calories}
+                </Text>
+                <Text style={[s.heroKcal, { color: theme.colors.onSurfaceVariant }]}> kcal</Text>
+              </View>
+            </View>
+            <View style={[s.remainingBadge, { backgroundColor: remaining === 0 ? '#FF6B6B20' : primary + '18' }]}>
+              <Text style={[s.remainingNum, { color: remaining === 0 ? '#FF6B6B' : primary }]}>
+                {remaining}
+              </Text>
+              <Text style={[s.remainingLabel, { color: remaining === 0 ? '#FF6B6B' : primary }]}>restantes</Text>
+            </View>
+          </View>
+
+          {/* Progress bar */}
+          <View style={[s.barTrack, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+            <View
+              style={[
+                s.barFill,
+                {
+                  width: `${calPct}%` as any,
+                  backgroundColor: calPct >= 100 ? '#FF6B6B' : primary,
+                },
+              ]}
+            />
+          </View>
+          <View style={s.barLabels}>
+            <Text style={[s.barLabel, { color: theme.colors.onSurfaceVariant }]}>0</Text>
+            <Text style={[s.barLabel, { color: theme.colors.onSurfaceVariant }]}>
+              Meta: {dailyGoals.calories} kcal
+            </Text>
           </View>
         </View>
 
-        {/* Add Food Section Container */}
-        <View style={[styles.addFoodSectionContainer, { backgroundColor: theme.colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+        {/* ── Macro Rings ── */}
+        <View style={[s.macroCard, { backgroundColor: surface }]}>
+          <Text style={[s.cardTitle, { color: theme.colors.onSurface }]}>Macronutrientes</Text>
+          <View style={s.rings}>
+            <ProgressRing
+              label="Proteína" current={Math.round(todayTotals.protein)}
+              goal={dailyGoals.protein} unit="g"
+              color="#3B82F6" gradientId="pg" gradientFrom="#60A5FA" gradientTo="#2563EB"
+              theme={theme}
+            />
+            <ProgressRing
+              label="Carboidratos" current={Math.round(todayTotals.carbs)}
+              goal={dailyGoals.carbs} unit="g"
+              color="#F59E0B" gradientId="cg" gradientFrom="#FCD34D" gradientTo="#D97706"
+              theme={theme}
+            />
+            <ProgressRing
+              label="Gordura" current={Math.round(meals.reduce((a, m) => a + m.fat, 0))}
+              goal={Math.round(dailyGoals.calories * 0.25 / 9)}
+              unit="g"
+              color="#10B981" gradientId="fg" gradientFrom="#34D399" gradientTo="#059669"
+              theme={theme}
+            />
+          </View>
+        </View>
+
+        {/* ── Add Food ── */}
+        <View style={[s.addCard, { backgroundColor: surface }]}>
+          <Text style={[s.cardTitle, { color: theme.colors.onSurface }]}>
             {t('addMealSectionTitle', { ns: 'common' })}
           </Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.input, {
-                backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.outline,
-                color: theme.colors.onSurface
-              }]}
-              placeholder={t('addMealPlaceholder', { ns: 'common' })}
-              placeholderTextColor={theme.colors.onSurfaceVariant}
-              value={foodInput}
-              onChangeText={setFoodInput}
-              multiline
-            />
-            <TouchableOpacity
-              style={[styles.addButton, { backgroundColor: theme.colors.primary }, loading && styles.addButtonDisabled]}
-              onPress={addMeal}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={theme.colors.onPrimary} />
-              ) : (
-                <Text style={[styles.addButtonText, { color: theme.colors.onPrimary }]}>
-                  {t('addMealButton', { ns: 'common' })}
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
+          <TextInput
+            style={[
+              s.input,
+              {
+                backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                borderColor: theme.colors.outline + '60',
+                color: theme.colors.onSurface,
+              },
+            ]}
+            placeholder={t('addMealPlaceholder', { ns: 'common' })}
+            placeholderTextColor={theme.colors.onSurfaceVariant + '80'}
+            value={foodInput}
+            onChangeText={setFoodInput}
+            multiline
+          />
+          <TouchableOpacity
+            style={[s.addBtn, { backgroundColor: primary }, loading && { opacity: 0.6 }]}
+            onPress={addMeal}
+            disabled={loading}
+            activeOpacity={0.85}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                  <Path
+                    d="M12 4.5v15m7.5-7.5h-15"
+                    stroke="#fff" strokeWidth={2.2}
+                    strokeLinecap="round"
+                  />
+                </Svg>
+                <Text style={s.addBtnText}>{t('addMealButton', { ns: 'common' })}</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
 
-        {/* Summary Section Container */}
-        <View style={[styles.summarySectionContainer, { backgroundColor: theme.colors.background }]}>
-          <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
-            {t('daySummary', { ns: 'common' })}
-          </Text>
-          <View style={[styles.summaryContainer, { backgroundColor: theme.colors.surface }]}>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('calories', { ns: 'common' })}
-                </Text>
-                <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>
-                  {todayTotals.calories || 0} / {dailyGoals.calories} kcal
-                </Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('proteinLabel', { ns: 'common' })}
-                </Text>
-                <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>
-                  {safeToFixed(todayTotals.protein)} / {dailyGoals.protein} g
-                </Text>
-              </View>
-            </View>
-            <View style={styles.summaryRow}>
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('carbsLabel', { ns: 'common' })}
-                </Text>
-                <Text style={[styles.summaryValue, { color: theme.colors.onSurface }]}>
-                  {safeToFixed(todayTotals.carbs)} / {dailyGoals.carbs} g
-                </Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={[styles.summaryLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('remaining', { ns: 'common' })}
-                </Text>
-                <Text style={[styles.summaryValue, { color: theme.colors.primary }]}>
-                  {calculateRemaining('calories').remaining} kcal
-                </Text>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        {/* Meals Section Container */}
-        <View style={[styles.mealsSectionContainer, { backgroundColor: theme.colors.surface }]}>
-          <View style={styles.mealsHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
+        {/* ── Meals List ── */}
+        <View style={[s.mealsCard, { backgroundColor: surface }]}>
+          <View style={s.mealsHeader}>
+            <Text style={[s.cardTitle, { color: theme.colors.onSurface }, { marginBottom: 0 }]}>
               {t('todayMeals', { ns: 'common' })}
             </Text>
-            <Text style={[styles.mealsCount, { color: theme.colors.onSurfaceVariant }]}>
-              {t('mealsCount', { ns: 'common', count: meals.length })}
-            </Text>
+            <View style={[s.countBadge, { backgroundColor: primary + '20' }]}>
+              <Text style={[s.countText, { color: primary }]}>{meals.length}</Text>
+            </View>
           </View>
 
           {meals.length === 0 ? (
-            <View style={styles.emptyStateContainer}>
-              <Text style={[styles.emptyStateIcon, { color: theme.colors.onSurfaceVariant }]}>
-                🍽️
-              </Text>
-              <Text style={[styles.emptyStateText, { color: theme.colors.onSurfaceVariant }]}>
+            <View style={s.empty}>
+              <Text style={s.emptyIcon}>🍽️</Text>
+              <Text style={[s.emptyTitle, { color: theme.colors.onSurface }]}>
                 {t('noMealsTitle', { ns: 'common' })}
               </Text>
-              <Text style={[styles.emptyStateSubtext, { color: theme.colors.onSurfaceVariant }]}>
+              <Text style={[s.emptySub, { color: theme.colors.onSurfaceVariant }]}>
                 {t('noMealsSubtitle', { ns: 'common' })}
               </Text>
             </View>
           ) : (
-            <View style={styles.mealsListContainer}>
-              {meals.map(meal => (
+            <View style={s.mealsList}>
+              {meals.map((meal, i) => (
                 <View
                   key={meal.id}
-                  style={[styles.mealItem, { backgroundColor: theme.colors.surfaceVariant }]}
+                  style={[
+                    s.mealRow,
+                    {
+                      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.025)',
+                      borderBottomWidth: i < meals.length - 1 ? 1 : 0,
+                      borderBottomColor: theme.colors.outline + '30',
+                    },
+                  ]}
                 >
-                  <View style={styles.mealContent}>
-                    <View style={styles.mealHeader}>
-                      <Text style={[styles.mealName, { color: theme.colors.onSurface }]}>
+                  <View style={s.mealLeft}>
+                    <View style={s.mealTitleRow}>
+                      <Text style={[s.mealName, { color: theme.colors.onSurface }]} numberOfLines={1}>
                         {meal.foodName}
                       </Text>
-                      <Text style={[styles.mealTime, { color: theme.colors.onSurfaceVariant }]}>
+                      <Text style={[s.mealTime, { color: theme.colors.onSurfaceVariant }]}>
                         {meal.timestamp}
                       </Text>
                     </View>
-                    <View style={styles.mealDetails}>
-                      <View style={styles.nutrientBadge}>
-                        <Text style={[styles.nutrientValue, { color: theme.colors.onSurface }]}>
-                          {meal.calories}
-                        </Text>
-                        <Text style={[styles.nutrientLabel, { color: theme.colors.onSurfaceVariant }]}>
-                          kcal
-                        </Text>
-                      </View>
-                      <View style={styles.nutrientBadge}>
-                        <Text style={[styles.nutrientValue, { color: theme.colors.onSurface }]}>
-                          {safeToFixed(meal.protein)}
-                        </Text>
-                        <Text style={[styles.nutrientLabel, { color: theme.colors.onSurfaceVariant }]}>
-                          proteína
-                        </Text>
-                      </View>
-                      <View style={styles.nutrientBadge}>
-                        <Text style={[styles.nutrientValue, { color: theme.colors.onSurface }]}>
-                          {safeToFixed(meal.carbs)}
-                        </Text>
-                        <Text style={[styles.nutrientLabel, { color: theme.colors.onSurfaceVariant }]}>
-                          carbs
-                        </Text>
-                      </View>
+                    <View style={s.macroRow}>
+                      <MacroChip value={`${meal.calories} kcal`} color={primary} />
+                      <MacroChip value={`${fmt(meal.protein)}g prot`} color="#3B82F6" />
+                      <MacroChip value={`${fmt(meal.carbs)}g carbs`} color="#F59E0B" />
                     </View>
                   </View>
                   <TouchableOpacity
-                    style={styles.deleteButtonContainer}
+                    style={[s.deleteBtn, { backgroundColor: '#FF6B6B15' }]}
                     onPress={() => removeMeal(meal.id)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                   >
-                    <Text style={[styles.deleteButtonText, { color: theme.colors.error }]}>×</Text>
+                    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                      <Path
+                        d="M6 18 18 6M6 6l12 12"
+                        stroke="#FF6B6B" strokeWidth={2.2}
+                        strokeLinecap="round"
+                      />
+                    </Svg>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -616,89 +508,57 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
         </View>
       </ScrollView>
 
-      {/* Modal de Configurações */}
-      <Modal
-        visible={settingsModalVisible}
-        animationType="slide"
-        transparent={true}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}>
-            <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
-              Configurar Metas Diárias
-            </Text>
+      {/* ── Settings Modal ── */}
+      <Modal visible={settingsVisible} animationType="slide" transparent>
+        <View style={s.modalOverlay}>
+          <View style={[s.modalSheet, { backgroundColor: surface, paddingBottom: insets.bottom + 16 }]}>
+            {/* Handle */}
+            <View style={[s.handle, { backgroundColor: theme.colors.outline + '50' }]} />
 
-            <View style={styles.settingItem}>
-              <Text style={[styles.settingLabel, { color: theme.colors.onSurface }]}>
-                {t('caloriesKcal', { ns: 'common' })}
-              </Text>
-              <TextInput
-                style={[styles.settingInput, {
-                  backgroundColor: theme.colors.background,
-                  borderColor: theme.colors.outline,
-                  color: theme.colors.onSurface
-                }]}
-                value={tempGoals.calories.toString()}
-                onChangeText={(text) => setTempGoals(prev => ({
-                  ...prev,
-                  calories: parseInt(text) || 0
-                }))}
-                keyboardType="numeric"
-              />
-            </View>
+            <Text style={[s.modalTitle, { color: theme.colors.onSurface }]}>Metas Diárias</Text>
 
-            <View style={styles.settingItem}>
-              <Text style={[styles.settingLabel, { color: theme.colors.onSurface }]}>
-                {t('proteinGrams', { ns: 'common' })}
-              </Text>
-              <TextInput
-                style={[styles.settingInput, {
-                  backgroundColor: theme.colors.background,
-                  borderColor: theme.colors.outline,
-                  color: theme.colors.onSurface
-                }]}
-                value={tempGoals.protein.toString()}
-                onChangeText={(text) => setTempGoals(prev => ({
-                  ...prev,
-                  protein: parseInt(text) || 0
-                }))}
-                keyboardType="numeric"
-              />
-            </View>
+            {([
+              { key: 'calories', label: t('caloriesKcal', { ns: 'common' }), unit: 'kcal' },
+              { key: 'protein', label: t('proteinGrams', { ns: 'common' }), unit: 'g' },
+              { key: 'carbs', label: t('carbsGrams', { ns: 'common' }), unit: 'g' },
+            ] as { key: keyof DailyGoals; label: string; unit: string }[]).map(({ key, label, unit }) => (
+              <View key={key} style={s.settingRow}>
+                <Text style={[s.settingLabel, { color: theme.colors.onSurface }]}>{label}</Text>
+                <View style={s.settingInputWrap}>
+                  <TextInput
+                    style={[
+                      s.settingInput,
+                      {
+                        backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+                        borderColor: theme.colors.outline + '50',
+                        color: theme.colors.onSurface,
+                      },
+                    ]}
+                    value={tempGoals[key].toString()}
+                    onChangeText={text =>
+                      setTempGoals(prev => ({ ...prev, [key]: parseInt(text) || 0 }))
+                    }
+                    keyboardType="numeric"
+                  />
+                  <Text style={[s.settingUnit, { color: theme.colors.onSurfaceVariant }]}>{unit}</Text>
+                </View>
+              </View>
+            ))}
 
-            <View style={styles.settingItem}>
-              <Text style={[styles.settingLabel, { color: theme.colors.onSurface }]}>
-                {t('carbsGrams', { ns: 'common' })}
-              </Text>
-              <TextInput
-                style={[styles.settingInput, {
-                  backgroundColor: theme.colors.background,
-                  borderColor: theme.colors.outline,
-                  color: theme.colors.onSurface
-                }]}
-                value={tempGoals.carbs.toString()}
-                onChangeText={(text) => setTempGoals(prev => ({
-                  ...prev,
-                  carbs: parseInt(text) || 0
-                }))}
-                keyboardType="numeric"
-              />
-            </View>
-
-            <View style={styles.modalButtons}>
+            <View style={s.modalBtns}>
               <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton, { backgroundColor: theme.colors.surfaceVariant }]}
-                onPress={() => setSettingsModalVisible(false)}
+                style={[s.modalBtn, { backgroundColor: theme.colors.surfaceVariant }]}
+                onPress={() => setSettingsVisible(false)}
               >
-                <Text style={[styles.cancelButtonText, { color: theme.colors.onSurfaceVariant }]}>
+                <Text style={[s.modalBtnLabel, { color: theme.colors.onSurfaceVariant }]}>
                   {t('cancelSettings', { ns: 'common' })}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.modalButton, { backgroundColor: theme.colors.primary }]}
-                onPress={applySettings}
+                style={[s.modalBtn, { backgroundColor: primary, flex: 1.4 }]}
+                onPress={() => { saveGoals(tempGoals); setSettingsVisible(false); }}
               >
-                <Text style={[styles.modalButtonText, { color: theme.colors.onPrimary }]}>
+                <Text style={[s.modalBtnLabel, { color: '#fff' }]}>
                   {t('saveSettings', { ns: 'common' })}
                 </Text>
               </TouchableOpacity>
@@ -710,345 +570,135 @@ Descrição: "1 colher de azeite" → {"foodName": "azeite", "calories": 90, "pr
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+// ── Small helper ──────────────────────────────────────────────────────────────
+
+const MacroChip = ({ value, color }: { value: string; color: string }) => (
+  <View style={[chipS.chip, { backgroundColor: color + '18' }]}>
+    <Text style={[chipS.text, { color }]}>{value}</Text>
+  </View>
+);
+
+const chipS = StyleSheet.create({
+  chip: { borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3, marginRight: 6 },
+  text: { fontSize: 10, fontWeight: '700', letterSpacing: 0.2 },
+});
+
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
+const s = StyleSheet.create({
+  root: { flex: 1 },
+  scroll: { gap: 12, paddingHorizontal: 16 },
+
+  // Header
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 4, paddingVertical: 12,
+    borderRadius: 20, marginTop: 8,
   },
-  scrollViewContent: {
-    flexGrow: 1,
-    paddingBottom: 40,
+  backBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  headerCenter: { flex: 1, alignItems: 'center', paddingHorizontal: 8 },
+  headerTitle: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  headerSub: { fontSize: 11, marginTop: 2, fontWeight: '500', textTransform: 'capitalize' },
+  settingsBtn: {
+    width: 40, height: 40, borderRadius: 12,
+    justifyContent: 'center', alignItems: 'center',
   },
 
-  // Header Container
-  headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#00000010',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
+  // Hero card
+  heroCard: {
+    borderRadius: 20, padding: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
-  backButtonContainer: {
-    padding: 8,
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 20 },
+  heroLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.6 },
+  heroRow: { flexDirection: 'row', alignItems: 'baseline' },
+  heroCalories: { fontSize: 48, fontWeight: '900', letterSpacing: -2 },
+  heroKcal: { fontSize: 16, fontWeight: '600' },
+  remainingBadge: {
+    borderRadius: 14, paddingHorizontal: 14, paddingVertical: 10,
+    alignItems: 'center', minWidth: 80,
   },
-  backButtonText: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  titleContainer: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  mainTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  subTitle: {
-    fontSize: 14,
-    marginTop: 2,
-    fontWeight: '500',
-  },
-  settingsButtonContainer: {
-    marginTop: 18,
-  },
+  remainingNum: { fontSize: 22, fontWeight: '800', letterSpacing: -1 },
+  remainingLabel: { fontSize: 10, fontWeight: '600', marginTop: 1 },
+  barTrack: { height: 8, borderRadius: 999, overflow: 'hidden' },
+  barFill: { height: '100%', borderRadius: 999 },
+  barLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  barLabel: { fontSize: 10, fontWeight: '600' },
 
-  // Section Titles
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 16,
-    letterSpacing: 0.3,
+  // Macro card
+  macroCard: {
+    borderRadius: 20, padding: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
+  rings: { flexDirection: 'row', justifyContent: 'space-around', paddingTop: 4 },
 
-  // Progress Section
-  progressSectionContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+  // Add card
+  addCard: {
+    borderRadius: 20, padding: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
-  circlesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  circleContainer: {
-    alignItems: 'center',
-    width: '30%',
-  },
-  circleWrapper: {
-    position: 'relative',
-    width: 100,
-    height: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  circleSvg: {
-    position: 'absolute',
-  },
-  circleText: {
-    alignItems: 'center',
-  },
-  circleNumber: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  circleLabel: {
-    fontSize: 10,
-    marginTop: 2,
-  },
-  circleTitle: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-
-  // Add Food Section
-  addFoodSectionContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderRadius: 16,
-  },
-  inputContainer: {
-    marginBottom: 8,
-  },
+  cardTitle: { fontSize: 16, fontWeight: '800', letterSpacing: -0.2, marginBottom: 14 },
   input: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 18,
-    fontSize: 16,
-    minHeight: 80,
-    marginBottom: 16,
-    textAlignVertical: 'top',
+    borderWidth: 1, borderRadius: 14, padding: 14,
+    fontSize: 15, minHeight: 80, textAlignVertical: 'top',
+    marginBottom: 12, lineHeight: 22,
   },
-  addButton: {
-    padding: 18,
-    borderRadius: 16,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  addBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 8, padding: 16, borderRadius: 14,
   },
-  addButtonDisabled: {
-    opacity: 0.6,
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  addBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
-  // Summary Section
-  summarySectionContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+  // Meals card
+  mealsCard: {
+    borderRadius: 20, padding: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
-  summaryContainer: {
-    padding: 20,
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
+  mealsHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 14 },
+  countBadge: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 3 },
+  countText: { fontSize: 13, fontWeight: '800' },
+  empty: { alignItems: 'center', paddingVertical: 40 },
+  emptyIcon: { fontSize: 40, marginBottom: 12 },
+  emptyTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  emptySub: { fontSize: 13, textAlign: 'center', lineHeight: 18 },
+  mealsList: { gap: 0 },
+  mealRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 14, gap: 10,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  summaryItem: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  summaryLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  summaryValue: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  mealLeft: { flex: 1 },
+  mealTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  mealName: { fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 },
+  mealTime: { fontSize: 11, fontWeight: '600' },
+  macroRow: { flexDirection: 'row', flexWrap: 'wrap' },
+  deleteBtn: { width: 30, height: 30, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
 
-  // Meals Section
-  mealsSectionContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 24,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    marginTop: 8,
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: {
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 24, paddingTop: 12,
   },
-  mealsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  mealsCount: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyStateContainer: {
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyStateIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  emptyStateSubtext: {
-    fontSize: 14,
-    textAlign: 'center',
-    opacity: 0.7,
-  },
-  mealsListContainer: {
-    gap: 12,
-  },
-  mealItem: {
-    padding: 16,
-    borderRadius: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  mealContent: {
-    flex: 1,
-  },
-  mealHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  mealName: {
-    fontSize: 16,
-    fontWeight: '700',
-    flex: 1,
-    marginRight: 12,
-  },
-  mealTime: {
-    fontSize: 12,
-    fontWeight: '600',
-    opacity: 0.7,
-  },
-  mealDetails: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  nutrientBadge: {
-    alignItems: 'center',
-  },
-  nutrientValue: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  nutrientLabel: {
-    fontSize: 10,
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  deleteButtonContainer: {
-    padding: 4,
-    marginLeft: 8,
-  },
-  deleteButtonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  modalContent: {
-    width: '100%',
-    padding: 24,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '700',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  settingItem: {
-    marginBottom: 20,
-  },
-  settingLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
+  handle: { width: 36, height: 4, borderRadius: 99, alignSelf: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: '800', marginBottom: 24, letterSpacing: -0.3 },
+  settingRow: { marginBottom: 18 },
+  settingLabel: { fontSize: 14, fontWeight: '600', marginBottom: 8 },
+  settingInputWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   settingInput: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 16,
+    flex: 1, borderWidth: 1, borderRadius: 12,
+    padding: 13, fontSize: 16, fontWeight: '600',
   },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 24,
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cancelButton: {
-    // Cor definida inline usando theme
-  },
-  cancelButtonText: {
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  modalButtonText: {
-    fontSize: 16,
-    fontWeight: '700',
-  },
+  settingUnit: { fontSize: 14, fontWeight: '600', width: 36 },
+  modalBtns: { flexDirection: 'row', gap: 10, marginTop: 8 },
+  modalBtn: { flex: 1, padding: 16, borderRadius: 14, alignItems: 'center' },
+  modalBtnLabel: { fontSize: 15, fontWeight: '700' },
 });
 
 export default CalorieCounter;

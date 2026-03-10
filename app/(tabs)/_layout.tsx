@@ -5,6 +5,10 @@ import { Provider as PaperProvider, MD3DarkTheme, MD3LightTheme, useTheme } from
 import type { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
 import { useTranslation } from '../../hooks/useTranslation';
 import Svg, { Path } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+
+
 
 // =====================
 // Ícones HOME
@@ -152,6 +156,7 @@ export default function TabLayout() {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const keyboardTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const theme = useTheme();
+  const insects = useSafeAreaInsets();
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -194,8 +199,9 @@ export default function TabLayout() {
     };
 
     const iosBaseStyle = {
-      height: 85,
-      paddingBottom: 30,
+      height: 60,
+      paddingBottom: 0,
+      marginBottom: -insects.bottom + 13,
       paddingTop: 8,
       backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
