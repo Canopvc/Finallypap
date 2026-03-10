@@ -12,6 +12,8 @@ import {
   ActivityIndicator,
   Modal,
   StatusBar,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTheme } from 'react-native-paper';
@@ -21,6 +23,7 @@ import Svg, { Circle as SvgCircle, Path, Defs, LinearGradient, Stop } from 'reac
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { COHERE_API_KEY } from '@env';
+import { CohereClientV2 } from 'cohere-ai';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +56,9 @@ interface FoodAnalysis {
   carbs: number;
   fat: number;
 }
+
+const cohereApiKey = Constants.expoConfig?.extra?.cohereApiKey || COHERE_API_KEY || '';
+const cohereClient = new CohereClientV2({ token: cohereApiKey });
 
 // ─── Progress Ring ─────────────────────────────────────────────────────────
 
@@ -146,6 +152,7 @@ const CalorieCounter: React.FC = () => {
   const [todayTotals, setTodayTotals] = useState<TodayTotals>({ calories: 0, protein: 0, carbs: 0 });
   const [settingsVisible, setSettingsVisible] = useState(false);
   const [tempGoals, setTempGoals] = useState<DailyGoals>(dailyGoals);
+  const [focusedGoalIndex, setFocusedGoalIndex] = useState<number | null>(null);
 
   useEffect(() => { loadSavedGoals(); }, []);
 
@@ -170,28 +177,47 @@ const CalorieCounter: React.FC = () => {
     }
   };
 
-  const analyzeFoodWithGroq = async (desc: string): Promise<FoodAnalysis> => {
-    const API_KEY = Constants.expoConfig?.extra?.cohereApiKey || COHERE_API_KEY || '';
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          {
-            role: 'system',
-            content: `Você é um nutricionista. Analise o alimento e retorne APENAS JSON válido:
+  const analyzeFoodWithCohere = async (desc: string): Promise<FoodAnalysis> => {
+    if (!cohereApiKey) {
+      throw new Error('Cohere API key not configured');
+    }
+
+    const response = await cohereClient.chat({
+      model: 'command-a-03-2025',
+      messages: [
+        {
+          role: 'system',
+          content: `Você é um nutricionista. Analise o alimento descrito pelo usuário e RETORNE APENAS um JSON válido neste formato exato, sem texto extra:
 {"foodName":"string","calories":number,"protein":number,"carbs":number,"fat":number}`,
-          },
-          { role: 'user', content: `Analise: "${desc}"` },
-        ],
-        model: 'llama-3.1-8b-instant',
-        temperature: 0.3,
-        max_tokens: 300,
-        response_format: { type: 'json_object' },
-      }),
+        },
+        { role: 'user', content: `Analise o alimento: "${desc}" e retorne apenas o JSON.` },
+      ],
     });
-    const data = await response.json();
-    const parsed = JSON.parse(data.choices[0].message.content);
+
+    let generatedText = '';
+
+    if (response.message?.content) {
+      if (typeof response.message.content === 'string') {
+        generatedText = response.message.content;
+      } else if (Array.isArray(response.message.content)) {
+        generatedText = response.message.content
+          .map(part => {
+            if (part && typeof part === 'object' && 'text' in part) {
+              return part.text;
+            }
+            return '';
+          })
+          .filter(text => text !== '')
+          .join('\n');
+      }
+    }
+
+    if (!generatedText) {
+      throw new Error('Empty response from Cohere');
+    }
+
+    const parsed = JSON.parse(generatedText);
+
     return {
       foodName: parsed.foodName || desc,
       calories: parsed.calories || 0,
@@ -227,7 +253,7 @@ const CalorieCounter: React.FC = () => {
     setLoading(true);
     try {
       let foodData: FoodAnalysis;
-      try { foodData = await analyzeFoodWithGroq(foodInput); }
+      try { foodData = await analyzeFoodWithCohere(foodInput); }
       catch { foodData = analyzeFoodFallback(foodInput); }
 
       const newMeal: Meal = {
@@ -281,19 +307,24 @@ const CalorieCounter: React.FC = () => {
       style={[s.root, { backgroundColor: bg }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor="transparent"
-        translucent
-      />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+        <View style={{ flex: 1 }}>
+          <StatusBar
+            barStyle={isDark ? 'light-content' : 'dark-content'}
+            backgroundColor="transparent"
+            translucent
+          />
 
-      <ScrollView
-        contentContainerStyle={[
-          s.scroll,
-          { paddingTop: insets.top, paddingBottom: insets.bottom + 32 },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
+          <ScrollView
+            contentContainerStyle={[
+              s.scroll,
+              { paddingTop: insets.top, paddingBottom: insets.bottom + 32 },
+            ]}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="always"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          >
+            
         {/* ── Header ── */}
         <View style={[s.header, { backgroundColor: surface }]}>
           <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
@@ -505,67 +536,85 @@ const CalorieCounter: React.FC = () => {
               ))}
             </View>
           )}
-        </View>
-      </ScrollView>
+            </View>
+          </ScrollView>
 
       {/* ── Settings Modal ── */}
       <Modal visible={settingsVisible} animationType="slide" transparent>
-        <View style={s.modalOverlay}>
-          <View style={[s.modalSheet, { backgroundColor: surface, paddingBottom: insets.bottom + 16 }]}>
-            {/* Handle */}
-            <View style={[s.handle, { backgroundColor: theme.colors.outline + '50' }]} />
+        <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setSettingsVisible(false); }}>
+          <View style={s.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={
+                  Platform.OS === 'ios'
+                    ? insets.bottom + (focusedGoalIndex !== null ? (focusedGoalIndex + 1) * 40 : 0)
+                    : 0
+                }
+                style={s.modalSheetWrapper}
+              >
+              <View style={[s.modalSheet, { backgroundColor: surface, paddingBottom: insets.bottom + 16 }]}>
+                {/* Handle */}
+                <View style={[s.handle, { backgroundColor: theme.colors.outline + '50' }]} />
 
-            <Text style={[s.modalTitle, { color: theme.colors.onSurface }]}>Metas Diárias</Text>
+                <Text style={[s.modalTitle, { color: theme.colors.onSurface }]}>Metas Diárias</Text>
 
-            {([
-              { key: 'calories', label: t('caloriesKcal', { ns: 'common' }), unit: 'kcal' },
-              { key: 'protein', label: t('proteinGrams', { ns: 'common' }), unit: 'g' },
-              { key: 'carbs', label: t('carbsGrams', { ns: 'common' }), unit: 'g' },
-            ] as { key: keyof DailyGoals; label: string; unit: string }[]).map(({ key, label, unit }) => (
-              <View key={key} style={s.settingRow}>
-                <Text style={[s.settingLabel, { color: theme.colors.onSurface }]}>{label}</Text>
-                <View style={s.settingInputWrap}>
-                  <TextInput
-                    style={[
-                      s.settingInput,
-                      {
-                        backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
-                        borderColor: theme.colors.outline + '50',
-                        color: theme.colors.onSurface,
-                      },
-                    ]}
-                    value={tempGoals[key].toString()}
-                    onChangeText={text =>
-                      setTempGoals(prev => ({ ...prev, [key]: parseInt(text) || 0 }))
-                    }
-                    keyboardType="numeric"
-                  />
-                  <Text style={[s.settingUnit, { color: theme.colors.onSurfaceVariant }]}>{unit}</Text>
+                {([
+                  { key: 'calories', label: t('caloriesKcal', { ns: 'common' }), unit: 'kcal' },
+                  { key: 'protein', label: t('proteinGrams', { ns: 'common' }), unit: 'g' },
+                  { key: 'carbs', label: t('carbsGrams', { ns: 'common' }), unit: 'g' },
+                ] as { key: keyof DailyGoals; label: string; unit: string }[]).map(({ key, label, unit }, index) => (
+                  <View key={key} style={s.settingRow}>
+                    <Text style={[s.settingLabel, { color: theme.colors.onSurface }]}>{label}</Text>
+                    <View style={s.settingInputWrap}>
+                      <TextInput
+                        style={[
+                          s.settingInput,
+                          {
+                            backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
+                            borderColor: theme.colors.outline + '50',
+                            color: theme.colors.onSurface,
+                          },
+                        ]}
+                        value={tempGoals[key].toString()}
+                        onChangeText={text =>
+                          setTempGoals(prev => ({ ...prev, [key]: parseInt(text) || 0 }))
+                        }
+                        keyboardType="numeric"
+                        onFocus={() => setFocusedGoalIndex(index)}
+                        onBlur={() => setFocusedGoalIndex(null)}
+                      />
+                      <Text style={[s.settingUnit, { color: theme.colors.onSurfaceVariant }]}>{unit}</Text>
+                    </View>
+                  </View>
+                ))}
+
+                <View style={s.modalBtns}>
+                  <TouchableOpacity
+                    style={[s.modalBtn, { backgroundColor: theme.colors.surfaceVariant }]}
+                    onPress={() => setSettingsVisible(false)}
+                  >
+                    <Text style={[s.modalBtnLabel, { color: theme.colors.onSurfaceVariant }]}>
+                      {t('cancelSettings', { ns: 'common' })}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.modalBtn, { backgroundColor: primary, flex: 1.4 }]}
+                    onPress={() => { saveGoals(tempGoals); setSettingsVisible(false); }}
+                  >
+                    <Text style={[s.modalBtnLabel, { color: '#fff' }]}>
+                      {t('saveSettings', { ns: 'common' })}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
-            ))}
-
-            <View style={s.modalBtns}>
-              <TouchableOpacity
-                style={[s.modalBtn, { backgroundColor: theme.colors.surfaceVariant }]}
-                onPress={() => setSettingsVisible(false)}
-              >
-                <Text style={[s.modalBtnLabel, { color: theme.colors.onSurfaceVariant }]}>
-                  {t('cancelSettings', { ns: 'common' })}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[s.modalBtn, { backgroundColor: primary, flex: 1.4 }]}
-                onPress={() => { saveGoals(tempGoals); setSettingsVisible(false); }}
-              >
-                <Text style={[s.modalBtnLabel, { color: '#fff' }]}>
-                  {t('saveSettings', { ns: 'common' })}
-                </Text>
-              </TouchableOpacity>
-            </View>
+              </KeyboardAvoidingView>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
+        </View>
+      </TouchableWithoutFeedback>
     </KeyboardAvoidingView>
   );
 };
@@ -682,6 +731,9 @@ const s = StyleSheet.create({
 
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheetWrapper: {
+    justifyContent: 'flex-end',
+  },
   modalSheet: {
     borderTopLeftRadius: 28, borderTopRightRadius: 28,
     paddingHorizontal: 24, paddingTop: 12,

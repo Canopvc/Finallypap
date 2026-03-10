@@ -25,6 +25,7 @@ import Constants from 'expo-constants';
 //import { COHERE_API_KEY } from '@env';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import { COHERE_API_KEY } from '@env';
 // ⭐️ COHERE API
 const WORKOUTS_STORAGE_KEY = 'workouts';
 
