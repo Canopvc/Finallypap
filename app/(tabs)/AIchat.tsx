@@ -126,6 +126,7 @@ export default function FitnessAIChat() {
     }
   };
 
+
   const extractSingleWorkout = (block: string, fullText: string): Workout | null => {
     const exercises: Exercise[] = [];
     let workoutName = 'Treino Gerado pela IA';
@@ -251,6 +252,7 @@ export default function FitnessAIChat() {
       Alert.alert('Erro', 'Por favor, insira um texto.');
       return;
     }
+    console.log('extra.cohereApiKey:', Constants.expoConfig?.extra?.cohereApiKey);
 
     const userMessage: MessageType = {
       text: prompt,
@@ -345,7 +347,7 @@ ALWAYS PUT THE WORKOUT NAMES AS THEY ARE, THE LEG WORKOUT IS LEG DAY, THE UPPER 
 ALWAYS USE THE MOST SIMPLE NAMES OF THE EXERCISES, USE SIMPLE AND USEFULL LANGUAGE
 → Always use short, clear and standard exercise names. Avoid complex or fancy terms.
 
-Respond in the same language as the user's query.`
+Respond in the same language as the user's query. `
           },
           {
             role: 'user',

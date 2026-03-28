@@ -4,11 +4,12 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, AppState, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, Vibration, View } from 'react-native';
 import { useTheme } from 'react-native-paper';
-import { ChevronLeft, Play, Pause, Check, Trophy, Flame, Timer, Target, Weight, Volume2, VolumeX } from 'lucide-react-native';
+import { ChevronLeft, Play, Pause, Check, Trophy, Flame, Timer, Target, Weight, Volume2, VolumeX, Heart, Activity } from 'lucide-react-native';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '../../../lib/supabase';
 
-// Types mirrored from detail screen
+import HeartRateMonitor from '../../../components/heartRateMonitor';
+
 type Exercise = {
   id: string;
   name: string;
@@ -30,12 +31,10 @@ type Workout = {
 
 const STORAGE_KEY = 'workouts';
 const ALARM_SETTINGS_KEY = 'alarmSettings';
+const DEFAULT_REST_SECONDS = 90;
+
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
 const workoutSlugFromFields = (name: string, createdAt: string) => `${slugify(name)}-${new Date(createdAt).getTime()}`;
-
-
-
-
 
 const raresound = require('../../../assets/Trumpsinging.mp3');
 
@@ -76,9 +75,10 @@ interface RestToggleProps {
   onPress: () => void;
   theme: any;
 }
+
 const RestToggleButton: React.FC<RestToggleProps> = ({
   resting,
-  restRemaining,
+  restRemaining: _restRemaining,
   onPress,
   theme,
 }) => (
@@ -103,34 +103,37 @@ const RestToggleButton: React.FC<RestToggleProps> = ({
   </TouchableOpacity>
 );
 
-
-
 export default function StartWorkoutScreen() {
   const DEBUG_FORCE_EASTER_EGG = false;
 
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const theme = useTheme();
+
   const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
-  const [restStartTime, setRestStartTime] = useState<number | null>(null);
-  const [initialRestSeconds, setInitialRestSeconds] = useState(0);
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [loading, setLoading] = useState(true);
 
   const [elapsed, setElapsed] = useState(0);
   const [running, setRunning] = useState(true);
 
-  const [defaultRest, setDefaultRest] = useState(90);
   const [restRemaining, setRestRemaining] = useState(0);
   const [resting, setResting] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showSoundTooltip, setShowSoundTooltip] = useState(false);
   const [showRestMenu, setShowRestMenu] = useState(false);
   const [restPaused, setRestPaused] = useState(false);
+  const [heartRateAlerts, setHeartRateAlerts] = useState<boolean>(true);
 
+  // Heart Rate States
+  const [currentBPM, setCurrentBPM] = useState<number>(0);
+  const [showHeartRateMonitor, setShowHeartRateMonitor] = useState<boolean>(false);
+  const [heartRateHistory, setHeartRateHistory] = useState<{ bpm: number; timestamp: number }[]>([]);
 
-  
-  
+  const [completed, setCompleted] = useState<Record<number, Record<number, boolean>>>({});
+  const [sessionWeights, setSessionWeights] = useState<Record<number, Record<number, string>>>({});
+  const [sessionReps, setSessionReps] = useState<Record<number, Record<number, string>>>({});
+
   // Configurar notificações
   useEffect(() => {
     Notifications.setNotificationHandler({
@@ -157,81 +160,57 @@ export default function StartWorkoutScreen() {
     checkFirstTime();
   }, []);
 
-
-
-  // Função para tocar alarme do dispositivo
   const playDeviceAlarm = async () => {
     try {
-      console.log("📱 Tocando alarme do dispositivo...");
-
-      // Solicitar permissões para notificações
       const { status } = await Notifications.requestPermissionsAsync();
       if (status !== 'granted') {
-        console.log("❌ Permissão de notificações não concedida");
         throw new Error('Notification permission not granted');
       }
 
-      // Criar uma notificação com som padrão
       await Notifications.scheduleNotificationAsync({
         content: {
           title: "⏰ Rest Time Complete!",
           body: "Time to start your next set! 💪",
-          sound: 'default', // Usa o som padrão do dispositivo
+          sound: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
           data: { type: 'workout_timer' },
         },
-        trigger: null, // Imediato
+        trigger: null,
       });
 
-      // Vibrar também
       Vibration.vibrate([0, 1000, 500, 1000]);
-
     } catch (e) {
       console.error('❌ Failed to play device alarm', e);
       throw e;
     }
   };
 
-  // Função para tocar alarme da aplicação
-  const playAppAlarm = async () => {
+  const playAppAlarm = useCallback(async () => {
     try {
-      console.log("📱 Tocando alarme da aplicação...");
-
       const isEasterEgg = DEBUG_FORCE_EASTER_EGG || Math.floor(Math.random() * 7000) === 0;
-      console.log("🎲 Easter egg?", isEasterEgg);
 
       const soundFile = isEasterEgg
         ? raresound
         : require('../../../assets/hold-up-tiktok.mp3');
 
-      console.log("📁 Carregando arquivo:", soundFile);
-
-      const { sound } = await Audio.Sound.createAsync(
-        require('../../../assets/hold-up-tiktok.mp3')
-      );
-
-      console.log("▶️ Reproduzindo som...");
+      const { sound } = await Audio.Sound.createAsync(soundFile);
       await sound.playAsync();
 
-      // Vibrar também
       Vibration.vibrate([0, 1000, 500, 1000]);
 
-      // Parar após 5 segundos
       setTimeout(async () => {
-        console.log("⏹️ Parando som...");
         await sound.stopAsync();
         await sound.unloadAsync();
       }, 5000);
-
     } catch (e) {
       console.error('❌ Failed to play app alarm', e);
       throw e;
     }
-  };
+  }, [DEBUG_FORCE_EASTER_EGG]);
 
-  const playAlarm = useCallback(async (soundEnabled: boolean) => {
+  const playAlarm = useCallback(async (isSoundEnabled: boolean) => {
     try {
-      if (!soundEnabled) {
+      if (!isSoundEnabled) {
         Vibration.vibrate([500, 500, 500]);
         return;
       }
@@ -250,74 +229,90 @@ export default function StartWorkoutScreen() {
       console.error('❌ Failed to play alarm', e);
       Vibration.vibrate([0, 1000, 500, 1000, 500, 1000]);
     }
+  }, [playAppAlarm]);
+
+  const startRest = useCallback((secs?: number) => {
+    const restSeconds = secs ?? DEFAULT_REST_SECONDS;
+    setRestRemaining(restSeconds);
+    setRestPaused(false);
+    setResting(true);
   }, []);
 
-  const [completed, setCompleted] = useState<Record<number, Record<number, boolean>>>({});
-  const [sessionWeights, setSessionWeights] = useState<Record<number, Record<number, string>>>({});
-  const [sessionReps, setSessionReps] = useState<Record<number, Record<number, string>>>({});
+  const stopRest = useCallback(() => {
+    setResting(false);
+    setRestPaused(false);
+    setRestRemaining(0);
+  }, []);
+
+  // Monitorar frequência cardíaca para alertas
+  useEffect(() => {
+    if (currentBPM > 0) {
+      setHeartRateHistory(prev => [...prev.slice(-50), { bpm: currentBPM, timestamp: Date.now() }]);
+
+      if (heartRateAlerts && currentBPM > 180 && !resting) {
+        Alert.alert(
+          '⚠️ Frequência Cardíaca Alta',
+          'Sua frequência cardíaca está muito alta. Considere fazer uma pausa.',
+          [
+            { text: 'Ignorar', style: 'cancel' },
+            { text: 'Fazer Pausa', onPress: () => startRest(60) }
+          ]
+        );
+      }
+    }
+  }, [currentBPM, resting, heartRateAlerts, startRest]);
 
   const loadWorkout = useCallback(async () => {
     try {
       setLoading(true);
-      
-      // 1. Primeiro tentar buscar no AsyncStorage
+
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const parsed: Workout[] = raw ? JSON.parse(raw) : [];
       let found = parsed.find(w => workoutSlugFromFields(w.name, w.createdAt) === slug);
-      
-      if (found) {
-        // Encontrado no AsyncStorage
-        setWorkout(found);
-      } else {
-        // 2. Se não encontrou no AsyncStorage, buscar na DB
-        console.log('Workout não encontrado localmente, buscando na DB...');
+
+      if (!found) {
         try {
           const userResp = await supabase.auth.getUser();
           const userId = userResp.data.user?.id;
-          
+
           if (!userId) {
             Alert.alert('Not found', 'Workout not found and user not authenticated.');
             router.back();
             return;
           }
-          
+
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
           const isUuid = uuidRegex.test(userId);
-          
-          // Buscar todos os workouts do utilizador
+
           let query = supabase
             .from('workouts')
             .select('*')
             .order('created_at', { ascending: false });
-          
+
           if (isUuid) {
             query = query.eq('user_uuid', userId);
           } else {
             query = query.eq('user_id', userId);
           }
-          
+
           const { data, error } = await query;
-          
+
           if (error) {
-            console.error('Erro ao buscar workouts da DB:', error);
             Alert.alert('Error', 'Failed to load workout from database.');
             router.back();
             return;
           }
-          
+
           if (data && data.length > 0) {
-            // Converter workouts da DB para o formato local
             const dbWorkouts: Workout[] = data.map((w: any) => ({
               name: w.name,
               createdAt: w.created_at || w.createdAt,
               exercises: w.exercises || [],
             }));
-            
-            // Procurar pelo slug nos workouts da DB
+
             found = dbWorkouts.find(w => workoutSlugFromFields(w.name, w.createdAt) === slug);
-            
+
             if (found) {
-              console.log('Workout encontrado na DB!');
               setWorkout(found);
             } else {
               Alert.alert('Not found', 'Workout not found.');
@@ -335,15 +330,16 @@ export default function StartWorkoutScreen() {
           router.back();
           return;
         }
+      } else {
+        setWorkout(found);
       }
-      
+
       if (!found) {
         Alert.alert('Not found', 'Workout not found.');
         router.back();
         return;
       }
 
-      // Initialize session data (para workouts encontrados tanto localmente quanto na DB)
       const w: Record<number, Record<number, string>> = {};
       const r: Record<number, Record<number, string>> = {};
       const c: Record<number, Record<number, boolean>> = {};
@@ -371,17 +367,15 @@ export default function StartWorkoutScreen() {
         if (savedStartTime) {
           const startTime = parseInt(savedStartTime, 10);
           setWorkoutStartTime(startTime);
-          // Calculate elapsed time from saved start time
           const now = Date.now();
-          const elapsedSeconds = Math.floor((now - startTime) / 1000);
-          setElapsed(elapsedSeconds);
+          setElapsed(Math.floor((now - startTime) / 1000));
         }
       } catch (e) {
         console.error('Error loading workout start time:', e);
       }
       setLoading(false);
     }
-  }, [slug]);
+  }, [slug, router]);
 
   useEffect(() => {
     loadWorkout();
@@ -393,7 +387,7 @@ export default function StartWorkoutScreen() {
         const start = Date.now();
         setWorkoutStartTime(start);
         try {
-          await AsyncStorage.setItem('@workout_start_${slug}', start.toString());
+          await AsyncStorage.setItem(`@workout_start_${slug}`, start.toString());
         } catch (e) {
           console.error('Error saving workout start time:', e);
         }
@@ -407,13 +401,10 @@ export default function StartWorkoutScreen() {
 
     const calculateElapsed = () => {
       const now = Date.now();
-      const elapsedSeconds = Math.floor((now - workoutStartTime) / 1000);
-      setElapsed(elapsedSeconds);
+      setElapsed(Math.floor((now - workoutStartTime) / 1000));
     };
 
     calculateElapsed();
-
-
     const id = setInterval(calculateElapsed, 1000);
     return () => clearInterval(id);
   }, [running, workoutStartTime]);
@@ -422,18 +413,11 @@ export default function StartWorkoutScreen() {
     const subscription = AppState.addEventListener('change', (nextAppState) => {
       if (nextAppState === 'active' && running && workoutStartTime) {
         const now = Date.now();
-        const elapsedSeconds = Math.floor((now - workoutStartTime) / 1000);
-        setElapsed(elapsedSeconds);
+        setElapsed(Math.floor((now - workoutStartTime) / 1000));
       }
     });
     return () => subscription.remove();
   }, [running, workoutStartTime]);
-
-  useEffect(() => {
-    if (!running) return;
-    const id = setInterval(() => setElapsed((t) => t + 1), 1000);
-    return () => clearInterval(id);
-  }, [running]);
 
   useEffect(() => {
     if (!resting || restPaused) return;
@@ -450,7 +434,7 @@ export default function StartWorkoutScreen() {
     }, 1000);
 
     return () => clearInterval(id);
-  }, [resting, restPaused, restRemaining, soundEnabled]);
+  }, [resting, restPaused, restRemaining, soundEnabled, playAlarm]);
 
   const togglePause = () => {
     setRunning((p) => {
@@ -467,32 +451,17 @@ export default function StartWorkoutScreen() {
     });
   };
 
-  const startRest = (secs?: number) => {
-    const restSeconds = secs ?? defaultRest;
-    setRestRemaining(restSeconds);
-    setInitialRestSeconds(restSeconds);
-    setRestStartTime(Date.now());
-    setRestPaused(false);
-    setResting(true);
-  };
-
-  const stopRest = () => {
-    setResting(false);
-    setRestPaused(false);
-    setRestRemaining(0);
-  };
-
-
   const markSetDone = (ei: number, si: number) => {
+    const afterToggleIsDone = !(completed?.[ei]?.[si]);
+
     setCompleted((prev) => ({
       ...prev,
       [ei]: {
         ...(prev[ei] || {}),
-        [si]: !prev?.[ei]?.[si]
+        [si]: afterToggleIsDone,
       },
     }));
 
-    const afterToggleIsDone = !(completed?.[ei]?.[si]);
     if (afterToggleIsDone) {
       startRest();
     }
@@ -502,33 +471,45 @@ export default function StartWorkoutScreen() {
     setRunning(false);
     stopRest();
 
-    // Save workout progress
     try {
-      const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      const workouts: Workout[] = raw ? JSON.parse(raw) : [];
-      const workoutIndex = workouts.findIndex(w =>
-        workoutSlugFromFields(w.name, w.createdAt) === slug
-      );
+      const workoutData = {
+        completedAt: new Date().toISOString(),
+        duration: elapsed,
+        exercises: workout?.exercises.map((ex, ei) => ({
+          ...ex,
+          sets: Array.from({ length: ex.sets }).map((_, si) => ({
+            completed: completed[ei]?.[si] || false,
+            weight: sessionWeights[ei]?.[si] || ex.weight?.toString() || '',
+            reps: sessionReps[ei]?.[si] || ex.reps?.toString() || ''
+          }))
+        })),
+        heartRateData: {
+          average: heartRateHistory.length > 0
+            ? Math.round(heartRateHistory.reduce((acc, curr) => acc + curr.bpm, 0) / heartRateHistory.length)
+            : 0,
+          max: heartRateHistory.length > 0
+            ? Math.max(...heartRateHistory.map(h => h.bpm))
+            : 0,
+          min: heartRateHistory.length > 0
+            ? Math.min(...heartRateHistory.map(h => h.bpm))
+            : 0,
+          history: heartRateHistory
+        }
+      };
 
-      if (workoutIndex !== -1) {
-        // Update the workout with session data if needed
-        const updatedWorkout = { ...workouts[workoutIndex] };
-        workouts[workoutIndex] = updatedWorkout;
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(workouts));
-      }
+      await AsyncStorage.setItem(`@workout_completed_${slug}`, JSON.stringify(workoutData));
     } catch (error) {
       console.error('Error saving workout progress:', error);
     }
 
+    const avgBPM = heartRateHistory.length > 0
+      ? Math.round(heartRateHistory.reduce((acc, curr) => acc + curr.bpm, 0) / heartRateHistory.length)
+      : 0;
+
     Alert.alert(
       'Workout Completed!',
-      `Great job! You finished in ${formatTime(elapsed)}.`,
-      [
-        {
-          text: 'Back to Details',
-          onPress: () => router.back()
-        }
-      ]
+      `Great job! You finished in ${formatTime(elapsed)}.${heartRateHistory.length > 0 ? `\nAvg Heart Rate: ${avgBPM} BPM` : ''}`,
+      [{ text: 'Back to Details', onPress: () => router.back() }]
     );
   };
 
@@ -538,6 +519,16 @@ export default function StartWorkoutScreen() {
   );
   const progressPercentage = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
   const allSetsCompleted = completedSets === totalSets && totalSets > 0;
+
+  const getHeartRateZone = () => {
+    if (currentBPM < 60) return { name: 'Repouso', color: '#3b82f6' };
+    if (currentBPM < 100) return { name: 'Aquecimento', color: '#22c55e' };
+    if (currentBPM < 140) return { name: 'Queima de Gordura', color: '#eab308' };
+    if (currentBPM < 170) return { name: 'Aeróbico', color: '#f97316' };
+    return { name: 'Anaerobic', color: '#ef4444' };
+  };
+
+  const heartZone = getHeartRateZone();
 
   if (loading || !workout) {
     return (
@@ -549,7 +540,6 @@ export default function StartWorkoutScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.colors.surface }]}>
         <View style={styles.headerContent}>
@@ -565,6 +555,24 @@ export default function StartWorkoutScreen() {
             </TouchableOpacity>
 
             <View style={styles.headerRightActions}>
+              {/* Heart Rate Toggle */}
+              <TouchableOpacity
+                onPress={() => setShowHeartRateMonitor(!showHeartRateMonitor)}
+                style={[
+                  styles.heartRateToggle,
+                  {
+                    backgroundColor: showHeartRateMonitor ? theme.colors.primary + '15' : theme.colors.surfaceVariant,
+                    borderColor: showHeartRateMonitor ? theme.colors.primary : theme.colors.outline
+                  }
+                ]}
+              >
+                <Heart
+                  size={18}
+                  color={showHeartRateMonitor ? theme.colors.primary : theme.colors.onSurfaceVariant}
+                  fill={showHeartRateMonitor ? theme.colors.primary : 'transparent'}
+                />
+              </TouchableOpacity>
+
               <View style={styles.soundToggleContainer}>
                 <SoundToggleButton
                   soundEnabled={soundEnabled}
@@ -572,16 +580,14 @@ export default function StartWorkoutScreen() {
                   theme={theme}
                 />
 
-
-
                 {showSoundTooltip && (
                   <View style={[styles.tooltip, { backgroundColor: theme.colors.primary }]}>
+                    <Text style={styles.tooltipText}>Toque para ativar/desativar som</Text>
                   </View>
                 )}
               </View>
 
               <View style={styles.headerRightActions}>
-
                 <RestToggleButton
                   resting={resting}
                   restRemaining={restRemaining}
@@ -596,10 +602,7 @@ export default function StartWorkoutScreen() {
                 />
 
                 {showRestMenu && !resting && (
-                  <View style={[
-                    styles.restDropdown,
-                    { backgroundColor: theme.colors.surface }
-                  ]}>
+                  <View style={[styles.restDropdown, { backgroundColor: theme.colors.surface }]}>
                     {[30, 60, 90, 120].map(seconds => (
                       <TouchableOpacity
                         key={seconds}
@@ -609,21 +612,13 @@ export default function StartWorkoutScreen() {
                           startRest(seconds);
                         }}
                       >
-                        <Text style={[
-                          styles.restOptionText,
-                          { color: theme.colors.onSurface }
-                        ]}>
+                        <Text style={[styles.restOptionText, { color: theme.colors.onSurface }]}>
                           {seconds}s
                         </Text>
                       </TouchableOpacity>
                     ))}
                   </View>
                 )}
-
-
-
-
-
               </View>
 
               <TouchableOpacity
@@ -633,16 +628,12 @@ export default function StartWorkoutScreen() {
                 {running ? (
                   <>
                     <Pause size={16} color={theme.colors.primary} />
-                    <Text style={[styles.pauseText, { color: theme.colors.primary }]}>
-                      Pause
-                    </Text>
+                    <Text style={[styles.pauseText, { color: theme.colors.primary }]}>Pause</Text>
                   </>
                 ) : (
                   <>
                     <Play size={16} color={theme.colors.primary} />
-                    <Text style={[styles.pauseText, { color: theme.colors.primary }]}>
-                      Resume
-                    </Text>
+                    <Text style={[styles.pauseText, { color: theme.colors.primary }]}>Resume</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -656,19 +647,13 @@ export default function StartWorkoutScreen() {
               </Text>
 
               <View style={styles.timerRow}>
-
-                {/* Timer principal */}
-                <View style={[
-                  styles.timerBadge,
-                  { backgroundColor: theme.colors.primaryContainer }
-                ]}>
+                <View style={[styles.timerBadge, { backgroundColor: theme.colors.primaryContainer }]}>
                   <Timer size={16} color={theme.colors.onPrimaryContainer} />
                   <Text style={[styles.timerText, { color: theme.colors.onPrimaryContainer }]}>
                     {formatTime(elapsed)}
                   </Text>
                 </View>
 
-                {/* Mini Rest Timer */}
                 {resting && (
                   <TouchableOpacity
                     onPress={() => setRestPaused(p => !p)}
@@ -686,22 +671,14 @@ export default function StartWorkoutScreen() {
                     ) : (
                       <Timer size={14} color={theme.colors.onSecondaryContainer} />
                     )}
-
-                    <Text
-                      style={[
-                        styles.miniRestText,
-                        {
-                          color: restPaused
-                            ? theme.colors.onErrorContainer
-                            : theme.colors.onSecondaryContainer
-                        }
-                      ]}
-                    >
+                    <Text style={[
+                      styles.miniRestText,
+                      { color: restPaused ? theme.colors.onErrorContainer : theme.colors.onSecondaryContainer }
+                    ]}>
                       {formatTime(restRemaining)}
                     </Text>
                   </TouchableOpacity>
                 )}
-
               </View>
             </View>
 
@@ -718,6 +695,14 @@ export default function StartWorkoutScreen() {
                   ~{Math.round((elapsed / 60) * 8)} cal
                 </Text>
               </View>
+              {currentBPM > 0 && (
+                <View style={[styles.metaItem, styles.heartRateMeta]}>
+                  <Heart size={16} color={heartZone.color} fill={heartZone.color} />
+                  <Text style={[styles.metaText, { color: heartZone.color }]}>
+                    {currentBPM} BPM
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Progress Bar */}
@@ -726,10 +711,7 @@ export default function StartWorkoutScreen() {
                 <View
                   style={[
                     styles.progressFill,
-                    {
-                      width: `${progressPercentage}%`,
-                      backgroundColor: theme.colors.primary
-                    }
+                    { width: `${progressPercentage}%`, backgroundColor: theme.colors.primary }
                   ]}
                 />
               </View>
@@ -741,14 +723,33 @@ export default function StartWorkoutScreen() {
         </View>
       </View>
 
-      {/* Rest Timer Panel */}
+      {/* Heart Rate Monitor */}
+      {showHeartRateMonitor && (
+        <HeartRateMonitor
+          onHeartRateData={setCurrentBPM}
+          showStats={true}
+          showChart={true}
+        />
+      )}
 
+      {/* Heart Rate Mini Display (when monitor is hidden) */}
+      {!showHeartRateMonitor && currentBPM > 0 && (
+        <TouchableOpacity
+          onPress={() => setShowHeartRateMonitor(true)}
+          style={[styles.miniHeartRate, { backgroundColor: theme.colors.surface, borderColor: heartZone.color }]}
+        >
+          <Activity size={16} color={heartZone.color} />
+          <Text style={[styles.miniHeartRateText, { color: theme.colors.onSurface }]}>
+            {currentBPM} BPM
+          </Text>
+          <Text style={[styles.miniHeartRateZone, { color: heartZone.color }]}>
+            {heartZone.name}
+          </Text>
+        </TouchableOpacity>
+      )}
 
       {/* Exercises List */}
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {workout.exercises.map((ex, ei) => {
           const exerciseCompleted = Object.values(completed[ei] || {}).filter(Boolean).length === ex.sets;
           const completedSetsCount = Object.values(completed[ei] || {}).filter(Boolean).length;
@@ -861,9 +862,7 @@ export default function StartWorkoutScreen() {
                         </View>
                         <Text style={[
                           styles.setLabel,
-                          {
-                            color: isCompleted ? theme.colors.primary : theme.colors.onSurfaceVariant
-                          }
+                          { color: isCompleted ? theme.colors.primary : theme.colors.onSurfaceVariant }
                         ]}>
                           Set {si + 1}
                         </Text>
@@ -939,7 +938,7 @@ export default function StartWorkoutScreen() {
         <View style={[styles.completionBanner, { backgroundColor: '#22c55e' }]}>
           <Trophy size={20} color="#ffffff" />
           <Text style={styles.completionText}>
-            Amazing Work! You've completed all exercises! 🎉
+            Amazing Work! You&apos;ve completed all exercises! 🎉
           </Text>
         </View>
       )}
@@ -959,16 +958,12 @@ export default function StartWorkoutScreen() {
           {allSetsCompleted ? (
             <>
               <Trophy size={20} color="#ffffff" />
-              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>
-                Finish Workout
-              </Text>
+              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>Finish Workout</Text>
             </>
           ) : (
             <>
               <Check size={20} color="#ffffff" />
-              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>
-                Complete Workout
-              </Text>
+              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>Complete Workout</Text>
             </>
           )}
         </TouchableOpacity>
@@ -978,16 +973,8 @@ export default function StartWorkoutScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-
-  // Header
+  container: { flex: 1 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingTop: 60,
     paddingBottom: 20,
@@ -997,24 +984,24 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  headerContent: {
-    paddingHorizontal: 20,
-  },
+  headerContent: { paddingHorizontal: 20 },
   headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  headerRightActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  soundToggleContainer: {
-    position: 'relative',
-  },
+  headerRightActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  soundToggleContainer: { position: 'relative' },
   soundToggleButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  heartRateToggle: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -1031,11 +1018,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     zIndex: 1000,
   },
-  tooltipText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  tooltipText: { color: '#ffffff', fontSize: 12, fontWeight: '600' },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1043,10 +1026,7 @@ const styles = StyleSheet.create({
     padding: 8,
     marginLeft: -21,
   },
-  backButtonText: {
-    fontSize: 17,
-    fontWeight: '500',
-  },
+  backButtonText: { fontSize: 17, fontWeight: '500' },
   pauseButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1061,30 +1041,29 @@ const styles = StyleSheet.create({
     elevation: 2,
     margin: 10,
   },
-  pauseText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  headerInfo: {
-    gap: 16,
-  },
+  pauseText: { fontSize: 14, fontWeight: '600' },
+  headerInfo: { gap: 16 },
   workoutTitleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
   },
-  workoutTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    flex: 1,
-    marginRight: 12,
-  },
-  timerRow: {
+  workoutTitle: { fontSize: 28, fontWeight: '700', flex: 1, marginRight: 12 },
+  timerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  timerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
-
+  timerText: { fontSize: 14, fontWeight: '700' },
   miniRestBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1098,62 +1077,20 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-
-  miniRestText: {
-    fontSize: 12,
-    fontWeight: '700',
+  miniRestText: { fontSize: 12, fontWeight: '700' },
+  metaRow: { flexDirection: 'row', gap: 20, alignItems: 'center', flexWrap: 'wrap' },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaText: { fontSize: 14, fontWeight: '500' },
+  heartRateMeta: {
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
-
-  timerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-    marginRight: 12.9,
-  },
-  timerText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  metaRow: {
-    flexDirection: 'row',
-    gap: 20,
-    alignItems: 'center',
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  progressContainer: {
-    gap: 8,
-  },
-  progressBackground: {
-    height: 8,
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'right',
-  },
-
+  progressContainer: { gap: 8 },
+  progressBackground: { height: 8, borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 4 },
+  progressText: { fontSize: 12, fontWeight: '600', textAlign: 'right' },
   restDropdown: {
     position: 'absolute',
     top: 48,
@@ -1167,103 +1104,27 @@ const styles = StyleSheet.create({
     elevation: 6,
     zIndex: 2000,
   },
-
-  restOption: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-
-  restOptionText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-
-  // Rest Panel
-  restPanel: {
-    margin: 10,
-    padding: 17,
-    borderRadius: 16,
+  restOption: { paddingHorizontal: 16, paddingVertical: 10 },
+  restOptionText: { fontSize: 14, fontWeight: '600' },
+  miniHeartRate: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 12,
+    borderWidth: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  restHeader: {
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  restLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    opacity: 0.8,
-  },
-  restTime: {
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  restControls: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  restButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
-    minHeight: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  secondaryButton: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-  },
-  restButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  restAdjust: {
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  smallLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 6,
-    opacity: 0.7,
-  },
-  restQuickButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 8,
-  },
-  quickButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  quickButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  // Content
-  content: {
-    padding: 16,
-    paddingBottom: 100,
-  },
+  miniHeartRateText: { fontSize: 16, fontWeight: '700' },
+  miniHeartRateZone: { fontSize: 14, fontWeight: '600' },
+  content: { padding: 16, paddingBottom: 100 },
   card: {
     borderRadius: 16,
     padding: 20,
@@ -1280,12 +1141,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 16,
   },
-  exerciseHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    flex: 1,
-  },
+  exerciseHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1 },
   exerciseNumber: {
     width: 36,
     height: 36,
@@ -1298,28 +1154,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  exerciseNumberText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 16,
-  },
-  exerciseInfo: {
-    flex: 1,
-  },
-  exerciseTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: 6,
-  },
-  exerciseMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  exerciseMetaText: {
-    fontSize: 15,
-    fontWeight: '500',
-  },
+  exerciseNumberText: { color: '#ffffff', fontWeight: '700', fontSize: 16 },
+  exerciseInfo: { flex: 1 },
+  exerciseTitle: { fontSize: 20, fontWeight: '700', marginBottom: 6 },
+  exerciseMeta: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  exerciseMetaText: { fontSize: 15, fontWeight: '500' },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1328,10 +1167,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     borderRadius: 8,
   },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
+  badgeText: { fontSize: 12, fontWeight: '600' },
   completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1345,19 +1181,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  completedBadgeText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  // Flags
-  flagRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-    flexWrap: 'wrap',
-  },
+  completedBadgeText: { color: '#ffffff', fontSize: 12, fontWeight: '700' },
+  flagRow: { flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' },
   flag: {
     paddingHorizontal: 10,
     paddingVertical: 5,
@@ -1368,16 +1193,8 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
-  flagText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-
-  // Sets
-  setsGrid: {
-    gap: 12,
-  },
+  flagText: { color: '#ffffff', fontSize: 12, fontWeight: '700' },
+  setsGrid: { gap: 12 },
   setButton: {
     borderWidth: 2,
     borderRadius: 12,
@@ -1395,12 +1212,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  setContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
+  setContent: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
   setIndicator: {
     width: 24,
     height: 24,
@@ -1409,24 +1221,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  setLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-  },
-  setInputs: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  inputContainer: {
-    flex: 1,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 4,
-    marginLeft: 4,
-  },
+  setLabel: { fontSize: 16, fontWeight: '600', flex: 1 },
+  setInputs: { flexDirection: 'row', gap: 12 },
+  inputContainer: { flex: 1 },
+  inputLabel: { fontSize: 12, fontWeight: '500', marginBottom: 4, marginLeft: 4 },
   setInput: {
     borderWidth: 2,
     borderRadius: 8,
@@ -1436,8 +1234,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-
-  // Completion Banner
   completionBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1452,15 +1248,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  completionText: {
-    color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 16,
-    flex: 1,
-    textAlign: 'center',
-  },
-
-  // Footer
+  completionText: { color: '#ffffff', fontWeight: '700', fontSize: 16, flex: 1, textAlign: 'center' },
   footer: {
     padding: 20,
     paddingBottom: 34,
@@ -1483,9 +1271,5 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-  footerButtonText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#ffffff',
-  },
+  footerButtonText: { fontSize: 18, fontWeight: '700', color: '#ffffff' },
 });

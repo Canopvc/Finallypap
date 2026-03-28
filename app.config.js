@@ -32,6 +32,7 @@ export default {
     plugins: [
       "expo-router",
       "expo-dev-client",
+      "react-native-ble-plx",
       "expo-font",
       "expo-splash-screen",
       "expo-notifications",
