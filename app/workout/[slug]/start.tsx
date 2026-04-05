@@ -517,7 +517,7 @@ export default function StartWorkoutScreen() {
   const completedSets = Object.values(completed).reduce((acc, exercise) =>
     acc + Object.values(exercise).filter(Boolean).length, 0
   );
-  const progressPercentage = totalSets > 0 ? (completedSets / totalSets) * 100 : 0;
+  const progressPercentage = totalSets > 0 ? ((-55.0969)+(0.6309 * heartRateHistory.reduce((acc, curr) => acc + curr.bpm, 0))/heartRateHistory.length)/250*100 : 0;
   const allSetsCompleted = completedSets === totalSets && totalSets > 0;
 
   const getHeartRateZone = () => {
