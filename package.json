@@ -37,7 +37,6 @@
     "expo-localization": "~17.0.8",
     "expo-modules-core": "~3.0.18",
     "expo-notifications": "~0.32.15",
-    "expo-permissions": "^14.4.0",
     "expo-router": "~6.0.21",
     "expo-secure-store": "~15.0.8",
     "expo-sensors": "~15.0.8",

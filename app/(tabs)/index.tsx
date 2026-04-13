@@ -14,7 +14,6 @@ import {
   Dimensions,
   AppState,
   AppStateStatus,
-  AppRegistry,
 } from "react-native";
 import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -27,6 +26,7 @@ import Svg, { Path } from "react-native-svg";
 import { supabase } from "../../lib/supabase";
 import * as Haptics from "expo-haptics";
 import AnimatedList from "../../components/animatedList";
+import OnboardingScreen from "../../components/OnboardingScreen"; // ← ajusta o caminho se necessário
 
 LogBox.ignoreLogs(["expo-notifications"]);
 LogBox.ignoreLogs([
@@ -61,6 +61,9 @@ const LAST_RESET_KEY = "@last_reset_date";
 const STEP_SESSION_KEY = "@step_session_base";
 const STEP_SAVED_KEY = "@step_saved_at_start";
 
+// Chave para controlar se o onboarding já foi visto
+const ONBOARDING_KEY = "IsFirstLoaded";
+
 const slugify = (s: string) =>
   s
     .toLowerCase()
@@ -80,12 +83,14 @@ export default function HomeScreen() {
   const [isPedometerAvailable, setIsPedometerAvailable] = useState(false);
   const [progress, setProgress] = useState(0);
 
+  // ── Onboarding ─────────────────────────────────────────────────────────────
+  // Começa como false — só mostra depois de confirmar que é a primeira abertura
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // Lógica de delta para Android
-  // O sensor reinicia a cada sessão, então guardamos a base e o ponto de partida
   const sessionBaseRef = useRef<number | null>(null);
   const savedAtStartRef = useRef<number>(0);
   const pedometerSubRef = useRef<{ remove: () => void } | null>(null);
@@ -112,6 +117,35 @@ export default function HomeScreen() {
       }),
     ]).start();
   }, []);
+
+  // ─── Verificar primeira abertura → mostrar onboarding ─────────────────────
+
+  useEffect(() => {
+    async function checkFirstLoad() {
+      try {
+        const seen = await AsyncStorage.getItem(ONBOARDING_KEY);
+        if (!seen) {
+          // Ainda não viu o onboarding → mostra-o
+          setShowOnboarding(true);
+        }
+      } catch (e) {
+        console.error("checkFirstLoad:", e);
+      }
+    }
+    checkFirstLoad();
+  }, []);
+
+  // Chamado quando o utilizador termina ou salta o onboarding
+  const handleOnboardingDone = async () => {
+    try {
+      await AsyncStorage.setItem(ONBOARDING_KEY, "true");
+    } catch (e) {
+      console.error("handleOnboardingDone:", e);
+    }
+    setShowOnboarding(false);
+  };
+
+  // ─── Progress bar ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     setProgress(Math.min(1, currentStepCount / STEP_TARGET));
@@ -161,11 +195,7 @@ export default function HomeScreen() {
     }
     sessionBaseRef.current = null;
     savedAtStartRef.current = 0;
-    notificationsSentRef.current = {
-      half: false,
-      target: false,
-      double: false,
-    };
+    notificationsSentRef.current = { half: false, target: false, double: false };
     setCurrentStepCount(0);
     setProgress(0);
   };
@@ -193,17 +223,8 @@ export default function HomeScreen() {
   };
 
   // ─── Pedómetro ─────────────────────────────────────────────────────────────
-  //
-  // Estratégia delta:
-  //   total_hoje = savedAtStart + (sensorAgora - sessionBase)
-  //
-  // Quando a app fecha e reabre:
-  //   - savedAtStart = valor guardado no AsyncStorage
-  //   - sessionBase  = primeira leitura do sensor nesta sessão (começa do 0 no Android)
-  //   - delta        = 0 inicialmente, cresce conforme o utilizador anda
 
   const startPedometer = async (savedSteps: number) => {
-    // Remove subscrição anterior se existir
     pedometerSubRef.current?.remove();
     pedometerSubRef.current = null;
     sessionBaseRef.current = null;
@@ -220,7 +241,6 @@ export default function HomeScreen() {
         if (result?.steps === undefined) return;
         const sensorNow = result.steps;
 
-        // Novo dia com app aberta
         if (await isNewDay()) {
           await resetDailySteps();
           sessionBaseRef.current = sensorNow;
@@ -232,13 +252,11 @@ export default function HomeScreen() {
           return;
         }
 
-        // Primeira leitura desta sessão → define a base do sensor
         if (sessionBaseRef.current === null) {
           sessionBaseRef.current = sensorNow;
           await AsyncStorage.setItem(STEP_SESSION_KEY, sensorNow.toString());
         }
 
-        // Passos de hoje = base guardada + delta desta sessão
         const delta = Math.max(0, sensorNow - sessionBaseRef.current);
         const totalHoje = savedAtStartRef.current + delta;
 
@@ -270,17 +288,12 @@ export default function HomeScreen() {
       await startPedometer(0);
     } else {
       const stored = await loadStoredSteps();
-      setCurrentStepCount(stored); // mostra imediatamente o valor guardado
+      setCurrentStepCount(stored);
       await startPedometer(stored);
     }
   };
 
-  // ─── AppState: quando a app volta do background ────────────────────────────
-  //
-  // Quando o utilizador volta à app depois de a ter em background,
-  // relemos o AsyncStorage (que pode ter sido atualizado pela task de background
-  // ou simplesmente para garantir consistência) e reiniciamos o pedómetro
-  // com o valor mais recente.
+  // ─── AppState ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
     const subscription = AppState.addEventListener(
@@ -292,14 +305,12 @@ export default function HomeScreen() {
             await startPedometer(0);
             return;
           }
-          // Lê o valor mais recente guardado e reinicia o sensor a partir daí
           const stored = await loadStoredSteps();
           setCurrentStepCount(stored);
           await startPedometer(stored);
         }
       },
     );
-
     return () => subscription.remove();
   }, []);
 
@@ -462,8 +473,7 @@ export default function HomeScreen() {
       notificationsSentRef.current.double = true;
     }
     if (currentStepCount < half) notificationsSentRef.current.half = false;
-    if (currentStepCount < STEP_TARGET)
-      notificationsSentRef.current.target = false;
+    if (currentStepCount < STEP_TARGET) notificationsSentRef.current.target = false;
     if (currentStepCount < dbl) notificationsSentRef.current.double = false;
   };
 
@@ -498,6 +508,12 @@ export default function HomeScreen() {
     <View
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
+      {/* ── Onboarding Modal ──────────────────────────────────────────────── */}
+      <OnboardingScreen
+        isVisible={showOnboarding}
+        onDone={handleOnboardingDone}
+      />
+
       <Animated.ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -883,5 +899,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  fabText: { fontSize: 34, fontWeight: "300", paddingBottom: 3.7,},
+  fabText: { fontSize: 34, fontWeight: "300", paddingBottom: 3.7 },
 });
