@@ -26,11 +26,11 @@ import Svg, { Path } from "react-native-svg";
 import { supabase } from "../../lib/supabase";
 import * as Haptics from "expo-haptics";
 import AnimatedList from "../../components/animatedList";
-import OnboardingScreen from "../../components/OnboardingScreen"; // ← ajusta o caminho se necessário
+import OnboardingScreen from "@/components/onboardingscreen"; // ← ajusta o caminho se necessário
 
 LogBox.ignoreLogs(["expo-notifications"]);
 LogBox.ignoreLogs([
-  "VirtualizedLists should never be nested inside plain ScrollViews with tje same orientation",
+  "VirtualizedLists should never be nested inside plain ScrollViews with the same orientation",
 ]);
 
 type Exercise = {
@@ -85,7 +85,7 @@ export default function HomeScreen() {
 
   // ── Onboarding ─────────────────────────────────────────────────────────────
   // Começa como false — só mostra depois de confirmar que é a primeira abertura
-  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(true);
 
   const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -120,36 +120,22 @@ export default function HomeScreen() {
 
   // ─── Verificar primeira abertura → mostrar onboarding ─────────────────────
 
-  useEffect(() => {
-    async function checkFirstLoad() {
-      try {
-        const seen = await AsyncStorage.getItem(ONBOARDING_KEY);
-        if (!seen) {
-          // Ainda não viu o onboarding → mostra-o
-          setShowOnboarding(true);
-        }
-      } catch (e) {
-        console.error("checkFirstLoad:", e);
-      }
-    }
-    checkFirstLoad();
-  }, []);
+  
 
   // Chamado quando o utilizador termina ou salta o onboarding
-  const handleOnboardingDone = async () => {
-    try {
-      await AsyncStorage.setItem(ONBOARDING_KEY, "true");
-    } catch (e) {
-      console.error("handleOnboardingDone:", e);
-    }
-    setShowOnboarding(false);
-  };
+  
+    const handleOnboardingDone = () => {
+      setShowOnboarding(false);
+    };
+  
 
   // ─── Progress bar ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     setProgress(Math.min(1, currentStepCount / STEP_TARGET));
   }, [currentStepCount]);
+
+  
 
   // ─── Helpers de AsyncStorage ───────────────────────────────────────────────
 
@@ -509,10 +495,7 @@ export default function HomeScreen() {
       style={[styles.container, { backgroundColor: theme.colors.background }]}
     >
       {/* ── Onboarding Modal ──────────────────────────────────────────────── */}
-      <OnboardingScreen
-        isVisible={showOnboarding}
-        onDone={handleOnboardingDone}
-      />
+      
 
       <Animated.ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -560,6 +543,11 @@ export default function HomeScreen() {
             </Svg>
           </Pressable>
         </Animated.View>
+
+        <OnboardingScreen
+      isVisible={showOnboarding}
+      onDone={handleOnboardingDone}  // ✅ aqui chamas o handleOnboardingDone
+    />
 
         {/* ── Steps Card ──────────────────────────────────────────────── */}
         <Animated.View

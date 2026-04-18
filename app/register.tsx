@@ -85,7 +85,7 @@ export default function RegisterScreen() {
       console.log('Attempting to register...');
       if (password !== confirmpassword) {
         console.log('Passwords do not match:', { password, confirmpassword });
-        Alert.alert(t('error', { ns: 'common' }), 'Passwords do not match.');
+        Alert.alert(t('error', { ns: 'common' }), t('passwordsDoNotMatch', { ns: 'common' }));
         setLoading(false);
         return;
       }
@@ -103,7 +103,7 @@ export default function RegisterScreen() {
 
       if (authError) {
         console.log('Authentication error:', authError.message, authError);
-        Alert.alert('Error creating account', authError.message);
+        Alert.alert(t('error', { ns: 'common' }), authError.message);
         setLoading(false);
         return;
       }
@@ -124,17 +124,17 @@ export default function RegisterScreen() {
 
       if (dbError) {
         console.log('Error inserting into table:', dbError.message, dbError);
-        Alert.alert('Account created, but failed to save additional data.', dbError.message);
+        Alert.alert(t('error', { ns: 'common' }), dbError.message);
         setLoading(false);
         router.replace('/login');
         return;
       }
       console.log('Database insert successful:', dbData);
-      Alert.alert('Account created successfully!');
+      Alert.alert(t('success', { ns: 'common' }), t('accountCreatedSuccessfully', { ns: 'common' }));
       router.replace('/login');
     } catch (e) {
       console.log('Erro inesperado no registro:', e);
-      Alert.alert('Erro inesperado', String(e));
+      Alert.alert(t('error', { ns: 'common' }), String(e));
     } finally {
       setLoading(false);
     }
@@ -258,7 +258,7 @@ export default function RegisterScreen() {
                     style={styles.inputGradient}
                   >
                     <TextInput
-                      placeholder="Phone number"
+                      placeholder={t('phoneNumber', { ns: 'common' })}
                       placeholderTextColor={theme.colors.onSurfaceVariant + '80'}
                       style={[styles.input, { 
                         color: theme.colors.onSurface,
@@ -341,7 +341,7 @@ export default function RegisterScreen() {
 
               <TouchableOpacity onPress={() => router.replace('/login')} style={styles.footer}>
                 <Text style={[styles.footerText, { color: theme.colors.onSurface }]}>
-                  If you already have an account, Login
+                  {t('alreadyHaveAccountLogin', { ns: 'common' })}
                 </Text>
                 <View style={[styles.underline, { backgroundColor: theme.colors.primary + '80' }]} />
               </TouchableOpacity>

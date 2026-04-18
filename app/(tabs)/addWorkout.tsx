@@ -217,7 +217,7 @@ export default function AddWorkout() {
           >
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
-                Selecione um Exercício
+                {t('exerciseName', { ns: 'workouts' })}
               </Text>
               <View style={styles.modalHeaderButtons}>
                 <TouchableOpacity
@@ -231,7 +231,7 @@ export default function AddWorkout() {
                   ]}
                 >
                   <Text style={[styles.addToDbButtonText, { color: theme.colors.onPrimary }]}>
-                    + Novo
+                    + {t('add', { ns: 'common' })}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -252,13 +252,13 @@ export default function AddWorkout() {
               <View style={styles.loadingContainer}>
                 <ActivityIndicator size="large" color={theme.colors.primary} />
                 <Text style={{ color: theme.colors.onSurfaceVariant, marginTop: 10 }}>
-                  Carregando exercícios...
+                  {t('loading', { ns: 'common' })}
                 </Text>
               </View>
             ) : databaseExercises.length === 0 ? (
               <View style={styles.emptyContainer}>
                 <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 20 }}>
-                  Nenhum exercício encontrado no banco de dados.
+                  {t('noWorkoutsFound', { ns: 'common' })}
                 </Text>
                 <TouchableOpacity
                   onPress={() => {
@@ -268,7 +268,7 @@ export default function AddWorkout() {
                   style={[styles.emptyAddButton, { backgroundColor: theme.colors.primary }]}
                 >
                   <Text style={{ color: theme.colors.onPrimary, fontWeight: "600" }}>
-                    Adicionar Primeiro Exercício
+                    {t('addExercise', { ns: 'workouts' })}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -329,7 +329,7 @@ export default function AddWorkout() {
                       ]}
                     >
                       <Text style={{ color: theme.colors.primary, fontWeight: "600", fontSize: 13 }}>
-                        Selecionar
+                        {t('select', { ns: 'common' })}
                       </Text>
                     </TouchableOpacity>
                   </TouchableOpacity>
@@ -351,7 +351,7 @@ export default function AddWorkout() {
                     ]}
                   >
                     <Text style={{ color: theme.colors.onSurfaceVariant, fontWeight: "600" }}>
-                      + Adicionar Novo Exercício ao Banco
+                      + {t('addNewExercise', { ns: 'workouts' })}
                     </Text>
                   </TouchableOpacity>
                 }
@@ -366,7 +366,7 @@ export default function AddWorkout() {
 
   const validate = () => {
     if (!workoutName.trim()) {
-      Alert.alert(t("error", { ns: "common" }), "Por favor, insira um nome para o treino");
+      Alert.alert(t("error", { ns: "common" }), t("pleaseEnterWorkoutName", { ns: "workouts" }));
       return false;
     }
     
@@ -375,7 +375,7 @@ export default function AddWorkout() {
     );
     
     if (validExercises.length === 0) {
-      Alert.alert(t("error", { ns: "common" }), "Adicione pelo menos um exercício válido com nome e séries");
+      Alert.alert(t("error", { ns: "common" }), t("addValidExercise", { ns: "workouts" }));
       return false;
     }
     

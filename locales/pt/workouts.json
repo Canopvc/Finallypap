@@ -15,7 +15,7 @@
   "type": "Tipo",
   "calisthenics": "Calistenia",
   "cardio": "Cardio",
-  "weightlifting":"Musculação",
+  "weightlifting": "Musculação",
   "startWorkout": "Iniciar Treino",
   "finishWorkout": "Finalizar Treino",
   "saveWorkout": "Guardar Treino",
@@ -28,7 +28,7 @@
   "failure": "Falha",
   "warmup": "Aquecimento",
   "exampleWorkoutName": "ex: Dia de Peito",
-  "Bench Press" : "Supino",
+  "Bench Press": "Supino",
   "pleaseEnterWorkoutName": "Por favor, insira um nome para o treino",
   "addValidExercise": "Adicione pelo menos um exercício válido com nome e séries",
   "addNewExercise": "Adicionar Novo Exercício",
@@ -39,5 +39,6 @@
   "exerciseAddedToDatabase": "Exercício adicionado à base de dados!",
   "couldNotAddExercise": "Não foi possível adicionar o exercício.",
   "imageUrlOptional": "URL da Imagem (Opcional)",
-  "preview": "Pré-visualização"
+  "preview": "Pré-visualização",
+  "imageUrlExample": "https://exemplo.com/imagem.jpg"
 }

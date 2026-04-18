@@ -26,17 +26,36 @@ export default {
       },
       permissions: [
         "android.permission.ACTIVITY_RECOGNITION",
-        "android.permission.FOREGROUND_SERVICE"
-      ]
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.BLUETOOTH",
+        "android.permission.BLUETOOTH_ADMIN",
+        "android.permission.BLUETOOTH_SCAN",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      usesCleartextTraffic: true
     },
     plugins: [
       "expo-router",
       "expo-dev-client",
-      "react-native-ble-plx",
       "expo-font",
       "expo-splash-screen",
       "expo-notifications",
       "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          android: {
+            bridgelessEnabled: false
+          }
+        }
+      ],
       [
         "react-native-google-fit",
         {
@@ -56,7 +75,7 @@ export default {
       },
       // Variáveis de ambiente injetadas pelo EAS Build
       // Durante o build, o EAS substitui essas variáveis pelos valores dos secrets
-      cohereApiKey: process.env.COHERE_API_KEY || "DhmTjY26uuFSYHJHsFLxmM7KRpSX7srJasxahzeya",
+      gemini_api_key: process.env.GEMINI_API_KEY || "AQ.Ab8RN6JYDm4HqM-IjzCBYJOxQo7hfEvtbW_PFn2h86bpv5kcQA",
       supabaseUrl: process.env.SUPABASE_URL || "",
       supabaseAnonKey: process.env.SUPABASE_ANON_KEY || ""
     }

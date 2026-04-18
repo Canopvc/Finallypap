@@ -11,6 +11,7 @@ import { useTheme } from 'react-native-paper';
 import { Heart, Activity, Bluetooth, Zap, BluetoothOff } from 'lucide-react-native';
 import useHeartRate from '../hooks/useHeartRate';
 import { LineChart } from 'react-native-chart-kit';
+import { useTranslation } from '../hooks/useTranslation';
 
 interface HeartRateMonitorProps {
   onHeartRateData?: (bpm: number) => void;
@@ -24,6 +25,7 @@ export default function HeartRateMonitor({
   showChart = true
 }: HeartRateMonitorProps) {
   const theme = useTheme();
+  const { t } = useTranslation();
   const {
     bpm,
     isConnected,
@@ -120,13 +122,13 @@ export default function HeartRateMonitor({
             onPress={connect}
             style={[styles.connectButton, { backgroundColor: theme.colors.primary }]}
           >
-            <Text style={styles.connectButtonText}>Conectar</Text>
+            <Text style={styles.connectButtonText}>{t('connect', { ns: 'common' })}</Text>
           </TouchableOpacity>
         )}
 
         {isConnecting && (
           <View style={[styles.connectingBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
-            <Text style={{ color: theme.colors.onSurfaceVariant }}>A procurar...</Text>
+            <Text style={{ color: theme.colors.onSurfaceVariant }}>{t('loading', { ns: 'common' })}</Text>
           </View>
         )}
 
@@ -214,25 +216,25 @@ export default function HeartRateMonitor({
               <View style={[styles.statCard, { backgroundColor: theme.colors.surfaceVariant }]}>
                 <Activity size={20} color={theme.colors.primary} />
                 <Text style={[styles.statValue, { color: theme.colors.onSurface }]}>{stats.avg}</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Média</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>{t('average', { ns: 'common' })}</Text>
               </View>
 
               <View style={[styles.statCard, { backgroundColor: theme.colors.surfaceVariant }]}>
                 <Heart size={20} color="#ef4444" />
                 <Text style={[styles.statValue, { color: theme.colors.onSurface }]}>{stats.max}</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Máximo</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>{t('max', { ns: 'common' })}</Text>
               </View>
 
               <View style={[styles.statCard, { backgroundColor: theme.colors.surfaceVariant }]}>
                 <Heart size={20} color="#22c55e" />
                 <Text style={[styles.statValue, { color: theme.colors.onSurface }]}>{stats.min}</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Mínimo</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>{t('min', { ns: 'common' })}</Text>
               </View>
 
               <View style={[styles.statCard, { backgroundColor: theme.colors.surfaceVariant }]}>
                 <Zap size={20} color="#eab308" />
                 <Text style={[styles.statValue, { color: theme.colors.onSurface }]}>{stats.calories}</Text>
-                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>Calorias</Text>
+                <Text style={[styles.statLabel, { color: theme.colors.onSurfaceVariant }]}>{t('caloriesTab', { ns: 'common' })}</Text>
               </View>
             </View>
           )}

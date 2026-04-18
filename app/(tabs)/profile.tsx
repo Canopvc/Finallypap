@@ -153,14 +153,14 @@ export default function ProfileScreen() {
       const { data, error } = await supabase.auth.getUser();
       if (error) {
         console.error("Auth error:", error);
-        Alert.alert("Error", "Could not fetch user data.");
+        Alert.alert(t("error", { ns: "common" }), t("loadingProfile", { ns: "common" }));
         setBusy(false);
         return;
       }
 
       if (!data.user) {
         console.error("No user found");
-        Alert.alert("Error", "No user session found.");
+        Alert.alert(t("error", { ns: "common" }), t("userNotAuthenticated", { ns: "common" }));
         setBusy(false);
         return;
       }
@@ -184,7 +184,7 @@ export default function ProfileScreen() {
       await loadProfileImage();
     } catch (error) {
       console.error("Unexpected error in getUserData:", error);
-      Alert.alert("Error", "An unexpected error occurred.");
+      Alert.alert(t("error", { ns: "common" }), t("couldNotSave", { ns: "common" }));
     } finally {
       setBusy(false);
     }
@@ -282,14 +282,14 @@ export default function ProfileScreen() {
 
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       Alert.alert(
-        "Alarm Settings Updated",
+        t("alarmSettingsUpdated", { ns: "common" }),
         newSetting
-          ? "Device alarm will be used for workout timers"
-          : "App sounds will be used for workout timers",
+          ? t("alarmUsingDevice", { ns: "common" })
+          : t("alarmUsingApp", { ns: "common" }),
       );
     } catch (error) {
       console.error("Error saving alarm settings:", error);
-      Alert.alert("Error", "Could not save alarm settings.");
+      Alert.alert(t("error", { ns: "common" }), t("alarmSettingsError", { ns: "common" }));
     }
   };
 
@@ -407,20 +407,20 @@ export default function ProfileScreen() {
       if (newNotificationEnabled) {
         const { status } = await Notifications.requestPermissionsAsync();
         if (status === "granted") {
-          Alert.alert("Success", "Monthly reminders enabled!");
+          Alert.alert(t("success", { ns: "common" }), t("monthlyRemindersEnabled", { ns: "common" }));
         } else {
           Alert.alert(
-            "Permission Required",
-            "Please enable notifications in settings.",
+            t("permissionRequiredTitle", { ns: "common" }),
+            t("notificationPermissionNeeded", { ns: "common" }),
           );
         }
       } else {
         await Notifications.cancelAllScheduledNotificationsAsync();
-        Alert.alert("Success", "Monthly reminders disabled.");
+        Alert.alert(t("success", { ns: "common" }), t("monthlyRemindersDisabled", { ns: "common" }));
       }
     } catch (error) {
       console.error("Error toggling notifications:", error);
-      Alert.alert("Error", "Could not update notification settings.");
+      Alert.alert(t("error", { ns: "common" }), t("couldNotSave", { ns: "common" }));
     }
   };
 
@@ -465,13 +465,13 @@ export default function ProfileScreen() {
     const trimmedEmail = newEmail.trim();
 
     if (!trimmedEmail) {
-      Alert.alert("Error", "Please enter a valid email address");
+      Alert.alert(t("error", { ns: "common" }), t("updateEmailInvalid", { ns: "common" }));
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(trimmedEmail)) {
-      Alert.alert("Error", "Please enter a valid email address");
+      Alert.alert(t("error", { ns: "common" }), t("updateEmailInvalid", { ns: "common" }));
       return;
     }
 
@@ -560,7 +560,7 @@ export default function ProfileScreen() {
           onPress: async () => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
             const { error } = await supabase.auth.signOut();
-            if (error) Alert.alert("Logout failed", error.message);
+            if (error) Alert.alert(t("logoutFailed", { ns: "common" }), error.message);
             else router.replace("/login");
           },
         },
@@ -592,7 +592,7 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error("Erro ao escolher imagem:", error);
-      Alert.alert("Erro", "Não foi possível escolher a imagem.");
+      Alert.alert(t("error", { ns: "common" }), t("couldNotSave", { ns: "common" }));
     } finally {
       setShowChangeImageDialog(false);
     }
@@ -620,7 +620,7 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error("Erro ao tirar foto:", error);
-      Alert.alert("Erro", "Não foi possível tirar a foto.");
+      Alert.alert(t("error", { ns: "common" }), t("couldNotSave", { ns: "common" }));
     } finally {
       setShowChangeImageDialog(false);
     }
@@ -699,7 +699,7 @@ export default function ProfileScreen() {
       } = await supabase.auth.getSession();
 
       if (sessionError || !session) {
-        Alert.alert("Sessão Expirada", "Faça login novamente.");
+        Alert.alert(t("error", { ns: "common" }), t("userNotAuthenticated", { ns: "common" }));
         await supabase.auth.signOut();
         router.replace("/login");
         return;
@@ -711,7 +711,7 @@ export default function ProfileScreen() {
       const allowedExtensions = ["jpg", "jpeg", "png", "gif", "webp"];
 
       if (!allowedExtensions.includes(fileExt)) {
-        Alert.alert("Formato Inválido", "Use apenas imagens JPG, PNG ou GIF.");
+        Alert.alert(t("error", { ns: "common" }), t("invalidImageFormat", { ns: "common" }));
         setUploading(false);
         return;
       }
@@ -725,7 +725,7 @@ export default function ProfileScreen() {
 
       const estimatedSize = (base64.length * 3) / 4;
       if (estimatedSize > 5 * 1024 * 1024) {
-        Alert.alert("Arquivo Grande", "A imagem deve ter menos de 5MB.");
+        Alert.alert(t("error", { ns: "common" }), t("imageTooLarge", { ns: "common" }));
         setUploading(false);
         return;
       }
@@ -889,7 +889,7 @@ export default function ProfileScreen() {
         loadProfileImage().catch(console.error);
       }, 500);
 
-      Alert.alert("Sucesso!", "Foto de perfil atualizada com sucesso.");
+      Alert.alert(t("success", { ns: "common" }), t("profileImageUpdated", { ns: "common" }));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error: any) {
       console.error("💥 ERRO NO PROCESSO DE UPLOAD:", error?.message || error);
@@ -917,7 +917,7 @@ export default function ProfileScreen() {
         errorMessage = error.message;
       }
 
-      Alert.alert("Erro", errorMessage);
+      Alert.alert(t("error", { ns: "common" }), errorMessage);
     } finally {
       setUploading(false);
     }
@@ -1207,7 +1207,7 @@ export default function ProfileScreen() {
                   message = "✅ Não havia imagens para remover.";
                 }
 
-                Alert.alert("Sucesso", message);
+                Alert.alert(t("success", { ns: "common" }), message);
                 Haptics.notificationAsync(
                   Haptics.NotificationFeedbackType.Success,
                 );
@@ -1281,7 +1281,7 @@ export default function ProfileScreen() {
                 ) : (
                   <>
                     <Ionicons name="camera" size={20} color="#fff" />
-                    <Text style={styles.actionButtonText}>Tirar foto</Text>
+                    <Text style={styles.actionButtonText}>{t("takePhoto", { ns: "common" })}</Text>
                   </>
                 )}
               </Pressable>
@@ -1297,7 +1297,7 @@ export default function ProfileScreen() {
                   <>
                     <Ionicons name="image" size={20} color="#fff" />
                     <Text style={styles.actionButtonText}>
-                      Escolher da galeria
+                      {t("chooseFromGallery", { ns: "common" })}
                     </Text>
                   </>
                 )}
@@ -1756,7 +1756,7 @@ export default function ProfileScreen() {
                   color="#fff"
                   style={{ marginRight: 8 }}
                 />
-                <Text style={styles.buttonTxt}>Limpar Todas as Imagens</Text>
+                <Text style={styles.buttonTxt}>{t("clearAllImages", { ns: "common" })}</Text>
               </Pressable>
             </View>
           )}
@@ -1975,10 +1975,10 @@ export default function ProfileScreen() {
 
               <View style={styles.inputGroup}>
                 <Text style={[styles.label, { color: theme.colors.onSurface }]}>
-                  Update Email
+                  {t("updateEmailLabel", { ns: "common" })}
                 </Text>
                 <TextInput
-                  placeholder="New email address"
+                  placeholder={t("updateEmailPlaceholder", { ns: "common" })}
                   placeholderTextColor={theme.colors.onSurfaceVariant}
                   value={newEmail}
                   onChangeText={setNewEmail}
@@ -2005,7 +2005,7 @@ export default function ProfileScreen() {
                   {loading ? (
                     <ActivityIndicator color="#fff" />
                   ) : (
-                    <Text style={styles.buttonTxt}>Update Email</Text>
+                    <Text style={styles.buttonTxt}>{t("updateEmailButton", { ns: "common" })}</Text>
                   )}
                 </Pressable>
               </View>

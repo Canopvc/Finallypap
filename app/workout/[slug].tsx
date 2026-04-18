@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChevronLeft, Plus, Trash2, GripVertical, Clock, Flame, Play } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
+import { useTranslation } from '../../hooks/useTranslation';
 
 // Types should mirror the list screen
 type Exercise = {
@@ -38,6 +39,7 @@ export default function WorkoutDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const [workout, setWorkout] = useState<Workout | null>(null);
   const [workouts, setWorkouts] = useState<Workout[]>([]);
@@ -71,7 +73,7 @@ export default function WorkoutDetailScreen() {
         const userId = userResp.data.user?.id;
         
         if (!userId) {
-          Alert.alert('Not found', 'Workout not found and user not authenticated.');
+          Alert.alert(t('error', { ns: 'common' }), t('userNotAuthenticated', { ns: 'common' }));
           router.back();
           return;
         }
@@ -95,7 +97,7 @@ export default function WorkoutDetailScreen() {
         
         if (error) {
           console.error('Erro ao buscar workouts da DB:', error);
-          Alert.alert('Error', 'Failed to load workout from database.');
+          Alert.alert(t('error', { ns: 'common' }), t('loadingWorkout', { ns: 'common' }));
           router.back();
           return;
         }
@@ -118,21 +120,21 @@ export default function WorkoutDetailScreen() {
             setWorkouts(dbWorkouts); // Atualizar lista também
             console.log('Workout encontrado na DB!');
           } else {
-            Alert.alert('Not found', 'Workout not found.');
+            Alert.alert(t('error', { ns: 'common' }), t('noWorkoutsFound', { ns: 'common' }));
             router.back();
           }
         } else {
-          Alert.alert('Not found', 'Workout not found.');
+          Alert.alert(t('error', { ns: 'common' }), t('noWorkoutsFound', { ns: 'common' }));
           router.back();
         }
       } catch (dbError) {
         console.error('Erro ao buscar workout da DB:', dbError);
-        Alert.alert('Error', 'Failed to load workout from database.');
+        Alert.alert(t('error', { ns: 'common' }), t('loadingWorkout', { ns: 'common' }));
         router.back();
       }
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to load workout.');
+      Alert.alert(t('error', { ns: 'common' }), t('loadingWorkout', { ns: 'common' }));
       router.back();
     } finally {
       setLoading(false);
@@ -188,7 +190,7 @@ export default function WorkoutDetailScreen() {
         const userId = userResp.data.user?.id;
         
         if (!userId) {
-          Alert.alert('Error', 'User not authenticated.');
+          Alert.alert(t('error', { ns: 'common' }), t('userNotAuthenticated', { ns: 'common' }));
           return;
         }
         
@@ -211,7 +213,7 @@ export default function WorkoutDetailScreen() {
         const { data: workoutData, error: fetchError } = await query;
         
         if (fetchError || !workoutData || workoutData.length === 0) {
-          Alert.alert('Error', 'Could not find workout in database.');
+          Alert.alert(t('error', { ns: 'common' }), t('couldNotSave', { ns: 'common' }));
           return;
         }
         
@@ -226,24 +228,24 @@ export default function WorkoutDetailScreen() {
         
         if (updateError) {
           console.error('Erro ao atualizar workout na DB:', updateError);
-          Alert.alert('Error', 'Could not update workout in database.');
+          Alert.alert(t('error', { ns: 'common' }), t('couldNotSave', { ns: 'common' }));
           return;
         }
         
-        Alert.alert('Saved', 'Workout updated successfully in database.');
+        Alert.alert(t('success', { ns: 'common' }), t('goalsSaveSuccess', { ns: 'common' }));
       } else {
         // Se veio do AsyncStorage, salvar no AsyncStorage
         const updated = workouts.map(w =>
           workoutSlugFromFields(w.name, w.createdAt) === slug ? workout : w
         );
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        Alert.alert('Saved', 'Workout updated successfully.');
+        Alert.alert(t('success', { ns: 'common' }), t('goalsSaveSuccess', { ns: 'common' }));
       }
       
       router.back();
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Could not save workout.');
+      Alert.alert(t('error', { ns: 'common' }), t('couldNotSave', { ns: 'common' }));
     }
   };
 
@@ -251,15 +253,15 @@ export default function WorkoutDetailScreen() {
     if (!workout) return;
     
     Alert.alert(
-      'Delete Workout',
-      'Are you sure you want to delete this workout? This action cannot be undone.',
+      t('deleteWorkout', { ns: 'workouts' }),
+      t('deleteAllWorkoutsConfirm', { ns: 'common' }),
       [
         {
-          text: 'Cancel',
+          text: t('cancel', { ns: 'common' }),
           style: 'cancel',
         },
         {
-          text: 'Delete',
+          text: t('delete', { ns: 'common' }),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -310,11 +312,11 @@ export default function WorkoutDetailScreen() {
                 // Continuar mesmo se houver erro na DB, pois já foi apagado localmente
               }
               
-              Alert.alert('Deleted', 'Workout deleted successfully.');
+              Alert.alert(t('success', { ns: 'common' }), t('deleteWorkout', { ns: 'workouts' }));
               router.back();
             } catch (e) {
               console.error(e);
-              Alert.alert('Error', 'Could not delete workout.');
+              Alert.alert(t('error', { ns: 'common' }), t('couldNotSave', { ns: 'common' }));
             }
           },
         },
@@ -335,7 +337,7 @@ export default function WorkoutDetailScreen() {
   if (loading || !workout) {
     return (
       <View style={[styles.centered, { backgroundColor: theme.colors.background }]}>
-        <Text style={{ color: theme.colors.onSurface }}>Loading...</Text>
+        <Text style={{ color: theme.colors.onSurface }}>{t('loading', { ns: 'common' })}</Text>
       </View>
     );
   }
@@ -348,7 +350,7 @@ export default function WorkoutDetailScreen() {
           <View style={styles.headerTop}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
               <ChevronLeft size={20} color={theme.colors.primary} />
-              <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>Back</Text>
+              <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>{t('back', { ns: 'common' })}</Text>
             </TouchableOpacity>
             <View style={[styles.exerciseBadge, { backgroundColor: theme.colors.surfaceVariant }]}>
               <Text style={[styles.exerciseBadgeText, { color: theme.colors.onSurfaceVariant }]}>
@@ -362,7 +364,7 @@ export default function WorkoutDetailScreen() {
               style={[styles.workoutTitle, { color: theme.colors.primary }]}
               value={workout.name}
               onChangeText={(t) => updateWorkoutField('name', t)}
-              placeholder="Workout Name"
+                  placeholder={t('workoutName', { ns: 'workouts' })}
               placeholderTextColor={theme.colors.onSurfaceVariant}
             />
 
@@ -382,7 +384,7 @@ export default function WorkoutDetailScreen() {
             </View>
 
             <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
-              Customize your workout before starting
+              {t('editWorkout', { ns: 'workouts' })}
             </Text>
           </View>
         </View>
@@ -397,13 +399,13 @@ export default function WorkoutDetailScreen() {
                 <GripVertical size={18} color={theme.colors.onSurfaceVariant} />
                 <View style={styles.exerciseTitleContainer}>
                   <Text style={[styles.exerciseLabel, { color: theme.colors.onSurfaceVariant }]}>
-                    Exercise Name
+                    {t('exerciseName', { ns: 'workouts' })}
                   </Text>
                   <TextInput
                     style={[styles.exerciseInput, { color: theme.colors.onSurface }]}
                     value={exercise.name}
                     onChangeText={(t) => updateExercise(index, 'name', t)}
-                    placeholder="Enter exercise name"
+                    placeholder={t('exerciseName', { ns: 'workouts' })}
                     placeholderTextColor={theme.colors.onSurfaceVariant}
                   />
                 </View>
@@ -419,7 +421,7 @@ export default function WorkoutDetailScreen() {
 
             <View style={styles.exerciseGrid}>
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>Sets</Text>
+                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>{t('sets', { ns: 'workouts' })}</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                   keyboardType="numeric"
@@ -429,7 +431,7 @@ export default function WorkoutDetailScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>Reps</Text>
+                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>{t('reps', { ns: 'workouts' })}</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                   keyboardType="numeric"
@@ -441,7 +443,7 @@ export default function WorkoutDetailScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>Weight (kg)</Text>
+                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>{t('weightKg', { ns: 'workouts' })}</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                   keyboardType="numeric"
@@ -453,7 +455,7 @@ export default function WorkoutDetailScreen() {
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>Minutes</Text>
+                <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>{t('durationMinutes', { ns: 'workouts' })}</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: theme.colors.surface, color: theme.colors.onSurface, borderColor: theme.colors.outline }]}
                   keyboardType="numeric"
@@ -479,7 +481,7 @@ export default function WorkoutDetailScreen() {
                   { color: theme.colors.onSurface },
                   exercise.dropset && [styles.tagTextActive, { color: theme.colors.onPrimary }]
                 ]}>
-                  Dropset
+                  {t('dropset', { ns: 'workouts' })}
                 </Text>
               </TouchableOpacity>
 
@@ -496,7 +498,7 @@ export default function WorkoutDetailScreen() {
                   { color: theme.colors.onSurface },
                   exercise.failure && [styles.tagTextActive, { color: theme.colors.onPrimary }]
                 ]}>
-                  Failure
+                  {t('failure', { ns: 'workouts' })}
                 </Text>
               </TouchableOpacity>
 
@@ -513,7 +515,7 @@ export default function WorkoutDetailScreen() {
                   { color: theme.colors.onSurface },
                   exercise.warmup && [styles.tagTextActive, { color: theme.colors.onPrimary }]
                 ]}>
-                  Warmup
+                  {t('warmup', { ns: 'workouts' })}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -526,7 +528,7 @@ export default function WorkoutDetailScreen() {
         >
           <Plus size={20} color={theme.colors.primary} />
           <Text style={[styles.addExerciseText, { color: theme.colors.primary }]}>
-            Add Exercise
+            {t('addExercise', { ns: 'workouts' })}
           </Text>
         </TouchableOpacity>
       </ScrollView>
@@ -537,14 +539,14 @@ export default function WorkoutDetailScreen() {
           style={[styles.footerButton, styles.secondaryButton]}
           onPress={deleteWorkout}
         >
-          <Text style={styles.secondaryButtonText}>Delete</Text>
+          <Text style={styles.secondaryButtonText}>{t('delete', { ns: 'common' })}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={[styles.footerButton, { backgroundColor: theme.colors.primary }]}
           onPress={saveWorkout}
         >
-          <Text style={[styles.footerButtonText, { color: theme.colors.onPrimary }]}>Save</Text>
+          <Text style={[styles.footerButtonText, { color: theme.colors.onPrimary }]}>{t('save', { ns: 'common' })}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -552,7 +554,7 @@ export default function WorkoutDetailScreen() {
           onPress={() => router.push(`/workout/${slug}/start`)}
         >
           <Play size={20} color={theme.colors.onPrimary} />
-          <Text style={[styles.footerButtonText, { color: theme.colors.onPrimary }]}>Start</Text>
+          <Text style={[styles.footerButtonText, { color: theme.colors.onPrimary }]}>{t('startWorkout', { ns: 'workouts' })}</Text>
         </TouchableOpacity>
       </View>
     </View>

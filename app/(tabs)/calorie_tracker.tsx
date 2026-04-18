@@ -22,8 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle as SvgCircle, Path, Defs, LinearGradient, Stop } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
-import { COHERE_API_KEY } from '@env';
-import { CohereClientV2 } from 'cohere-ai';
+import { OPEN_ROUTER_API_KEY } from '@env';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -56,9 +55,6 @@ interface FoodAnalysis {
   carbs: number;
   fat: number;
 }
-
-const cohereApiKey = Constants.expoConfig?.extra?.cohereApiKey || COHERE_API_KEY || '';
-const cohereClient = new CohereClientV2({ token: cohereApiKey });
 
 // ─── Progress Ring ─────────────────────────────────────────────────────────
 
@@ -118,8 +114,8 @@ const ProgressRing: React.FC<RingProps> = ({
         <Text style={[ringStyles.unit, { color: theme.colors.onSurfaceVariant }]}>{unit}</Text>
       </View>
       <Text style={[ringStyles.label, { color: theme.colors.onSurfaceVariant }]}>{label}</Text>
-      <Text style={[ringStyles.goal, { color: theme.colors.onSurfaceVariant }]}>
-        de {goal}{unit}
+        <Text style={[ringStyles.goal, { color: theme.colors.onSurfaceVariant }]}>
+        of {goal}{unit}
       </Text>
     </View>
   );
@@ -177,46 +173,37 @@ const CalorieCounter: React.FC = () => {
     }
   };
 
-  const analyzeFoodWithCohere = async (desc: string): Promise<FoodAnalysis> => {
-    if (!cohereApiKey) {
-      throw new Error('Cohere API key not configured');
-    }
-
-    const response = await cohereClient.chat({
-      model: 'command-a-03-2025',
-      messages: [
-        {
-          role: 'system',
-          content: `Você é um nutricionista. Analise o alimento descrito pelo usuário e RETORNE APENAS um JSON válido neste formato exato, sem texto extra:
+  const analyzeFoodWithOpenRouter = async (desc: string): Promise<FoodAnalysis> => {
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPEN_ROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'openrouter/auto',
+        messages: [
+          {
+            role: 'system',
+            content: `Você é um nutricionista. Analise o alimento descrito pelo usuário e RETORNE APENAS um JSON válido neste formato exato, sem texto extra:
 {"foodName":"string","calories":number,"protein":number,"carbs":number,"fat":number}`,
-        },
-        { role: 'user', content: `Analise o alimento: "${desc}" e retorne apenas o JSON.` },
-      ],
+          },
+          { role: 'user', content: `Analise o alimento: "${desc}" e retorne apenas o JSON.` },
+        ],
+      }),
     });
 
-    let generatedText = '';
+    const data = await response.json();
 
-    if (response.message?.content) {
-      if (typeof response.message.content === 'string') {
-        generatedText = response.message.content;
-      } else if (Array.isArray(response.message.content)) {
-        generatedText = response.message.content
-          .map(part => {
-            if (part && typeof part === 'object' && 'text' in part) {
-              return part.text;
-            }
-            return '';
-          })
-          .filter(text => text !== '')
-          .join('\n');
-      }
-    }
+    if (data.error) throw new Error(`Erro da API: ${data.error.message}`);
+    if (!data.choices || data.choices.length === 0) throw new Error('Resposta vazia');
 
-    if (!generatedText) {
-      throw new Error('Empty response from Cohere');
-    }
+    const generatedText = data.choices[0].message.content;
+    if (!generatedText) throw new Error('Resposta da API vazia');
 
-    const parsed = JSON.parse(generatedText);
+    // Remove possíveis backticks de markdown
+    const clean = generatedText.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
 
     return {
       foodName: parsed.foodName || desc,
@@ -253,7 +240,7 @@ const CalorieCounter: React.FC = () => {
     setLoading(true);
     try {
       let foodData: FoodAnalysis;
-      try { foodData = await analyzeFoodWithCohere(foodInput); }
+      try { foodData = await analyzeFoodWithOpenRouter(foodInput); }
       catch { foodData = analyzeFoodFallback(foodInput); }
 
       const newMeal: Meal = {
@@ -296,7 +283,6 @@ const CalorieCounter: React.FC = () => {
   const calPct = dailyGoals.calories > 0 ? Math.min(100, (todayTotals.calories / dailyGoals.calories) * 100) : 0;
   const remaining = Math.max(0, dailyGoals.calories - todayTotals.calories);
 
-  // Dynamic status bar color
   const isDark = theme.dark;
   const bg = theme.colors.background;
   const surface = theme.colors.surface;
@@ -324,7 +310,7 @@ const CalorieCounter: React.FC = () => {
             keyboardShouldPersistTaps="always"
             keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
           >
-            
+
         {/* ── Header ── */}
         <View style={[s.header, { backgroundColor: surface }]}>
           <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
@@ -364,19 +350,19 @@ const CalorieCounter: React.FC = () => {
         <View style={[s.heroCard, { backgroundColor: surface }]}>
           <View style={s.heroTop}>
             <View>
-              <Text style={[s.heroLabel, { color: theme.colors.onSurfaceVariant }]}>Consumidas hoje</Text>
+              <Text style={[s.heroLabel, { color: theme.colors.onSurfaceVariant }]}>{t('progressToday', { ns: 'common' })}</Text>
               <View style={s.heroRow}>
                 <Text style={[s.heroCalories, { color: theme.colors.onSurface }]}>
                   {todayTotals.calories}
                 </Text>
-                <Text style={[s.heroKcal, { color: theme.colors.onSurfaceVariant }]}> kcal</Text>
+                <Text style={[s.heroKcal, { color: theme.colors.onSurfaceVariant }]}> {t('kcalUnit', { ns: 'common' })}</Text>
               </View>
             </View>
             <View style={[s.remainingBadge, { backgroundColor: remaining === 0 ? '#FF6B6B20' : primary + '18' }]}>
               <Text style={[s.remainingNum, { color: remaining === 0 ? '#FF6B6B' : primary }]}>
                 {remaining}
               </Text>
-              <Text style={[s.remainingLabel, { color: remaining === 0 ? '#FF6B6B' : primary }]}>restantes</Text>
+              <Text style={[s.remainingLabel, { color: remaining === 0 ? '#FF6B6B' : primary }]}>{t('remaining', { ns: 'common' })}</Text>
             </View>
           </View>
 
@@ -395,14 +381,14 @@ const CalorieCounter: React.FC = () => {
           <View style={s.barLabels}>
             <Text style={[s.barLabel, { color: theme.colors.onSurfaceVariant }]}>0</Text>
             <Text style={[s.barLabel, { color: theme.colors.onSurfaceVariant }]}>
-              Meta: {dailyGoals.calories} kcal
+              {t('goal', { ns: 'common' })}: {dailyGoals.calories} kcal
             </Text>
           </View>
         </View>
 
         {/* ── Macro Rings ── */}
         <View style={[s.macroCard, { backgroundColor: surface }]}>
-          <Text style={[s.cardTitle, { color: theme.colors.onSurface }]}>Macronutrientes</Text>
+          <Text style={[s.cardTitle, { color: theme.colors.onSurface }]}>{t('macroNutrients', { ns: 'common' })}</Text>
           <View style={s.rings}>
             <ProgressRing
               label="Proteína" current={Math.round(todayTotals.protein)}
@@ -536,7 +522,7 @@ const CalorieCounter: React.FC = () => {
               ))}
             </View>
           )}
-            </View>
+        </View>
           </ScrollView>
 
       {/* ── Settings Modal ── */}
@@ -557,7 +543,7 @@ const CalorieCounter: React.FC = () => {
                 {/* Handle */}
                 <View style={[s.handle, { backgroundColor: theme.colors.outline + '50' }]} />
 
-                <Text style={[s.modalTitle, { color: theme.colors.onSurface }]}>Metas Diárias</Text>
+                <Text style={[s.modalTitle, { color: theme.colors.onSurface }]}>{t('settingsDailyGoalsTitle', { ns: 'common' })}</Text>
 
                 {([
                   { key: 'calories', label: t('caloriesKcal', { ns: 'common' }), unit: 'kcal' },

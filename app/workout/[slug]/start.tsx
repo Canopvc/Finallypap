@@ -7,6 +7,7 @@ import { useTheme } from 'react-native-paper';
 import { ChevronLeft, Play, Pause, Check, Trophy, Flame, Timer, Target, Weight, Volume2, VolumeX, Heart, Activity } from 'lucide-react-native';
 import * as Notifications from 'expo-notifications';
 import { supabase } from '../../../lib/supabase';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 import HeartRateMonitor from '../../../components/heartRateMonitor';
 
@@ -109,6 +110,7 @@ export default function StartWorkoutScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const [workoutStartTime, setWorkoutStartTime] = useState<number | null>(null);
   const [workout, setWorkout] = useState<Workout | null>(null);
@@ -169,8 +171,8 @@ export default function StartWorkoutScreen() {
 
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: "⏰ Rest Time Complete!",
-          body: "Time to start your next set! 💪",
+          title: t('workoutTimerAlarm', { ns: 'common' }),
+          body: t('finishWorkoutButton', { ns: 'common' }),
           sound: 'default',
           priority: Notifications.AndroidNotificationPriority.HIGH,
           data: { type: 'workout_timer' },
@@ -251,11 +253,11 @@ export default function StartWorkoutScreen() {
 
       if (heartRateAlerts && currentBPM > 180 && !resting) {
         Alert.alert(
-          '⚠️ Frequência Cardíaca Alta',
-          'Sua frequência cardíaca está muito alta. Considere fazer uma pausa.',
+          t('error', { ns: 'common' }),
+          t('keepMoving', { ns: 'common' }),
           [
-            { text: 'Ignorar', style: 'cancel' },
-            { text: 'Fazer Pausa', onPress: () => startRest(60) }
+            { text: t('cancel', { ns: 'common' }), style: 'cancel' },
+            { text: t('pause', { ns: 'common' }), onPress: () => startRest(60) }
           ]
         );
       }
@@ -276,7 +278,7 @@ export default function StartWorkoutScreen() {
           const userId = userResp.data.user?.id;
 
           if (!userId) {
-            Alert.alert('Not found', 'Workout not found and user not authenticated.');
+            Alert.alert(t('error', { ns: 'common' }), t('userNotAuthenticated', { ns: 'common' }));
             router.back();
             return;
           }
@@ -298,7 +300,7 @@ export default function StartWorkoutScreen() {
           const { data, error } = await query;
 
           if (error) {
-            Alert.alert('Error', 'Failed to load workout from database.');
+            Alert.alert(t('error', { ns: 'common' }), t('loadingWorkout', { ns: 'common' }));
             router.back();
             return;
           }
@@ -315,18 +317,18 @@ export default function StartWorkoutScreen() {
             if (found) {
               setWorkout(found);
             } else {
-              Alert.alert('Not found', 'Workout not found.');
+              Alert.alert(t('error', { ns: 'common' }), t('noWorkoutsFound', { ns: 'common' }));
               router.back();
               return;
             }
           } else {
-            Alert.alert('Not found', 'Workout not found.');
+            Alert.alert(t('error', { ns: 'common' }), t('noWorkoutsFound', { ns: 'common' }));
             router.back();
             return;
           }
         } catch (dbError) {
           console.error('Erro ao buscar workout da DB:', dbError);
-          Alert.alert('Error', 'Failed to load workout from database.');
+          Alert.alert(t('error', { ns: 'common' }), t('loadingWorkout', { ns: 'common' }));
           router.back();
           return;
         }
@@ -335,7 +337,7 @@ export default function StartWorkoutScreen() {
       }
 
       if (!found) {
-        Alert.alert('Not found', 'Workout not found.');
+        Alert.alert(t('error', { ns: 'common' }), t('noWorkoutsFound', { ns: 'common' }));
         router.back();
         return;
       }
@@ -360,7 +362,7 @@ export default function StartWorkoutScreen() {
       setCompleted(c);
     } catch (e) {
       console.error(e);
-      Alert.alert('Error', 'Failed to load workout.');
+      Alert.alert(t('error', { ns: 'common' }), t('loadingWorkout', { ns: 'common' }));
     } finally {
       try {
         const savedStartTime = await AsyncStorage.getItem(`@workout_start_${slug}`);
@@ -507,9 +509,9 @@ export default function StartWorkoutScreen() {
       : 0;
 
     Alert.alert(
-      'Workout Completed!',
-      `Great job! You finished in ${formatTime(elapsed)}.${heartRateHistory.length > 0 ? `\nAvg Heart Rate: ${avgBPM} BPM` : ''}`,
-      [{ text: 'Back to Details', onPress: () => router.back() }]
+      t('workoutCompletedTitle', { ns: 'common' }),
+      t('workoutCompletedMessage', { ns: 'common', time: formatTime(elapsed) }),
+      [{ text: t('backToDetails', { ns: 'common' }), onPress: () => router.back() }]
     );
   };
 
@@ -533,7 +535,7 @@ export default function StartWorkoutScreen() {
   if (loading || !workout) {
     return (
       <View style={[styles.centered, { backgroundColor: theme.colors.background }]}>
-        <Text style={{ color: theme.colors.onSurface }}>Loading workout...</Text>
+        <Text style={{ color: theme.colors.onSurface }}>{t('loadingWorkout', { ns: 'common' })}</Text>
       </View>
     );
   }
@@ -550,7 +552,7 @@ export default function StartWorkoutScreen() {
             >
               <ChevronLeft size={20} color={theme.colors.primary} />
               <Text style={[styles.backButtonText, { color: theme.colors.primary }]}>
-                Back
+                {t('back', { ns: 'common' })}
               </Text>
             </TouchableOpacity>
 
@@ -582,7 +584,7 @@ export default function StartWorkoutScreen() {
 
                 {showSoundTooltip && (
                   <View style={[styles.tooltip, { backgroundColor: theme.colors.primary }]}>
-                    <Text style={styles.tooltipText}>Toque para ativar/desativar som</Text>
+                    <Text style={styles.tooltipText}>{t('workoutTimerUsingApp', { ns: 'common' })}</Text>
                   </View>
                 )}
               </View>
@@ -628,12 +630,12 @@ export default function StartWorkoutScreen() {
                 {running ? (
                   <>
                     <Pause size={16} color={theme.colors.primary} />
-                    <Text style={[styles.pauseText, { color: theme.colors.primary }]}>Pause</Text>
+                    <Text style={[styles.pauseText, { color: theme.colors.primary }]}>{t('pause', { ns: 'common' })}</Text>
                   </>
                 ) : (
                   <>
                     <Play size={16} color={theme.colors.primary} />
-                    <Text style={[styles.pauseText, { color: theme.colors.primary }]}>Resume</Text>
+                    <Text style={[styles.pauseText, { color: theme.colors.primary }]}>{t('resume', { ns: 'common' })}</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -804,7 +806,7 @@ export default function StartWorkoutScreen() {
                 {exerciseCompleted && (
                   <View style={[styles.completedBadge, { backgroundColor: '#22c55e' }]}>
                     <Check size={12} color="#ffffff" />
-                    <Text style={styles.completedBadgeText}>Done</Text>
+                    <Text style={styles.completedBadgeText}>{t('done', { ns: 'common' })}</Text>
                   </View>
                 )}
               </View>
@@ -814,17 +816,17 @@ export default function StartWorkoutScreen() {
                 <View style={styles.flagRow}>
                   {ex.warmup && (
                     <View style={[styles.flag, { backgroundColor: '#3b82f6' }]}>
-                      <Text style={styles.flagText}>Warmup</Text>
+                      <Text style={styles.flagText}>{t('warmup', { ns: 'workouts' })}</Text>
                     </View>
                   )}
                   {ex.failure && (
                     <View style={[styles.flag, { backgroundColor: '#ef4444' }]}>
-                      <Text style={styles.flagText}>Failure</Text>
+                      <Text style={styles.flagText}>{t('failure', { ns: 'workouts' })}</Text>
                     </View>
                   )}
                   {ex.dropset && (
                     <View style={[styles.flag, { backgroundColor: '#9333ea' }]}>
-                      <Text style={styles.flagText}>Dropset</Text>
+                      <Text style={styles.flagText}>{t('dropset', { ns: 'workouts' })}</Text>
                     </View>
                   )}
                 </View>
@@ -864,14 +866,14 @@ export default function StartWorkoutScreen() {
                           styles.setLabel,
                           { color: isCompleted ? theme.colors.primary : theme.colors.onSurfaceVariant }
                         ]}>
-                          Set {si + 1}
+                          {t('sets', { ns: 'workouts' })} {si + 1}
                         </Text>
                       </View>
 
                       <View style={styles.setInputs}>
                         <View style={styles.inputContainer}>
                           <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>
-                            Weight
+                            {t('weight', { ns: 'workouts' })}
                           </Text>
                           <TextInput
                             style={[
@@ -881,7 +883,7 @@ export default function StartWorkoutScreen() {
                                 borderColor: isCompleted ? theme.colors.primary : theme.colors.outline
                               }
                             ]}
-                            placeholder="kg"
+                            placeholder={t('weightKg', { ns: 'workouts' })}
                             keyboardType="numeric"
                             value={currentWeight}
                             placeholderTextColor={theme.colors.onSurfaceVariant}
@@ -898,7 +900,7 @@ export default function StartWorkoutScreen() {
 
                         <View style={styles.inputContainer}>
                           <Text style={[styles.inputLabel, { color: theme.colors.onSurfaceVariant }]}>
-                            Reps
+                            {t('reps', { ns: 'workouts' })}
                           </Text>
                           <TextInput
                             style={[
@@ -909,7 +911,7 @@ export default function StartWorkoutScreen() {
                                 borderColor: isCompleted ? theme.colors.primary : theme.colors.outline
                               }
                             ]}
-                            placeholder="reps"
+                            placeholder={t('reps', { ns: 'workouts' })}
                             keyboardType="numeric"
                             value={currentReps}
                             placeholderTextColor={theme.colors.onSurfaceVariant}
@@ -938,7 +940,7 @@ export default function StartWorkoutScreen() {
         <View style={[styles.completionBanner, { backgroundColor: '#22c55e' }]}>
           <Trophy size={20} color="#ffffff" />
           <Text style={styles.completionText}>
-            Amazing Work! You&apos;ve completed all exercises! 🎉
+            {t('amazingWork', { ns: 'common' })}
           </Text>
         </View>
       )}
@@ -958,12 +960,12 @@ export default function StartWorkoutScreen() {
           {allSetsCompleted ? (
             <>
               <Trophy size={20} color="#ffffff" />
-              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>Finish Workout</Text>
+              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>{t('finishWorkoutButton', { ns: 'common' })}</Text>
             </>
           ) : (
             <>
               <Check size={20} color="#ffffff" />
-              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>Complete Workout</Text>
+              <Text style={[styles.footerButtonText, { color: '#ffffff' }]}>{t('completeWorkoutButton', { ns: 'common' })}</Text>
             </>
           )}
         </TouchableOpacity>

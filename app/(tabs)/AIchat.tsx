@@ -20,18 +20,11 @@ import {
 } from 'react-native';
 import { useTheme } from 'react-native-paper';
 import { useTranslation } from '../../hooks/useTranslation';
-import { CohereClientV2 } from 'cohere-ai';
 import Constants from 'expo-constants';
-//import { COHERE_API_KEY } from '@env';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import { COHERE_API_KEY } from '@env';
-// ⭐️ COHERE API
+import { OPEN_ROUTER_API_KEY } from '@env';
 const WORKOUTS_STORAGE_KEY = 'workouts';
 
-// Usa variável de ambiente do EAS Build ou fallback para @env
-const cohereApiKey = Constants.expoConfig?.extra?.cohereApiKey || COHERE_API_KEY || '';
-const cohere = new CohereClientV2({ token: cohereApiKey });
 
 type ExerciseType = 'calisthenics' | 'cardio' | 'weightlifting';
 
@@ -86,6 +79,8 @@ export default function FitnessAIChat() {
 
   const scrollViewRef = useRef<ScrollView>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+   // <-- importa /web para React Native
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -249,10 +244,10 @@ export default function FitnessAIChat() {
 
   const handleGenerateResponse = async () => {
     if (!prompt.trim()) {
-      Alert.alert('Erro', 'Por favor, insira um texto.');
+      Alert.alert(t('error', { ns: 'common' }), t('fillFoodDescriptionError', { ns: 'common' }));
       return;
     }
-    console.log('extra.cohereApiKey:', Constants.expoConfig?.extra?.cohereApiKey);
+    console.log('extra.OpenRouterApiKey:', Constants.expoConfig?.extra?.OpenrouterApiKey);
 
     const userMessage: MessageType = {
       text: prompt,
@@ -264,14 +259,20 @@ export default function FitnessAIChat() {
     setLoading(true);
 
     try {
-      console.log('🚀 Enviando para Cohere AI...');
+      console.log('🚀 Enviando para OpenRouter AI...');
 
-      const response = await cohere.chat({
-        model: 'command-a-03-2025',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert fitness coach. Follow these rules STRICTLY:
+      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${OPEN_ROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'openrouter/free',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert fitness coach. Follow these rules STRICTLY:
 
 🎯 **MANDATORY STRUCTURE:**
 
@@ -347,37 +348,53 @@ ALWAYS PUT THE WORKOUT NAMES AS THEY ARE, THE LEG WORKOUT IS LEG DAY, THE UPPER 
 ALWAYS USE THE MOST SIMPLE NAMES OF THE EXERCISES, USE SIMPLE AND USEFULL LANGUAGE
 → Always use short, clear and standard exercise names. Avoid complex or fancy terms.
 
-Respond in the same language as the user's query. `
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
+Respond in the same language as the user's query.` // o teu prompt atual
+            },
+            { role: 'user', content: prompt }
+          ],
+        })
       });
+      
+      const data = await response.json();
+      let generatedText = '';
+      
+      // ✅ LOGS DE DEBUG
+      console.log('📦 Status HTTP:', response.status);
+      console.log('📦 Data completo:', JSON.stringify(data, null, 2));
+      console.log('📦 Tem error?:', data.error);
+      console.log('📦 Tem choices?:', data.choices);
+      
+      // ✅ Verifica se há erro da API
+      if (data.error) {
+        throw new Error(`Erro da API: ${data.error.message}`);
+      }
+      
+      // ✅ Verifica se choices existe
+      if (!data.choices || data.choices.length === 0) {
+        throw new Error('Resposta da API sem choices');
+      }
+      
+      generatedText = data.choices[0].message.content;
+      
+      if (!generatedText) {
+        throw new Error('Resposta da API vazia');
+      }
+console.log('OpenRouter response:', JSON.stringify(data));
+console.log("Resposta completa:", JSON.stringify(data, null, 2));
+
+     
+        
+      
+
+
 
       console.log('✅ Resposta recebida da Cohere:', response);
 
-      let generatedText = '';
 
-      if (response.message?.content) {
-        if (typeof response.message.content === 'string') {
-          generatedText = response.message.content;
-        } else if (Array.isArray(response.message.content)) {
-          generatedText = response.message.content
-            .map(part => {
-              if (part && typeof part === 'object' && 'text' in part) {
-                return part.text;
-              }
-              return '';
-            })
-            .filter(text => text !== '')
-            .join('\n');
-        }
-      }
+     
 
-      if (!generatedText && response.message?.content) {
-        generatedText = JSON.stringify(response.message.content);
+      if (!generatedText && data) {
+        const generatedText = JSON.stringify(data);
       }
 
       if (!generatedText) {
@@ -418,10 +435,10 @@ Respond in the same language as the user's query. `
     } catch (error: any) {
       console.error('❌ Erro na Cohere AI:', error);
 
-      Alert.alert('Erro', 'Falha ao obter resposta da IA. Verifique sua conexão e chave API.');
+      Alert.alert(t('error', { ns: 'common' }), t('nutritionGenericError', { ns: 'common' }));
 
       const errorMessage: MessageType = {
-        text: '❌ Erro ao conectar com a IA. Verifique sua conexão e chave API.',
+        text: t('nutritionGenericError', { ns: 'common' }),
         isUser: false,
         timestamp: new Date()
       };
@@ -433,7 +450,7 @@ Respond in the same language as the user's query. `
 
   const handleSaveWorkout = async () => {
     if (!selectedWorkout || !workoutName.trim()) {
-      Alert.alert('Erro', 'Por favor, insira um nome para o treino.');
+      Alert.alert(t('error', { ns: 'common' }), t('pleaseEnterWorkoutName', { ns: 'workouts' }));
       return;
     }
 
@@ -450,12 +467,12 @@ Respond in the same language as the user's query. `
       list.unshift(workoutToSave);
       await AsyncStorage.setItem(WORKOUTS_STORAGE_KEY, JSON.stringify(list));
 
-      Alert.alert('Sucesso', 'Treino salvo com sucesso!');
+      Alert.alert(t('success', { ns: 'common' }), t('goalsSaveSuccess', { ns: 'common' }));
       setSelectedWorkout(null);
       setWorkoutName('');
     } catch (error) {
       console.error('Erro ao salvar treino:', error);
-      Alert.alert('Erro', 'Não foi possível salvar o treino.');
+      Alert.alert(t('error', { ns: 'common' }), t('couldNotSave', { ns: 'common' }));
     } finally {
       setSavingWorkout(false);
     }
@@ -480,10 +497,10 @@ Respond in the same language as the user's query. `
 
       await AsyncStorage.setItem(WORKOUTS_STORAGE_KEY, JSON.stringify(list));
 
-      Alert.alert('Sucesso', `${savedCount} treinos salvos com sucesso!`);
+      Alert.alert(t('success', { ns: 'common' }), t('goalsSaveSuccess', { ns: 'common' }));
     } catch (error) {
       console.error('Erro ao salvar treinos:', error);
-      Alert.alert('Erro', 'Não foi possível salvar os treinos.');
+      Alert.alert(t('error', { ns: 'common' }), t('couldNotSave', { ns: 'common' }));
     } finally {
       setSavingWorkout(false);
     }
@@ -491,8 +508,8 @@ Respond in the same language as the user's query. `
 
   const renderMessages = () => {
     return messages.map((msg, index) => (
-      <Animated.View 
-        key={index} 
+      <Animated.View
+        key={index}
         style={[
           styles.messageRow,
           {
@@ -571,7 +588,7 @@ Respond in the same language as the user's query. `
         {msg.isWorkoutPlan && msg.workoutPlanData && (
           <View style={[
             styles.workoutPlanContainer,
-            { 
+            {
               backgroundColor: theme.colors.tertiaryContainer,
               borderColor: theme.colors.tertiary + '40'
             }
@@ -624,10 +641,10 @@ Respond in the same language as the user's query. `
                         {workout.exercises.length} exercise{workout.exercises.length > 1 ? 's' : ''}
                       </Text>
                     </View>
-                    <MaterialCommunityIcons 
-                      name="chevron-right" 
-                      size={20} 
-                      color={theme.colors.onSurfaceVariant} 
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={20}
+                      color={theme.colors.onSurfaceVariant}
                     />
                   </View>
                 </TouchableOpacity>
@@ -684,10 +701,10 @@ Respond in the same language as the user's query. `
         }
       ]}>
         <View style={styles.headerContent}>
-          <MaterialCommunityIcons 
-            name="robot-excited" 
-            size={28} 
-            color={theme.colors.primary} 
+          <MaterialCommunityIcons
+            name="robot-excited"
+            size={28}
+            color={theme.colors.primary}
           />
           <Text style={[
             styles.headerTitle,
@@ -711,10 +728,10 @@ Respond in the same language as the user's query. `
           {messages.length === 0 ? (
             <Animated.View style={[styles.emptyState, { opacity: fadeAnim }]}>
               <View style={[styles.emptyStateIcon, { backgroundColor: theme.colors.primaryContainer }]}>
-                <MaterialCommunityIcons 
-                  name="message-text" 
-                  size={48} 
-                  color={theme.colors.onPrimaryContainer} 
+                <MaterialCommunityIcons
+                  name="message-text"
+                  size={48}
+                  color={theme.colors.onPrimaryContainer}
                 />
               </View>
               <Text style={[
@@ -783,7 +800,7 @@ Respond in the same language as the user's query. `
             }}
           />
           <TouchableOpacity
-            onPress={() => {Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); handleGenerateResponse()}}
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy); handleGenerateResponse() }}
             style={[
               styles.sendButton,
               {
@@ -809,7 +826,7 @@ Respond in the same language as the user's query. `
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.modalOverlay}
         >
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.modalBackdrop}
             activeOpacity={1}
             onPress={() => {
@@ -826,14 +843,14 @@ Respond in the same language as the user's query. `
                 }
               ]}>
                 <View style={styles.modalHandle} />
-                
+
                 <View style={styles.modalHeader}>
                   <MaterialCommunityIcons name="content-save" size={28} color={theme.colors.primary} />
                   <Text style={[
                     styles.modalTitle,
                     { color: theme.colors.onSurface }
                   ]}>
-                    Save Workout
+                    {t('saveWorkout', { ns: 'workouts' })}
                   </Text>
                 </View>
 
@@ -842,7 +859,7 @@ Respond in the same language as the user's query. `
                     styles.label,
                     { color: theme.colors.onSurface }
                   ]}>
-                    Workout Name
+                    {t('workoutName', { ns: 'workouts' })}
                   </Text>
                   <TextInput
                     style={[
@@ -855,7 +872,7 @@ Respond in the same language as the user's query. `
                     ]}
                     value={workoutName}
                     onChangeText={setWorkoutName}
-                    placeholder="e.g., Chest Day"
+                    placeholder={t('exampleWorkoutName', { ns: 'workouts' })}
                     placeholderTextColor={theme.colors.onSurfaceVariant}
                     autoFocus={true}
                   />
@@ -864,7 +881,7 @@ Respond in the same language as the user's query. `
                     styles.label,
                     { color: theme.colors.onSurface, marginTop: 16 }
                   ]}>
-                    Exercises ({selectedWorkout?.exercises.length})
+                    {t('exercises', { ns: 'workouts' })} ({selectedWorkout?.exercises.length})
                   </Text>
                   <ScrollView
                     style={styles.exercisesList}
@@ -874,16 +891,16 @@ Respond in the same language as the user's query. `
                     {selectedWorkout?.exercises.map((exercise, index) => (
                       <View key={index} style={[
                         styles.exerciseItem,
-                        { 
+                        {
                           backgroundColor: theme.colors.surfaceVariant,
                           borderColor: theme.colors.outline + '20'
                         }
                       ]}>
                         <View style={styles.exerciseItemHeader}>
-                          <MaterialCommunityIcons 
-                            name="dumbbell" 
-                            size={18} 
-                            color={theme.colors.primary} 
+                          <MaterialCommunityIcons
+                            name="dumbbell"
+                            size={18}
+                            color={theme.colors.primary}
                           />
                           <Text style={[
                             styles.exerciseText,
@@ -918,7 +935,7 @@ Respond in the same language as the user's query. `
                     activeOpacity={0.7}
                   >
                     <Text style={[styles.modalButtonText, { color: theme.colors.onSurfaceVariant }]}>
-                      Cancel
+                      {t('cancel', { ns: 'common' })}
                     </Text>
                   </TouchableOpacity>
 
@@ -939,7 +956,7 @@ Respond in the same language as the user's query. `
                       <ActivityIndicator color={theme.colors.onPrimary} size="small" />
                     ) : (
                       <Text style={[styles.modalButtonText, { color: theme.colors.onPrimary }]}>
-                        Save Workout
+                        {t('saveWorkout', { ns: 'workouts' })}
                       </Text>
                     )}
                   </TouchableOpacity>

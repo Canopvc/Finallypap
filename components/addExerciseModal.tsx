@@ -255,7 +255,7 @@ export const AddExerciseModal: React.FC<AddExerciseModalProps> = ({
             </Text>
             <TextInput
               ref={nameInputRef}
-              placeholder="Ex: Supino Reto"
+              placeholder={t('Bench Press', { ns: 'workouts' })}
               value={exerciseName}
               onChangeText={setExerciseName}
               style={[
@@ -317,7 +317,7 @@ export const AddExerciseModal: React.FC<AddExerciseModalProps> = ({
             </Text>
             <TextInput
               ref={imageInputRef}
-              placeholder="https://exemplo.com/imagem.jpg"
+              placeholder={t('imageUrlExample', { ns: 'workouts' })}
               value={imageUrl}
               onChangeText={(text) => {
                 setImageUrl(text);

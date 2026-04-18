@@ -1,6 +1,5 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import * as Localization from 'expo-localization';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Importar traduções
@@ -8,19 +7,10 @@ import commonPt from '../locales/pt/common.json';
 import workoutsPt from '../locales/pt/workouts.json';
 import commonEn from '../locales/en/common.json';
 import workoutsEn from '../locales/en/workouts.json';
+import commonEs from '../locales/es/common.json';
+import workoutsEs from '../locales/es/workouts.json';
 
 const LANGUAGE_STORAGE_KEY = '@fitnesshub:language';
-
-// Detectar idioma do dispositivo
-const getDeviceLanguage = (): string => {
-  const locales = Localization.getLocales();
-  if (locales && locales.length > 0) {
-    const locale = locales[0];
-    // Retornar apenas o código do idioma (pt, en, etc)
-    return locale.languageCode || 'en';
-  }
-  return 'en';
-};
 
 // Carregar idioma salvo ou usar o do dispositivo
 const loadLanguage = async (): Promise<string> => {
@@ -33,10 +23,8 @@ const loadLanguage = async (): Promise<string> => {
     console.error('Error loading language from storage:', error);
   }
   
-  // Se não houver idioma salvo, usar o do dispositivo
-  const deviceLanguage = getDeviceLanguage();
-  // Suportar apenas pt e en por enquanto
-  return deviceLanguage.startsWith('pt') ? 'pt' : 'en';
+  // Default sempre em inglês quando não há preferência salva
+  return 'en';
 };
 
 // Recursos de tradução
@@ -48,6 +36,10 @@ const resources = {
   en: {
     common: commonEn,
     workouts: workoutsEn,
+  },
+  es: {
+    common: commonEs,
+    workouts: workoutsEs,
   },
 };
 
@@ -79,7 +71,7 @@ loadLanguage().then((language) => {
 });
 
 // Função para mudar o idioma e salvar
-export const changeLanguage = async (language: 'pt' | 'en'): Promise<void> => {
+export const changeLanguage = async (language: 'pt' | 'en' | 'es'): Promise<void> => {
   try {
     await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
     await i18n.changeLanguage(language);
