@@ -110,19 +110,11 @@ export default function ProfileScreen() {
     return () => clearTimeout(timer);
   }, [weight, height, age, email]);
 
-  const sendBMIToSupabase = async (
-    weightNum: number,
-    heightNum: number,
-    ageNum: number,
-  ) => {
+  const sendBMIToSupabase = async (weightNum: number, heightNum: number, ageNum: number) => {
     try {
       const heightInMeters = heightNum / 100;
-      const bmiValue = parseFloat(
-        (weightNum / (heightInMeters * heightInMeters)).toFixed(1),
-      );
-
-      console.log("📡 Auto-saving BMI to Supabase:", bmiValue);
-
+      const bmiValue = parseFloat((weightNum / (heightInMeters * heightInMeters)).toFixed(1));
+  
       const { error } = await supabase.from("ContasRegistradas").upsert(
         {
           user_email: email,
@@ -134,11 +126,17 @@ export default function ProfileScreen() {
         },
         { onConflict: "user_email" },
       );
-
-      if (error) {
-        console.error("❌ Error auto-saving BMI:", error);
-      } else {
-        console.log("✅ BMI auto-saved successfully:", bmiValue);
+  
+      if (!error) {
+        // ✅ Atualiza o AsyncStorage para que na próxima abertura os valores apareçam
+        const existing = await AsyncStorage.getItem(WEIGHT_GOALS_KEY);
+        const goals = existing ? JSON.parse(existing) : {};
+        await AsyncStorage.setItem(WEIGHT_GOALS_KEY, JSON.stringify({
+          ...goals,
+          weight: weightNum.toString(),
+          height: heightNum.toString(),
+          age: ageNum.toString(),
+        }));
       }
     } catch (error) {
       console.error("❌ Unexpected error saving BMI:", error);

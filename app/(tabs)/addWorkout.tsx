@@ -27,6 +27,7 @@ import { useTranslation } from "../../hooks/useTranslation";
 import Svg, { Path } from "react-native-svg";
 import { AddExerciseModal } from "../../components/addExerciseModal";
 import * as Haptics from 'expo-haptics'
+import { syncNextWorkoutWidget } from "../../lib/widgetSync";
 
 type Exercise = {
   id: string;
@@ -430,6 +431,7 @@ export default function AddWorkout() {
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(list));
       }
 
+      await syncNextWorkoutWidget();
       router.back();
     } catch (err) {
       console.error("Save workout error", err);

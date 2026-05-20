@@ -66,7 +66,36 @@ export default {
         }
       ],
       "expo-localization",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "react-native-android-widget",
+        {
+          widgets: [
+            {
+              name: "StepsToday",
+              label: "Passos de Hoje",
+              description: "Mostra os passos acumulados hoje",
+              minWidth: "250dp",
+              minHeight: "120dp",
+              targetCellWidth: 4,
+              targetCellHeight: 2,
+              previewImage: "./assets/images/Icon.png",
+              updatePeriodMillis: 1800000
+            },
+            {
+              name: "NextWorkout",
+              label: "Proximo Treino",
+              description: "Mostra o treino mais recente guardado",
+              minWidth: "250dp",
+              minHeight: "120dp",
+              targetCellWidth: 4,
+              targetCellHeight: 2,
+              previewImage: "./assets/images/Icon.png",
+              updatePeriodMillis: 1800000
+            }
+          ]
+        }
+      ]
     ],
     extra: {
       router: {},

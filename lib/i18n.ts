@@ -1,6 +1,7 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getLocales } from 'expo-localization';
 
 // Importar traduções
 import commonPt from '../locales/pt/common.json';
@@ -11,20 +12,34 @@ import commonEs from '../locales/es/common.json';
 import workoutsEs from '../locales/es/workouts.json';
 
 const LANGUAGE_STORAGE_KEY = '@fitnesshub:language';
+const SUPPORTED_LANGUAGES = ['pt', 'en', 'es'] as const;
+type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
+
+const normalizeLanguage = (languageTag?: string | null): SupportedLanguage => {
+  if (!languageTag) return 'en';
+
+  const languageCode = languageTag.split('-')[0]?.toLowerCase();
+  if (languageCode && SUPPORTED_LANGUAGES.includes(languageCode as SupportedLanguage)) {
+    return languageCode as SupportedLanguage;
+  }
+
+  return 'en';
+};
 
 // Carregar idioma salvo ou usar o do dispositivo
-const loadLanguage = async (): Promise<string> => {
+const loadLanguage = async (): Promise<SupportedLanguage> => {
   try {
     const savedLanguage = await AsyncStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (savedLanguage) {
-      return savedLanguage;
+      return normalizeLanguage(savedLanguage);
     }
   } catch (error) {
     console.error('Error loading language from storage:', error);
   }
-  
-  // Default sempre em inglês quando não há preferência salva
-  return 'en';
+
+  // Sem preferência salva: usar idioma do dispositivo (ex.: pt-PT, pt-BR)
+  const deviceLanguage = getLocales()[0]?.languageTag;
+  return normalizeLanguage(deviceLanguage);
 };
 
 // Recursos de tradução
@@ -71,7 +86,7 @@ loadLanguage().then((language) => {
 });
 
 // Função para mudar o idioma e salvar
-export const changeLanguage = async (language: 'pt' | 'en' | 'es'): Promise<void> => {
+export const changeLanguage = async (language: SupportedLanguage): Promise<void> => {
   try {
     await AsyncStorage.setItem(LANGUAGE_STORAGE_KEY, language);
     await i18n.changeLanguage(language);

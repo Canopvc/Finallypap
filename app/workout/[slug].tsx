@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ChevronLeft, Plus, Trash2, GripVertical, Clock, Flame, Play } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useTranslation } from '../../hooks/useTranslation';
+import { syncNextWorkoutWidget } from '../../lib/widgetSync';
 
 // Types should mirror the list screen
 type Exercise = {
@@ -239,6 +240,7 @@ export default function WorkoutDetailScreen() {
           workoutSlugFromFields(w.name, w.createdAt) === slug ? workout : w
         );
         await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        await syncNextWorkoutWidget();
         Alert.alert(t('success', { ns: 'common' }), t('goalsSaveSuccess', { ns: 'common' }));
       }
       
@@ -268,6 +270,7 @@ export default function WorkoutDetailScreen() {
               // 1. Apagar do AsyncStorage
               const filtered = workouts.filter(w => workoutSlugFromFields(w.name, w.createdAt) !== slug);
               await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+              await syncNextWorkoutWidget();
               
               // 2. Apagar da base de dados
               try {
